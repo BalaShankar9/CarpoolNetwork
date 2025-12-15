@@ -1,3 +1,66 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Z-Index Hierarchy System
+  Base Content: 0-10
+  Sticky Elements (headers, navs): 40-50
+  Dropdowns & Tooltips: 60-70
+  Fixed Action Buttons: 80-90
+  Modals & Overlays: 95-100
+*/
+
+/* Ensure safe area insets for mobile devices */
+@layer base {
+  :root {
+    --safe-area-inset-top: env(safe-area-inset-top, 0px);
+    --safe-area-inset-right: env(safe-area-inset-right, 0px);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  }
+
+  body {
+    touch-action: manipulation;
+  }
+
+  /* Prevent zoom on iOS when focusing inputs */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  /* Safe area padding for bottom elements */
+  .safe-area-bottom {
+    padding-bottom: calc(1rem + var(--safe-area-inset-bottom));
+  }
+}
+
+/* Fix iOS Safari viewport height issues */
+@supports (-webkit-touch-callout: none) {
+  .min-h-screen {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Better tap targets */
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+/* Remove tap highlight */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Ensure proper pointer events */
+.overlay-backdrop {
+  pointer-events: auto;
+}

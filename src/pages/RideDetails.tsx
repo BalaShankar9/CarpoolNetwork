@@ -222,11 +222,11 @@ export default function RideDetails() {
   };
 
   const sendMessage = () => {
-    if (ride?.driver) {
+    if (ride?.driver && ride?.id) {
       navigate('/messages', {
         state: {
-          userId: ride.driver.id,
-          userName: ride.driver.full_name
+          rideId: ride.id,
+          driverId: ride.driver.id
         }
       });
     }
@@ -328,7 +328,7 @@ export default function RideDetails() {
               className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-blue-200 transition-colors"
               onClick={() => {
                 if (ride.driver.id !== user?.id) {
-                  navigate('/messages', { state: { userId: ride.driver.id, userName: ride.driver.full_name } });
+                  navigate('/messages', { state: { rideId: ride.id, driverId: ride.driver.id } });
                 }
               }}
               title="Click to message driver"
@@ -342,7 +342,7 @@ export default function RideDetails() {
                 className="text-xl font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
                 onClick={() => {
                   if (ride.driver.id !== user?.id) {
-                    navigate('/messages', { state: { userId: ride.driver.id, userName: ride.driver.full_name } });
+                    navigate('/messages', { state: { rideId: ride.id, driverId: ride.driver.id } });
                   }
                 }}
                 title="Click to message driver"

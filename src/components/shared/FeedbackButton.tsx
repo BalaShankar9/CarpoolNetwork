@@ -51,14 +51,15 @@ export default function FeedbackButton() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-40 md:bottom-24 right-4 md:right-6 z-[60] bg-red-600 text-white p-3 rounded-full shadow-lg hover:bg-red-700 transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+        className="fixed bottom-[140px] md:bottom-24 right-4 md:right-6 z-[85] bg-red-600 text-white p-3 rounded-full shadow-lg hover:bg-red-700 transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
         title="Report a problem"
+        style={{ pointerEvents: 'auto' }}
       >
         <Bug className="w-6 h-6" />
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50">
+        <div className="fixed inset-0 z-[95] flex items-center justify-center p-4 bg-black/50" style={{ pointerEvents: 'auto' }}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b">
               <h2 className="text-lg font-semibold text-gray-900">Report a Problem</h2>

@@ -195,11 +195,11 @@ export default function BookingDetails() {
   };
 
   const messageDriver = async () => {
-    if (!booking?.ride.driver) return;
+    if (!booking?.ride) return;
     navigate('/messages', {
       state: {
-        userId: booking.ride.driver.id,
-        userName: booking.ride.driver.full_name
+        rideId: booking.ride.id,
+        driverId: booking.ride.driver.id
       }
     });
   };

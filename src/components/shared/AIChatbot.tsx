@@ -251,8 +251,9 @@ export default function AIChatbot() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-[100] p-4 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-full shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300 group"
-          aria-label="Open chat"
+          className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-[90] p-4 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-full shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300 group"
+          aria-label="Open AI chat"
+          style={{ pointerEvents: 'auto' }}
         >
           <MessageCircle className="w-6 h-6" />
           <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
@@ -260,7 +261,7 @@ export default function AIChatbot() {
       )}
 
       {isOpen && (
-        <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-[100] w-96 max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-10rem)] md:max-h-[calc(100vh-2rem)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
+        <div className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-[90] w-96 max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-10rem)] md:max-h-[calc(100vh-2rem)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
