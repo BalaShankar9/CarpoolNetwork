@@ -5,10 +5,12 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from '../components/shared/LocationAutocomplete';
 import EmailVerificationBanner from '../components/shared/EmailVerificationBanner';
+import { useServiceGating } from '../hooks/useServiceGating';
 
 export default function PostRide() {
   const { user, isEmailVerified } = useAuth();
   const navigate = useNavigate();
+  const { checkAccess, ServiceGatingModal } = useServiceGating();
   const [hasVehicle, setHasVehicle] = useState(false);
   const [checkingVehicle, setCheckingVehicle] = useState(true);
   const [vehicleCapacity, setVehicleCapacity] = useState(4);
@@ -61,6 +63,10 @@ export default function PostRide() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    if (!checkAccess('post-ride')) {
+      return;
+    }
 
     if (!isEmailVerified) {
       setError('Please verify your email address before posting rides.');
@@ -162,13 +168,15 @@ export default function PostRide() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Post a Ride</h1>
-        <p className="text-gray-600 mt-1">Share your journey with the community</p>
-      </div>
+    <>
+      <ServiceGatingModal />
+      <div className="max-w-3xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Post a Ride</h1>
+          <p className="text-gray-600 mt-1">Share your journey with the community</p>
+        </div>
 
-      <EmailVerificationBanner action="post rides" />
+        <EmailVerificationBanner action="post rides" />
 
       {success && (
         <div className="bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-xl flex items-center gap-3">
@@ -349,5 +357,6 @@ export default function PostRide() {
         </form>
       </div>
     </div>
+    </>
   );
 }

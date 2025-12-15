@@ -1,12 +1,14 @@
 import { Car, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
   showText?: boolean;
   className?: string;
+  clickable?: boolean;
 }
 
-export default function Logo({ size = 'md', showText = true, className = '' }: LogoProps) {
+export default function Logo({ size = 'md', showText = true, className = '', clickable = true }: LogoProps) {
   const sizeClasses = {
     sm: 'w-10 h-10',
     md: 'w-14 h-14',
@@ -31,7 +33,7 @@ export default function Logo({ size = 'md', showText = true, className = '' }: L
     lg: 'text-2xl',
   };
 
-  return (
+  const content = (
     <div className={`flex items-center gap-3 ${className}`}>
       <div className="relative">
         <div className={`${sizeClasses[size]} bg-gradient-to-br from-red-500 via-red-600 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-200`}>
@@ -52,4 +54,14 @@ export default function Logo({ size = 'md', showText = true, className = '' }: L
       )}
     </div>
   );
+
+  if (clickable) {
+    return (
+      <Link to="/" className="cursor-pointer">
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
 }

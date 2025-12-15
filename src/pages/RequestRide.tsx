@@ -4,6 +4,7 @@ import { MapPin, Calendar, Users, Clock, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from '../components/shared/LocationAutocomplete';
+import { useServiceGating } from '../hooks/useServiceGating';
 
 interface LocationDetails {
   address: string;
@@ -14,6 +15,7 @@ interface LocationDetails {
 export default function RequestRide() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { checkAccess, ServiceGatingModal } = useServiceGating();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 

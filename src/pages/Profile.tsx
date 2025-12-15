@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Car, Star, Phone, Mail, Calendar, Plus, Edit, X, Shield, AlertCircle, CheckCircle, Upload, Image as ImageIcon, Camera } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { uploadProfilePhoto, uploadVehiclePhoto } from '../services/storageService';
 
 interface Vehicle {
   id: string;
@@ -95,8 +96,8 @@ export default function Profile() {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image size should be less than 5MB');
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Image size must be less than 10MB');
         return;
       }
       if (!file.type.startsWith('image/')) {
@@ -274,58 +275,8 @@ export default function Profile() {
     setUploadingImage(true);
 
     try {
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image size should be less than 5MB');
-        return;
-      }
-      if (!file.type.startsWith('image/')) {
-        setError('Please select an image file');
-        return;
-      }
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${vehicleId}-${Date.now()}.${fileExt}`;
-      const filePath = `vehicles/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('vehicle-images')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('vehicle-images')
-        .getPublicUrl(filePath);
-
-      const { error: updateError } = await supabase
-        .from('vehicles')
-        .update({ image_url: publicUrl })
-        .eq('id', vehicleId);
-
-      if (updateError) throw updateError;
-
-      setSuccess('Vehicle image updated successfully!');
-      await loadVehicles();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err: any) {
-      setError(err.message || 'Failed to upload image');
-    } finally {
-      setUploadingVehicleId(null);
-      setUploadingImage(false);
-    }
-  };
-
-  const handleProfileImageUpload = async (file: File) => {
-    setError('');
-    setSuccess('');
-    setUploadingProfileImage(true);
-
-    try {
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image size should be less than 5MB');
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Image size must be less than 10MB');
         return;
       }
       if (!file.type.startsWith('image/')) {
@@ -338,31 +289,70 @@ export default function Profile() {
         return;
       }
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${profile.id}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const { optimizedPath, thumbnailPath } = await uploadVehiclePhoto(
+        profile.id,
+        file,
+        (progress) => console.log(`Upload progress: ${progress}%`)
+      );
 
-      const { error: uploadError } = await supabase.storage
-        .from('vehicle-images')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('vehicle-images')
-        .getPublicUrl(filePath);
-
-      const { error: updateError } = await updateProfile({ avatar_url: publicUrl });
+      const { error: updateError } = await supabase
+        .from('vehicles')
+        .update({
+          vehicle_front_photo_path: optimizedPath,
+          vehicle_front_photo_thumb_path: thumbnailPath
+        })
+        .eq('id', vehicleId);
 
       if (updateError) throw updateError;
 
-      setSuccess('Profile image updated successfully!');
+      setSuccess('Vehicle photo uploaded and optimized!');
+      await loadVehicles();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.message || 'Failed to upload profile image');
+      setError(err.message || 'Failed to upload vehicle photo');
+    } finally {
+      setUploadingVehicleId(null);
+      setUploadingImage(false);
+    }
+  };
+
+  const handleProfileImageUpload = async (file: File) => {
+    setError('');
+    setSuccess('');
+    setUploadingProfileImage(true);
+
+    try {
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Image size must be less than 10MB');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        setError('Please select an image file');
+        return;
+      }
+
+      if (!profile?.id) {
+        setError('Profile not found');
+        return;
+      }
+
+      const { optimizedPath, thumbnailPath } = await uploadProfilePhoto(
+        profile.id,
+        file,
+        (progress) => console.log(`Upload progress: ${progress}%`)
+      );
+
+      const { error: updateError } = await updateProfile({
+        profile_photo_path: optimizedPath,
+        profile_photo_thumb_path: thumbnailPath
+      } as any);
+
+      if (updateError) throw updateError;
+
+      setSuccess('Profile photo uploaded and optimized!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload profile photo');
     } finally {
       setUploadingProfileImage(false);
     }
@@ -597,7 +587,7 @@ export default function Profile() {
                     >
                       <Upload className="w-8 h-8" />
                       <span className="text-sm font-medium">Upload Vehicle Photo</span>
-                      <span className="text-xs text-gray-500">PNG, JPG up to 5MB</span>
+                      <span className="text-xs text-gray-500">Any image up to 10MB (auto-optimized)</span>
                     </button>
                   )}
                 </div>
