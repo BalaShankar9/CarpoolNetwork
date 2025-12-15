@@ -222,7 +222,14 @@ export default function RideDetails() {
   };
 
   const sendMessage = () => {
-    navigate(`/messages?userId=${ride?.driver.id}`);
+    if (ride?.driver) {
+      navigate('/messages', {
+        state: {
+          userId: ride.driver.id,
+          userName: ride.driver.full_name
+        }
+      });
+    }
   };
 
   const formatDateTime = (dateString: string) => {

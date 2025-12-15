@@ -195,8 +195,13 @@ export default function BookingDetails() {
   };
 
   const messageDriver = async () => {
-    if (!booking?.ride.driver.id) return;
-    navigate(`/messages?userId=${booking.ride.driver.id}`);
+    if (!booking?.ride.driver) return;
+    navigate('/messages', {
+      state: {
+        userId: booking.ride.driver.id,
+        userName: booking.ride.driver.full_name
+      }
+    });
   };
 
   const formatDateTime = (dateString: string) => {
