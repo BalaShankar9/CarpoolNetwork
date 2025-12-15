@@ -37,6 +37,36 @@ export default function Home() {
 
   useEffect(() => {
     loadDashboardData();
+
+    const ridesChannel = supabase
+      .channel('home-rides-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rides'
+        },
+        () => {
+          loadDashboardData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ride_bookings'
+        },
+        () => {
+          loadDashboardData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ridesChannel);
+    };
   }, []);
 
   const loadDashboardData = async () => {
@@ -44,7 +74,8 @@ export default function Home() {
       const { data: activeRidesData } = await supabase
         .from('rides')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .gt('available_seats', 0);
 
       const { data: recentRidesData } = await supabase
         .from('rides')
@@ -57,6 +88,7 @@ export default function Home() {
           driver:profiles!rides_driver_id_fkey(full_name, average_rating)
         `)
         .eq('status', 'active')
+        .gt('available_seats', 0)
         .gte('departure_time', new Date().toISOString())
         .order('departure_time', { ascending: true })
         .limit(5);
@@ -68,7 +100,10 @@ export default function Home() {
         activeRides: activeRidesData?.length || 0,
       });
 
-      setRecentRides((recentRidesData as any) || []);
+      const filteredRides = ((recentRidesData as any) || []).filter(
+        (ride: RecentRide) => ride.available_seats > 0
+      );
+      setRecentRides(filteredRides);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
@@ -214,7 +249,7 @@ export default function Home() {
             {recentRides.length === 0 ? (
               <p className="text-gray-500 text-center py-8">No upcoming rides available</p>
             ) : (
-              recentRides.map((ride) => (
+              recentRides.filter(ride => ride.available_seats > 0).map((ride) => (
                 <div
                   key={ride.id}
                   className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors cursor-pointer"
