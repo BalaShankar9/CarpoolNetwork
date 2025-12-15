@@ -24,26 +24,35 @@ export async function uploadProfilePhoto(
     const optimizedPath = `users/${userId}/profile.webp`;
     const thumbnailPath = `users/${userId}/profile_thumb.webp`;
 
-    const { error: uploadError } = await supabase.storage
+    console.log('Uploading profile photo to path:', optimizedPath);
+    const { data: uploadedData, error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(optimizedPath, optimized.file, {
         upsert: true,
-        contentType: optimized.file.type,
+        contentType: 'image/webp',
       });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('Profile photo upload error:', uploadError);
+      throw new Error(uploadError.message || 'Failed to upload profile photo');
+    }
 
+    console.log('Profile photo uploaded successfully:', uploadedData);
     onProgress?.(80);
 
-    const { error: thumbError } = await supabase.storage
+    const { data: thumbData, error: thumbError } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(thumbnailPath, thumbnail.file, {
         upsert: true,
-        contentType: thumbnail.file.type,
+        contentType: 'image/webp',
       });
 
-    if (thumbError) throw thumbError;
+    if (thumbError) {
+      console.error('Profile thumbnail upload error:', thumbError);
+      throw new Error(thumbError.message || 'Failed to upload profile thumbnail');
+    }
 
+    console.log('Profile thumbnail uploaded successfully:', thumbData);
     onProgress?.(100);
 
     return {
@@ -70,26 +79,35 @@ export async function uploadVehiclePhoto(
     const optimizedPath = `users/${userId}/vehicle_front.webp`;
     const thumbnailPath = `users/${userId}/vehicle_front_thumb.webp`;
 
-    const { error: uploadError } = await supabase.storage
+    console.log('Uploading vehicle photo to path:', optimizedPath, 'userId:', userId);
+    const { data: uploadedData, error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(optimizedPath, optimized.file, {
         upsert: true,
-        contentType: optimized.file.type,
+        contentType: 'image/webp',
       });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('Vehicle photo upload error:', uploadError);
+      throw new Error(uploadError.message || 'Failed to upload vehicle photo');
+    }
 
+    console.log('Vehicle photo uploaded successfully:', uploadedData);
     onProgress?.(80);
 
-    const { error: thumbError } = await supabase.storage
+    const { data: thumbData, error: thumbError } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(thumbnailPath, thumbnail.file, {
         upsert: true,
-        contentType: thumbnail.file.type,
+        contentType: 'image/webp',
       });
 
-    if (thumbError) throw thumbError;
+    if (thumbError) {
+      console.error('Vehicle thumbnail upload error:', thumbError);
+      throw new Error(thumbError.message || 'Failed to upload vehicle thumbnail');
+    }
 
+    console.log('Vehicle thumbnail uploaded successfully:', thumbData);
     onProgress?.(100);
 
     return {
