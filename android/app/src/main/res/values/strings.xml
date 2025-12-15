@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Carpool Network</string>
+    <string name="title_activity_main">Carpool Network</string>
+    <string name="package_name">co.uk.carpoolnetwork.app</string>
+    <string name="custom_url_scheme">co.uk.carpoolnetwork.app</string>
+</resources>

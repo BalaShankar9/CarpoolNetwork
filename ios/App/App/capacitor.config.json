@@ -1,0 +1,7 @@
+{
+	"appId": "co.uk.carpoolnetwork.app",
+	"appName": "Carpool Network",
+	"webDir": "dist",
+	"bundledWebRuntime": false,
+	"packageClassList": []
+}

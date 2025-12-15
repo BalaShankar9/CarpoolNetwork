@@ -1,0 +1,385 @@
+================================================================================
+                         CARPOOL NETWORK - PROJECT SUMMARY
+                              carpoolnetwork.co.uk
+================================================================================
+
+Document Created: December 2024
+Project Type: Ride-Sharing / Carpooling Web Application
+
+================================================================================
+                              INFRASTRUCTURE OVERVIEW
+================================================================================
+
+HOSTING & DOMAIN
+----------------
+- Website Hosting:      Netlify
+- Domain Name:          carpoolnetwork.co.uk
+- Domain Registrar:     GoDaddy
+- Build Command:        npm run build
+- Publish Directory:    dist
+- Framework:            React + Vite + TypeScript
+
+BACKEND SERVICES (Supabase)
+---------------------------
+- Database:             Supabase PostgreSQL
+- Authentication:       Supabase Auth (Email/Password)
+- File Storage:         Supabase Storage (vehicle-images bucket)
+- Serverless Functions: Supabase Edge Functions
+- Project URL:          https://uqofmsreosfjflmgurzb.supabase.co
+
+EXTERNAL APIS
+-------------
+- Maps & Routing:       Google Maps Platform (Places, Directions, Geocoding)
+- AI Assistant:         Google Gemini API
+- Vehicle Data:         DVLA API (via Edge Function)
+
+================================================================================
+                              TECHNOLOGY STACK
+================================================================================
+
+FRONTEND
+--------
+- Framework:            React 18.3.1
+- Build Tool:           Vite 5.4.2
+- Language:             TypeScript 5.5.3
+- Styling:              Tailwind CSS 3.4.1
+- Icons:                Lucide React 0.344.0
+- Routing:              React Router DOM 6.30.1
+- Maps Integration:     @googlemaps/js-api-loader 2.0.1
+
+BACKEND
+-------
+- Database:             PostgreSQL (via Supabase)
+- Authentication:       Supabase Auth
+- API Client:           @supabase/supabase-js 2.57.4
+- Edge Functions:       Deno Runtime
+
+DEVELOPMENT TOOLS
+-----------------
+- Linting:              ESLint 9.9.1
+- Type Checking:        TypeScript
+- CSS Processing:       PostCSS + Autoprefixer
+
+================================================================================
+                              ENVIRONMENT VARIABLES
+================================================================================
+
+Required environment variables (stored in .env file):
+
+VITE_SUPABASE_URL         - Supabase project URL
+VITE_SUPABASE_ANON_KEY    - Supabase anonymous/public key
+VITE_GOOGLE_MAPS_API_KEY  - Google Maps API key
+
+Supabase Edge Function Secrets (set via Supabase Dashboard):
+
+GEMINI_API_KEY            - Google Gemini AI API key (server-side only)
+
+================================================================================
+                              DATABASE SCHEMA
+================================================================================
+
+CORE TABLES (17 Total)
+----------------------
+
+1. profiles
+   - User account information
+   - Fields: id, email, full_name, avatar_url, phone, bio, date_of_birth,
+     gender, is_verified, verification_badge, total_rides_offered,
+     total_rides_taken, average_rating, whatsapp_number, reliability_score,
+     cancelled_bookings, last_minute_cancellations, preferred_contact_method
+   - RLS: Enabled
+
+2. vehicles
+   - User vehicles for offering rides
+   - Fields: id, user_id, make, model, year, color, license_plate, capacity,
+     fuel_type, registration_year, vehicle_type, engine_capacity, image_url,
+     mot_status, mot_expiry_date, tax_status, tax_due_date, is_active
+   - RLS: Enabled
+
+3. rides
+   - Posted ride offers
+   - Fields: id, driver_id, vehicle_id, origin, origin_lat, origin_lng,
+     destination, destination_lat, destination_lng, departure_time,
+     available_seats, total_seats, status, is_recurring, recurrence_pattern,
+     notes, route_polyline, estimated_duration, estimated_distance
+   - Statuses: active, in-progress, completed, cancelled
+   - RLS: Enabled
+
+4. ride_bookings
+   - Passenger bookings for rides
+   - Fields: id, ride_id, passenger_id, pickup_location, pickup_lat, pickup_lng,
+     dropoff_location, dropoff_lat, dropoff_lng, seats_requested, status,
+     pickup_order, cancellation_reason, cancelled_at, is_last_minute_cancellation
+   - Statuses: pending, confirmed, completed, cancelled
+   - RLS: Enabled
+
+5. messages
+   - In-app messaging between users
+   - Fields: id, sender_id, recipient_id, ride_id, content, is_read
+   - RLS: Enabled
+
+6. reviews
+   - User ratings and reviews
+   - Fields: id, ride_id, reviewer_id, reviewee_id, rating (1-5), comment,
+     review_type (driver/passenger)
+   - RLS: Enabled
+
+7. notifications
+   - System and user notifications
+   - Types: ride-match, booking-request, booking-confirmed, booking-cancelled,
+     message, review, safety-alert, system
+   - RLS: Enabled
+
+8. user_preferences
+   - User ride preferences
+   - Fields: music_preference, temperature_preference, conversation_level,
+     smoking_policy, pets_allowed, max_detour_minutes, gender_preference,
+     auto_accept_rides
+   - RLS: Enabled
+
+9. emergency_contacts
+   - User emergency contact information
+   - Fields: id, user_id, name, phone, relationship, is_primary
+   - RLS: Enabled
+
+10. safety_reports
+    - Incident reports for safety concerns
+    - Incident types: harassment, unsafe-driving, inappropriate-behavior, other
+    - Severity levels: low, medium, high, critical
+    - RLS: Enabled
+
+11. saved_locations
+    - User's saved/favorite locations
+    - Fields: id, user_id, name, address, latitude, longitude
+    - RLS: Enabled
+
+12. ride_waitlist
+    - Waitlist for full rides
+    - Fields: id, ride_id, user_id, position
+    - RLS: Enabled
+
+13. driver_licenses
+    - Driver license verification
+    - Fields: license_type, license_number, country_of_issue, issue_date,
+      expiry_date, verified, verification_method, is_banned, points, categories
+    - RLS: Enabled
+
+14. booking_history
+    - Audit trail for booking actions
+    - Fields: id, booking_id, user_id, action, reason
+    - RLS: Enabled
+
+15. ai_chat_history
+    - AI chatbot conversation history
+    - Fields: id, user_id, message, role (user/assistant), session_id
+    - RLS: Enabled
+
+================================================================================
+                              EDGE FUNCTIONS
+================================================================================
+
+1. vehicle-lookup
+   - Purpose: DVLA vehicle lookup by registration number
+   - Endpoint: /functions/v1/vehicle-lookup
+   - JWT Required: Yes
+   - Returns: Vehicle make, model, year, color, fuel type, MOT/tax status
+
+2. gemini-proxy
+   - Purpose: Secure proxy for Google Gemini AI API calls
+   - Endpoint: /functions/v1/gemini-proxy
+   - JWT Required: Yes
+   - Method: POST
+   - Body: { contents, model?, generationConfig?, systemInstruction? }
+   - Returns: { text, raw }
+
+================================================================================
+                              APPLICATION FEATURES
+================================================================================
+
+USER FEATURES
+-------------
+- Email/password registration and login
+- Profile management with avatar upload
+- WhatsApp contact integration
+- Preference settings (music, temperature, conversation level, smoking, pets)
+- Emergency contact management
+- Saved locations
+
+DRIVER FEATURES
+---------------
+- Vehicle registration with DVLA lookup
+- MOT and tax status display
+- Post rides with route visualization
+- Manage ride bookings (accept/decline)
+- View booking requests
+
+PASSENGER FEATURES
+------------------
+- Search for available rides
+- Filter by date, time, seats needed
+- Book rides with custom pickup/dropoff points
+- Join waitlist for full rides
+- Track booking status
+
+COMMUNICATION
+-------------
+- In-app messaging system
+- WhatsApp integration option
+- Real-time notifications
+
+SAFETY & TRUST
+--------------
+- Driver license verification
+- User ratings and reviews
+- Safety incident reporting
+- Reliability scoring
+- Cancellation tracking
+
+AI ASSISTANT
+------------
+- Gemini-powered chatbot
+- Ride search assistance
+- Help and FAQ support
+- Conversation history saved
+
+MAPS & ROUTING
+--------------
+- Google Maps integration
+- Location autocomplete
+- Route visualization
+- Distance and duration estimates
+- Trip insights
+
+================================================================================
+                              FILE STRUCTURE
+================================================================================
+
+/project
+|-- .env                          # Environment variables
+|-- package.json                  # Dependencies and scripts
+|-- vite.config.ts               # Vite configuration
+|-- tailwind.config.js           # Tailwind CSS configuration
+|-- tsconfig.json                # TypeScript configuration
+|-- index.html                   # Entry HTML file
+|
+|-- /.netlify
+|   |-- netlify.toml             # Netlify deployment config
+|
+|-- /public
+|   |-- _redirects               # SPA routing for Netlify
+|   |-- [image files]            # Static assets
+|
+|-- /src
+|   |-- App.tsx                  # Main application component
+|   |-- main.tsx                 # Application entry point
+|   |-- index.css                # Global styles
+|   |
+|   |-- /components
+|   |   |-- /auth                # Authentication components
+|   |   |-- /dashboard           # Dashboard views
+|   |   |-- /landing             # Landing page sections
+|   |   |-- /layout              # Layout components (Navbar, etc.)
+|   |   |-- /messaging           # Messaging components
+|   |   |-- /rides               # Ride-related components
+|   |   |-- /shared              # Reusable components
+|   |
+|   |-- /contexts
+|   |   |-- AuthContext.tsx      # Authentication state management
+|   |
+|   |-- /lib
+|   |   |-- supabase.ts          # Supabase client setup
+|   |   |-- database.types.ts    # Database type definitions
+|   |
+|   |-- /pages
+|   |   |-- Home.tsx             # Landing page
+|   |   |-- FindRides.tsx        # Ride search page
+|   |   |-- PostRide.tsx         # Post a ride page
+|   |   |-- MyRides.tsx          # User's rides page
+|   |   |-- RideDetails.tsx      # Ride detail view
+|   |   |-- BookingDetails.tsx   # Booking detail view
+|   |   |-- Profile.tsx          # User profile page
+|   |   |-- Messages.tsx         # Messaging page
+|   |   |-- /auth                # Authentication pages
+|   |
+|   |-- /services
+|       |-- googleMapsService.ts # Google Maps integration
+|       |-- geminiService.ts     # Gemini AI integration
+|       |-- chatbotActions.ts    # Chatbot action handlers
+|
+|-- /supabase
+    |-- /functions
+    |   |-- /vehicle-lookup      # DVLA lookup edge function
+    |
+    |-- /migrations              # Database migrations (17 files)
+
+================================================================================
+                              DEPLOYMENT CHECKLIST
+================================================================================
+
+NETLIFY SETUP
+-------------
+[ ] Connect GitHub repository to Netlify
+[ ] Set build command: npm run build
+[ ] Set publish directory: dist
+[ ] Configure environment variables in Netlify dashboard
+
+ENVIRONMENT VARIABLES (Set in Netlify)
+--------------------------------------
+[ ] VITE_SUPABASE_URL
+[ ] VITE_SUPABASE_ANON_KEY
+[ ] VITE_GOOGLE_MAPS_API_KEY
+
+NOTE: Gemini API key is stored ONLY in Supabase Edge Function Secrets,
+      NOT in Netlify environment variables (for security)
+
+DOMAIN CONFIGURATION
+--------------------
+[ ] Add custom domain in Netlify (carpoolnetwork.co.uk)
+[ ] Update DNS records in GoDaddy:
+    - Add CNAME record pointing to Netlify
+    - Or use Netlify DNS nameservers
+[ ] Enable HTTPS/SSL certificate (automatic via Netlify)
+[ ] Configure www subdomain redirect
+
+SUPABASE CONFIGURATION
+----------------------
+[ ] Verify all tables have RLS enabled
+[ ] Check authentication settings
+[ ] Deploy Edge Functions (vehicle-lookup, gemini-proxy)
+[ ] Set Edge Function secrets in Supabase Dashboard:
+    - GEMINI_API_KEY (for gemini-proxy function)
+[ ] Set up database backups
+
+GOOGLE CLOUD SETUP
+------------------
+[ ] Enable Maps JavaScript API
+[ ] Enable Places API
+[ ] Enable Directions API
+[ ] Enable Geocoding API
+[ ] Enable Gemini API
+[ ] Restrict API keys to your domain
+
+================================================================================
+                              USEFUL LINKS
+================================================================================
+
+Supabase Dashboard:     https://supabase.com/dashboard/project/uqofmsreosfjflmgurzb
+Netlify Dashboard:      https://app.netlify.com
+GoDaddy DNS:            https://dcc.godaddy.com/manage/carpoolnetwork.co.uk/dns
+Google Cloud Console:   https://console.cloud.google.com
+
+================================================================================
+                              SUPPORT CONTACTS
+================================================================================
+
+Technical Issues:
+- Supabase: https://supabase.com/docs
+- Netlify: https://docs.netlify.com
+- Google Maps: https://developers.google.com/maps/documentation
+
+Domain/DNS:
+- GoDaddy Support: https://www.godaddy.com/help
+
+================================================================================
+                              END OF DOCUMENT
+================================================================================

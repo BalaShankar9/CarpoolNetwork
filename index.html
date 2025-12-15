@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/{17e55750-94ee-4563-88b2-5e8520807ee9}.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Carpool Network - Share rides, save money, and reduce your carbon footprint. Join the UK's trusted carpooling community." />
+    <meta property="og:title" content="Carpool Network - Sustainable Ride Sharing" />
+    <meta property="og:description" content="Share rides, save money, and reduce your carbon footprint with carpoolnetwork.co.uk" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://carpoolnetwork.co.uk" />
+    <title>Carpool Network - Share Rides, Save Money</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      (function() {
+        var apiKey = 'AIzaSyA1FUEgMfdu8AhcEFhseNJAYzjpNHdukm4';
+        if (apiKey) {
+          var script = document.createElement('script');
+          script.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&libraries=places';
+          script.async = true;
+          document.head.appendChild(script);
+        }
+      })();
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

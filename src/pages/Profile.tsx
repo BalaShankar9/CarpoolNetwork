@@ -1,0 +1,922 @@
+import { useState, useEffect, useRef } from 'react';
+import { Car, Star, Phone, Mail, Calendar, Plus, Edit, X, Shield, AlertCircle, CheckCircle, Upload, Image as ImageIcon, Camera } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
+
+interface Vehicle {
+  id: string;
+  make: string;
+  model: string;
+  year: number;
+  color: string;
+  license_plate: string;
+  capacity: number;
+  is_active: boolean;
+  fuel_type?: string;
+  vehicle_type?: string;
+  registration_year?: number;
+  engine_capacity?: number;
+  image_url?: string;
+  mot_status?: string;
+  mot_expiry_date?: string;
+  tax_status?: string;
+  tax_due_date?: string;
+}
+
+function isDateExpiringSoon(dateString?: string, daysThreshold: number = 30): boolean {
+  if (!dateString) return false;
+  const expiryDate = new Date(dateString);
+  const today = new Date();
+  const daysUntilExpiry = Math.floor((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  return daysUntilExpiry <= daysThreshold && daysUntilExpiry >= 0;
+}
+
+function isDateExpired(dateString?: string): boolean {
+  if (!dateString) return false;
+  const expiryDate = new Date(dateString);
+  const today = new Date();
+  return expiryDate < today;
+}
+
+export default function Profile() {
+  const { profile, updateProfile } = useAuth();
+  const [showVehicleForm, setShowVehicleForm] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehicleNumber, setVehicleNumber] = useState('');
+  const [vehicleImage, setVehicleImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingVehicleId, setUploadingVehicleId] = useState<string | null>(null);
+  const [uploadingProfileImage, setUploadingProfileImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const vehicleImageInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  const profileImageInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [editForm, setEditForm] = useState({
+    full_name: '',
+    phone: '',
+    bio: '',
+    whatsapp_number: '',
+    preferred_contact_method: 'both' as 'in_app' | 'whatsapp' | 'both',
+  });
+
+  useEffect(() => {
+    if (profile) {
+      loadVehicles();
+      setEditForm({
+        full_name: profile.full_name || '',
+        phone: profile.phone || '',
+        bio: profile.bio || '',
+        whatsapp_number: (profile as any).whatsapp_number || '',
+        preferred_contact_method: (profile as any).preferred_contact_method || 'both',
+      });
+    }
+  }, [profile]);
+
+  const loadVehicles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .select('*')
+        .eq('user_id', profile?.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setVehicles(data || []);
+    } catch (err) {
+      console.error('Error loading vehicles:', err);
+    }
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size should be less than 5MB');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        setError('Please select an image file');
+        return;
+      }
+      setVehicleImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadVehicleImage = async (vehicleId: string): Promise<string | null> => {
+    if (!vehicleImage) return null;
+
+    try {
+      setUploadingImage(true);
+      const fileExt = vehicleImage.name.split('.').pop();
+      const fileName = `${vehicleId}-${Date.now()}.${fileExt}`;
+      const filePath = `vehicles/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('vehicle-images')
+        .upload(filePath, vehicleImage, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('vehicle-images')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (err: any) {
+      console.error('Error uploading image:', err);
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const addVehicle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      if (!vehicleNumber.trim()) {
+        setError('Please enter a vehicle number');
+        setLoading(false);
+        return;
+      }
+
+      const plateNumber = vehicleNumber.trim().toUpperCase();
+
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vehicle-lookup`;
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const lookupResponse = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ registrationNumber: plateNumber }),
+      });
+
+      if (!lookupResponse.ok) {
+        throw new Error('Failed to lookup vehicle details');
+      }
+
+      const lookupResult = await lookupResponse.json();
+
+      if (!lookupResult.success || !lookupResult.data) {
+        throw new Error('Vehicle not found');
+      }
+
+      const vehicleData = lookupResult.data;
+
+      const { data, error: insertError } = await supabase
+        .from('vehicles')
+        .insert({
+          user_id: profile?.id,
+          make: vehicleData.make,
+          model: vehicleData.model,
+          year: vehicleData.year,
+          color: vehicleData.color,
+          license_plate: plateNumber,
+          capacity: vehicleData.capacity,
+          fuel_type: vehicleData.fuel_type,
+          vehicle_type: vehicleData.vehicle_type,
+          registration_year: vehicleData.registration_year,
+          engine_capacity: vehicleData.engine_capacity,
+          image_url: vehicleData.image_url,
+          mot_status: vehicleData.mot_status,
+          mot_expiry_date: vehicleData.mot_expiry_date,
+          tax_status: vehicleData.tax_status,
+          tax_due_date: vehicleData.tax_due_date,
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      if (vehicleImage && data) {
+        const imageUrl = await uploadVehicleImage(data.id);
+        if (imageUrl) {
+          await supabase
+            .from('vehicles')
+            .update({ image_url: imageUrl })
+            .eq('id', data.id);
+        }
+      }
+
+      setSuccess(`Vehicle added successfully! ${vehicleData.make} ${vehicleData.model}`);
+      setVehicleNumber('');
+      setVehicleImage(null);
+      setImagePreview(null);
+      setShowVehicleForm(false);
+      await loadVehicles();
+    } catch (err: any) {
+      setError(err.message || 'Failed to add vehicle');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeVehicle = async (vehicleId: string) => {
+    try {
+      const { error } = await supabase
+        .from('vehicles')
+        .update({ is_active: false })
+        .eq('id', vehicleId);
+
+      if (error) throw error;
+      await loadVehicles();
+    } catch (err: any) {
+      setError(err.message || 'Failed to remove vehicle');
+    }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      const { error } = await updateProfile(editForm);
+      if (error) {
+        setError(error.message);
+      } else {
+        setSuccess('Profile updated successfully!');
+        setShowEditProfile(false);
+        setTimeout(() => setSuccess(''), 3000);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVehicleImageUpload = async (vehicleId: string, file: File) => {
+    setError('');
+    setSuccess('');
+    setUploadingVehicleId(vehicleId);
+    setUploadingImage(true);
+
+    try {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size should be less than 5MB');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        setError('Please select an image file');
+        return;
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${vehicleId}-${Date.now()}.${fileExt}`;
+      const filePath = `vehicles/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('vehicle-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('vehicle-images')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('vehicles')
+        .update({ image_url: publicUrl })
+        .eq('id', vehicleId);
+
+      if (updateError) throw updateError;
+
+      setSuccess('Vehicle image updated successfully!');
+      await loadVehicles();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload image');
+    } finally {
+      setUploadingVehicleId(null);
+      setUploadingImage(false);
+    }
+  };
+
+  const handleProfileImageUpload = async (file: File) => {
+    setError('');
+    setSuccess('');
+    setUploadingProfileImage(true);
+
+    try {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size should be less than 5MB');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        setError('Please select an image file');
+        return;
+      }
+
+      if (!profile?.id) {
+        setError('Profile not found');
+        return;
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${profile.id}-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('vehicle-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('vehicle-images')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await updateProfile({ avatar_url: publicUrl });
+
+      if (updateError) throw updateError;
+
+      setSuccess('Profile image updated successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload profile image');
+    } finally {
+      setUploadingProfileImage(false);
+    }
+  };
+
+  if (!profile) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 max-w-6xl mx-auto px-4 py-6">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
+        <p className="text-gray-600 mt-1">Manage your account and preferences</p>
+      </div>
+
+      <div className="bg-white rounded-xl p-6 md:p-8 border border-gray-200 shadow-sm">
+        <div className="flex flex-col md:flex-row items-start gap-6 mb-6">
+          <div className="relative w-24 h-24 flex-shrink-0">
+            <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center">
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt={profile.full_name} className="w-24 h-24 rounded-full object-cover" />
+              ) : (
+                <span className="text-3xl font-bold text-blue-600">
+                  {profile.full_name.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              ref={profileImageInputRef}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  handleProfileImageUpload(file);
+                  e.target.value = '';
+                }
+              }}
+              className="hidden"
+            />
+            <button
+              onClick={() => profileImageInputRef.current?.click()}
+              disabled={uploadingProfileImage}
+              className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors disabled:bg-blue-300 shadow-lg"
+              title="Upload profile photo"
+            >
+              {uploadingProfileImage ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Camera className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-3 mb-2">
+              <h2 className="text-2xl font-bold text-gray-900">{profile.full_name}</h2>
+              {profile.is_verified && (
+                <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                  Verified
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 md:gap-4 text-sm md:text-base text-gray-600">
+              <span className="flex items-center gap-1">
+                <Star className="w-4 h-4 md:w-5 md:h-5 text-yellow-400 fill-current" />
+                {profile.average_rating.toFixed(1)} rating
+              </span>
+              <span className="hidden md:inline">•</span>
+              <span>{profile.total_rides_offered} rides offered</span>
+              <span className="hidden md:inline">•</span>
+              <span>{profile.total_rides_taken} rides taken</span>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowEditProfile(true)}
+            className="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+          >
+            <Edit className="w-4 h-4" />
+            Edit Profile
+          </button>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6 pt-6 border-t border-gray-200">
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+              <Mail className="w-4 h-4" />
+              Email
+            </label>
+            <p className="text-gray-900">{profile.email}</p>
+          </div>
+
+          {profile.phone && (
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                <Phone className="w-4 h-4" />
+                Phone
+              </label>
+              <p className="text-gray-900">{profile.phone}</p>
+            </div>
+          )}
+
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+              <Calendar className="w-4 h-4" />
+              Member Since
+            </label>
+            <p className="text-gray-900">
+              {new Date(profile.created_at).toLocaleDateString('en-US', {
+                month: 'long',
+                year: 'numeric',
+              })}
+            </p>
+          </div>
+
+          {profile.bio && (
+            <div className="md:col-span-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                About
+              </label>
+              <p className="text-gray-900">{profile.bio}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl p-6 md:p-8 border border-gray-200 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <Car className="w-6 h-6" />
+            My Vehicles
+          </h3>
+          <button
+            onClick={() => setShowVehicleForm(!showVehicleForm)}
+            className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Vehicle
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
+            {success}
+          </div>
+        )}
+
+        {showVehicleForm && (
+          <form onSubmit={addVehicle} className="mb-6 p-6 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-medium text-gray-900">Add New Vehicle</h4>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowVehicleForm(false);
+                  setVehicleNumber('');
+                  setVehicleImage(null);
+                  setImagePreview(null);
+                  setError('');
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Vehicle Number (License Plate)
+                </label>
+                <input
+                  type="text"
+                  value={vehicleNumber}
+                  onChange={(e) => setVehicleNumber(e.target.value)}
+                  placeholder="e.g., ABC-1234"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={loading}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter your vehicle's license plate number
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Vehicle Photo (Optional)
+                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  className="hidden"
+                  disabled={loading}
+                />
+                <div className="flex flex-col gap-3">
+                  {imagePreview ? (
+                    <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-gray-300">
+                      <img
+                        src={imagePreview}
+                        alt="Vehicle preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVehicleImage(null);
+                          setImagePreview(null);
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full px-4 py-8 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition-colors flex flex-col items-center gap-2 text-gray-600 hover:text-blue-600"
+                      disabled={loading}
+                    >
+                      <Upload className="w-8 h-8" />
+                      <span className="text-sm font-medium">Upload Vehicle Photo</span>
+                      <span className="text-xs text-gray-500">PNG, JPG up to 5MB</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || uploadingImage}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed"
+              >
+                {loading ? (uploadingImage ? 'Uploading image...' : 'Adding...') : 'Add Vehicle'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {vehicles.length === 0 && !showVehicleForm ? (
+          <div className="text-center py-12 text-gray-500">
+            <Car className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+            <p className="font-medium mb-2">No vehicles added yet</p>
+            <p className="text-sm">Add a vehicle to start offering rides</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {vehicles.map((vehicle) => (
+              <div
+                key={vehicle.id}
+                className="flex flex-col sm:flex-row items-start gap-4 p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
+              >
+                <div className="relative w-full sm:w-32 h-48 sm:h-24 flex-shrink-0">
+                  {vehicle.image_url ? (
+                    <img
+                      src={vehicle.image_url}
+                      alt={`${vehicle.make} ${vehicle.model}`}
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-blue-100 rounded-lg flex items-center justify-center">
+                      <Car className="w-12 h-12 sm:w-8 sm:h-8 text-blue-600" />
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={(el) => vehicleImageInputRefs.current[vehicle.id] = el}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleVehicleImageUpload(vehicle.id, file);
+                        e.target.value = '';
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => vehicleImageInputRefs.current[vehicle.id]?.click()}
+                    disabled={uploadingVehicleId === vehicle.id}
+                    className="absolute bottom-2 right-2 p-1.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors disabled:bg-blue-300 shadow-lg"
+                    title={vehicle.image_url ? "Change image" : "Upload image"}
+                  >
+                    {uploadingVehicleId === vehicle.id ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <ImageIcon className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <div className="flex-1 min-w-0 w-full">
+                  <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0 w-full">
+                      <p className="font-semibold text-gray-900 text-lg truncate">{vehicle.make} {vehicle.model}</p>
+                      <p className="text-sm text-gray-600 mb-2">{vehicle.license_plate}</p>
+
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {vehicle.mot_status && (
+                          <span className={`text-xs px-2 py-1 rounded flex items-center gap-1 font-medium ${
+                            vehicle.mot_status.toLowerCase() === 'valid' || vehicle.mot_status.toLowerCase() === 'not valid'
+                              ? isDateExpired(vehicle.mot_expiry_date)
+                                ? 'bg-red-100 text-red-700'
+                                : isDateExpiringSoon(vehicle.mot_expiry_date)
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-green-100 text-green-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {vehicle.mot_status.toLowerCase() === 'valid' && !isDateExpired(vehicle.mot_expiry_date) ? (
+                              <CheckCircle className="w-3 h-3" />
+                            ) : (
+                              <AlertCircle className="w-3 h-3" />
+                            )}
+                            MOT: {vehicle.mot_status}
+                            {vehicle.mot_expiry_date && ` (${new Date(vehicle.mot_expiry_date).toLocaleDateString('en-GB')})`}
+                          </span>
+                        )}
+                        {vehicle.tax_status && (
+                          <span className={`text-xs px-2 py-1 rounded flex items-center gap-1 font-medium ${
+                            vehicle.tax_status.toLowerCase() === 'taxed'
+                              ? isDateExpired(vehicle.tax_due_date)
+                                ? 'bg-red-100 text-red-700'
+                                : isDateExpiringSoon(vehicle.tax_due_date)
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-green-100 text-green-700'
+                              : vehicle.tax_status.toLowerCase() === 'sorn'
+                              ? 'bg-gray-100 text-gray-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {vehicle.tax_status.toLowerCase() === 'taxed' && !isDateExpired(vehicle.tax_due_date) ? (
+                              <CheckCircle className="w-3 h-3" />
+                            ) : (
+                              <Shield className="w-3 h-3" />
+                            )}
+                            TAX: {vehicle.tax_status}
+                            {vehicle.tax_due_date && ` (${new Date(vehicle.tax_due_date).toLocaleDateString('en-GB')})`}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {vehicle.color && (
+                          <span className="text-xs bg-gray-100 px-2 py-1 rounded flex items-center gap-1">
+                            <span className="w-3 h-3 rounded-full border border-gray-300" style={{backgroundColor: vehicle.color.toLowerCase()}}></span>
+                            {vehicle.color}
+                          </span>
+                        )}
+                        <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                          {vehicle.capacity} seats
+                        </span>
+                        {vehicle.fuel_type && (
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded capitalize">
+                            {vehicle.fuel_type}
+                          </span>
+                        )}
+                        {vehicle.year && (
+                          <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                            {vehicle.year}
+                          </span>
+                        )}
+                        {vehicle.engine_capacity && (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                            {vehicle.engine_capacity}cc
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => removeVehicle(vehicle.id)}
+                      className="w-full sm:w-auto px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-200"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-xl p-6 md:p-8 border border-gray-200 shadow-sm">
+        <h3 className="text-xl font-bold text-gray-900 mb-6">Ride Preferences</h3>
+        <div className="space-y-4">
+          <div className="flex items-start sm:items-center justify-between gap-4 py-3 border-b border-gray-100">
+            <div className="flex-1">
+              <p className="font-medium text-gray-900">Auto-accept ride requests</p>
+              <p className="text-sm text-gray-600 mt-1">Automatically accept matching ride requests</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+              <input type="checkbox" className="sr-only peer" />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          <div className="flex items-start sm:items-center justify-between gap-4 py-3 border-b border-gray-100">
+            <div className="flex-1">
+              <p className="font-medium text-gray-900">Email notifications</p>
+              <p className="text-sm text-gray-600 mt-1">Receive email updates about rides</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+              <input type="checkbox" className="sr-only peer" defaultChecked />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {showEditProfile && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900">Edit Profile</h3>
+              <button
+                onClick={() => {
+                  setShowEditProfile(false);
+                  setError('');
+                  setEditForm({
+                    full_name: profile?.full_name || '',
+                    phone: profile?.phone || '',
+                    bio: profile?.bio || '',
+                    whatsapp_number: (profile as any)?.whatsapp_number || '',
+                    preferred_contact_method: (profile as any)?.preferred_contact_method || 'both',
+                  });
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {error && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateProfile} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={editForm.full_name}
+                  onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="+44 1234 567890"
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Bio
+                </label>
+                <textarea
+                  value={editForm.bio}
+                  onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={4}
+                  placeholder="Tell us about yourself..."
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  WhatsApp Number (Optional)
+                </label>
+                <input
+                  type="tel"
+                  value={editForm.whatsapp_number}
+                  onChange={(e) => setEditForm({ ...editForm, whatsapp_number: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="+44 1234 567890"
+                  disabled={loading}
+                />
+                <p className="text-xs text-gray-500 mt-1">Other users can contact you via WhatsApp if provided</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Preferred Contact Method
+                </label>
+                <select
+                  value={editForm.preferred_contact_method}
+                  onChange={(e) => setEditForm({ ...editForm, preferred_contact_method: e.target.value as 'in_app' | 'whatsapp' | 'both' })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={loading}
+                >
+                  <option value="both">Both (In-app & WhatsApp)</option>
+                  <option value="in_app">In-app Messages Only</option>
+                  <option value="whatsapp">WhatsApp Only</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditProfile(false);
+                    setError('');
+                    setEditForm({
+                      full_name: profile?.full_name || '',
+                      phone: profile?.phone || '',
+                      bio: profile?.bio || '',
+                      whatsapp_number: (profile as any)?.whatsapp_number || '',
+                      preferred_contact_method: (profile as any)?.preferred_contact_method || 'both',
+                    });
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
