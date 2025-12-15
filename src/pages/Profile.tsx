@@ -3,6 +3,7 @@ import { Car, Star, Phone, Mail, Calendar, Plus, Edit, X, Shield, AlertCircle, C
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { uploadProfilePhoto, uploadVehiclePhoto } from '../services/storageService';
+import { validateProfilePhoto } from '../services/faceDetection';
 
 interface Vehicle {
   id: string;
@@ -322,12 +323,11 @@ export default function Profile() {
     setUploadingProfileImage(true);
 
     try {
-      if (file.size > 10 * 1024 * 1024) {
-        setError('Image size must be less than 10MB');
-        return;
-      }
-      if (!file.type.startsWith('image/')) {
-        setError('Please select an image file');
+      // Validate profile photo (includes face detection)
+      const validation = await validateProfilePhoto(file);
+
+      if (!validation.valid) {
+        setError(validation.message);
         return;
       }
 
@@ -344,12 +344,13 @@ export default function Profile() {
 
       const { error: updateError } = await updateProfile({
         profile_photo_path: optimizedPath,
-        profile_photo_thumb_path: thumbnailPath
+        profile_photo_thumb_path: thumbnailPath,
+        profile_verified: true
       } as any);
 
       if (updateError) throw updateError;
 
-      setSuccess('Profile photo uploaded and optimized!');
+      setSuccess('Profile photo uploaded and verified! Face detected successfully.');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message || 'Failed to upload profile photo');
@@ -376,8 +377,10 @@ export default function Profile() {
       <div className="bg-white rounded-xl p-6 md:p-8 border border-gray-200 shadow-sm">
         <div className="flex flex-col md:flex-row items-start gap-6 mb-6">
           <div className="relative w-24 h-24 flex-shrink-0">
-            <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center">
-              {profile.avatar_url ? (
+            <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200">
+              {profile.profile_photo_url ? (
+                <img src={profile.profile_photo_url} alt={profile.full_name} className="w-24 h-24 rounded-full object-cover" />
+              ) : profile.avatar_url ? (
                 <img src={profile.avatar_url} alt={profile.full_name} className="w-24 h-24 rounded-full object-cover" />
               ) : (
                 <span className="text-3xl font-bold text-blue-600">
@@ -385,6 +388,11 @@ export default function Profile() {
                 </span>
               )}
             </div>
+            {profile.profile_verified && (
+              <div className="absolute top-0 right-0 p-1 bg-green-500 text-white rounded-full shadow-lg" title="Face verified">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+            )}
             <input
               type="file"
               accept="image/*"
@@ -402,7 +410,7 @@ export default function Profile() {
               onClick={() => profileImageInputRef.current?.click()}
               disabled={uploadingProfileImage}
               className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors disabled:bg-blue-300 shadow-lg"
-              title="Upload profile photo"
+              title="Upload profile photo (must contain face)"
             >
               {uploadingProfileImage ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -414,12 +422,29 @@ export default function Profile() {
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-3 mb-2">
               <h2 className="text-2xl font-bold text-gray-900">{profile.full_name}</h2>
+              {profile.profile_verified && (
+                <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  Face Verified
+                </span>
+              )}
               {profile.is_verified && (
                 <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
                   Verified
                 </span>
               )}
             </div>
+            {uploadingProfileImage && (
+              <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                Detecting face in photo... This may take a moment.
+              </div>
+            )}
+            {!profile.profile_verified && (
+              <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2 text-sm text-amber-800">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>Upload a clear face photo to get verified. This improves trust and safety in the community.</span>
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2 md:gap-4 text-sm md:text-base text-gray-600">
               <span className="flex items-center gap-1">
                 <Star className="w-4 h-4 md:w-5 md:h-5 text-yellow-400 fill-current" />
