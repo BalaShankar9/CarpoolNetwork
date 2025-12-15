@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { checkRateLimit, recordRateLimitAction } from '../../lib/rateLimiting';
@@ -29,6 +30,7 @@ interface MessageListProps {
 
 export default function MessageList({ initialUserId }: MessageListProps) {
   const { user, isEmailVerified } = useAuth();
+  const navigate = useNavigate();
   const [conversations, setConversations] = useState<Map<string, Message[]>>(new Map());
   const [selectedUserId, setSelectedUserId] = useState<string | null>(initialUserId || null);
   const [newMessage, setNewMessage] = useState('');
@@ -378,20 +380,25 @@ export default function MessageList({ initialUserId }: MessageListProps) {
         {selectedUser ? (
           <>
             <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
                 <button
                   onClick={() => setSelectedUserId(null)}
-                  className="md:hidden p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="md:hidden p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
                 >
                   <ArrowLeft className="w-5 h-5 text-gray-600" />
                 </button>
-                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold">
-                  {selectedUser.full_name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">{selectedUser.full_name}</h3>
-                  <p className="text-xs text-gray-500">Click to view profile</p>
-                </div>
+                <button
+                  onClick={() => navigate(`/profile/${selectedUserId}`)}
+                  className="flex items-center gap-3 hover:opacity-75 transition-opacity flex-1 min-w-0"
+                >
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold flex-shrink-0">
+                    {selectedUser.full_name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="text-left min-w-0">
+                    <h3 className="font-semibold text-gray-900 truncate">{selectedUser.full_name}</h3>
+                    <p className="text-xs text-blue-600 underline">Click to view profile</p>
+                  </div>
+                </button>
               </div>
               <div className="flex items-center gap-2">
                 {selectedUser.whatsapp_number && (

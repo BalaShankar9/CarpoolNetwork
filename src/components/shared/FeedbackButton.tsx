@@ -51,7 +51,7 @@ export default function FeedbackButton() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-36 md:bottom-24 right-4 md:right-6 z-[70] bg-red-600 text-white p-3 rounded-full shadow-lg hover:bg-red-700 transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+        className="fixed bottom-40 md:bottom-24 right-4 md:right-6 z-[60] bg-red-600 text-white p-3 rounded-full shadow-lg hover:bg-red-700 transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
         title="Report a problem"
       >
         <Bug className="w-6 h-6" />
