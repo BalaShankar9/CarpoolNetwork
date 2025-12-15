@@ -50,6 +50,36 @@ export default function FindRides() {
 
   useEffect(() => {
     loadAllRides();
+
+    const ridesChannel = supabase
+      .channel('rides-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rides'
+        },
+        () => {
+          loadAllRides();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ride_bookings'
+        },
+        () => {
+          loadAllRides();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ridesChannel);
+    };
   }, []);
 
   const loadAllRides = async () => {
@@ -322,7 +352,7 @@ export default function FindRides() {
           </div>
         ) : (
           <div className="space-y-4">
-            {rides.map((ride) => (
+            {rides.filter(ride => ride.available_seats > 0 && ride.id).map((ride) => (
               <div
                 key={ride.id}
                 className={`bg-white border rounded-xl p-6 hover:shadow-lg transition-all ${
