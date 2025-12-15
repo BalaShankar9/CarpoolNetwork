@@ -26,9 +26,10 @@ interface Message {
 
 interface MessageListProps {
   initialUserId?: string;
+  initialUserName?: string;
 }
 
-export default function MessageList({ initialUserId }: MessageListProps) {
+export default function MessageList({ initialUserId, initialUserName }: MessageListProps) {
   const { user, isEmailVerified } = useAuth();
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<Map<string, Message[]>>(new Map());
@@ -335,11 +336,18 @@ export default function MessageList({ initialUserId }: MessageListProps) {
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                      <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold text-lg flex-shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/profile/${userId}`);
+                        }}
+                        className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold text-lg flex-shrink-0 hover:bg-green-200 transition-colors"
+                        title="View profile"
+                      >
                         {otherUser?.full_name.charAt(0).toUpperCase()}
-                      </div>
+                      </button>
                       {unreadCount > 0 && (
-                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold pointer-events-none">
                           {unreadCount}
                         </div>
                       )}
