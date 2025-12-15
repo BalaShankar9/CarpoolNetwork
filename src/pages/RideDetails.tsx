@@ -111,6 +111,10 @@ export default function RideDetails() {
         return;
       }
 
+      if (data.available_seats === 0 && data.status === 'active' && data.driver_id !== user?.id) {
+        setError('This ride is fully booked');
+      }
+
       setRide(data);
     } catch (error: any) {
       console.error('Error loading ride:', error);
@@ -179,8 +183,7 @@ export default function RideDetails() {
         }
 
         alert('Ride request sent successfully!');
-        await loadRideDetails();
-        await checkUserBooking();
+        await Promise.all([loadRideDetails(), checkUserBooking()]);
       }
     } catch (error: any) {
       console.error('Booking error:', error);
@@ -209,9 +212,7 @@ export default function RideDetails() {
       if (error) throw error;
 
       alert('Booking cancelled successfully!');
-
-      await loadRideDetails();
-      await checkUserBooking();
+      await Promise.all([loadRideDetails(), checkUserBooking()]);
     } catch (error) {
       console.error('Error cancelling booking:', error);
       alert('Failed to cancel booking. Please try again.');
@@ -487,7 +488,20 @@ export default function RideDetails() {
 
         {ride.driver.id !== user?.id && (
           <div className="p-6 bg-gray-50">
-            {userBooking && userBooking.status !== 'cancelled' ? (
+            {ride.available_seats === 0 && (!userBooking || userBooking.status === 'cancelled') ? (
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-6 text-center">
+                <h3 className="font-bold text-amber-900 text-lg mb-2">Fully Booked</h3>
+                <p className="text-amber-800 mb-4">
+                  This ride has no available seats. Check back later or search for other rides.
+                </p>
+                <button
+                  onClick={() => navigate('/find-rides')}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                >
+                  Browse Other Rides
+                </button>
+              </div>
+            ) : userBooking && userBooking.status !== 'cancelled' ? (
               <div className="space-y-4">
                 <div className="bg-white border-2 border-green-500 rounded-xl p-6">
                   <div className="flex items-center gap-3 mb-3">

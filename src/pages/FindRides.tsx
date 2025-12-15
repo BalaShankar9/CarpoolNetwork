@@ -66,6 +66,7 @@ export default function FindRides() {
         `)
         .eq('status', 'active')
         .neq('driver_id', user.id)
+        .gt('available_seats', 0)
         .gte('departure_time', new Date().toISOString())
         .order('departure_time', { ascending: true })
         .limit(20);
@@ -101,7 +102,8 @@ export default function FindRides() {
         };
       }));
 
-      setRides(ridesWithBookings);
+      const availableRides = ridesWithBookings.filter(ride => ride.available_seats > 0);
+      setRides(availableRides);
     } catch (error) {
       console.error('Error loading rides:', error);
     } finally {
@@ -126,7 +128,8 @@ export default function FindRides() {
         `)
         .eq('status', 'active')
         .neq('driver_id', user.id)
-        .gte('available_seats', seats);
+        .gte('available_seats', seats)
+        .gt('available_seats', 0);
 
       if (date) {
         const startOfDay = new Date(date);
@@ -145,7 +148,39 @@ export default function FindRides() {
       const { data, error } = await query;
 
       if (error) throw error;
-      setRides(data || []);
+
+      const ridesData = data || [];
+
+      const { data: bookings } = await supabase
+        .from('ride_bookings')
+        .select('ride_id, id, status')
+        .eq('passenger_id', user.id)
+        .in('ride_id', ridesData.map(r => r.id));
+
+      const ridesWithBookings = await Promise.all(ridesData.map(async (ride) => {
+        const booking = bookings?.find(b => b.ride_id === ride.id);
+        let weather = null;
+
+        if (ride.origin_lat && ride.origin_lng) {
+          try {
+            weather = await googleMapsService.getWeather(ride.origin_lat, ride.origin_lng);
+          } catch (e) {
+            console.error('Failed to load weather:', e);
+          }
+        }
+
+        return {
+          ...ride,
+          userBooking: booking ? { id: booking.id, status: booking.status } : undefined,
+          weather: weather && weather.condition !== 'Unavailable' ? {
+            temperature: weather.temperature,
+            condition: weather.condition
+          } : undefined
+        };
+      }));
+
+      const availableRides = ridesWithBookings.filter(ride => ride.available_seats > 0);
+      setRides(availableRides);
     } catch (error) {
       console.error('Error searching rides:', error);
     } finally {
