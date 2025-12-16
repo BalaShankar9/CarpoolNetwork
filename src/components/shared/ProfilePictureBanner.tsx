@@ -3,6 +3,8 @@ import { Camera, X, Upload, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import { uploadProfilePhoto } from '../../services/storageService';
+import { validateProfilePhoto } from '../../services/faceDetection';
 
 export default function ProfilePictureBanner() {
   const { user, profile } = useAuth();
@@ -39,40 +41,57 @@ export default function ProfilePictureBanner() {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB');
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB');
       return;
     }
 
     setUploading(true);
 
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      console.log('Starting profile photo upload...');
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
+      const validation = await validateProfilePhoto(file);
+      console.log('Validation result:', validation);
 
-      if (uploadError) throw uploadError;
+      if (!validation.valid) {
+        const errorMsg = validation.error || validation.message || 'Invalid profile photo';
+        console.error('Validation failed:', errorMsg);
+        alert(errorMsg);
+        setUploading(false);
+        return;
+      }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
+      console.log('Uploading profile photo to storage...');
+      const { optimizedPath, thumbnailPath, optimizedUrl } = await uploadProfilePhoto(
+        user.id,
+        file,
+        (progress) => console.log(`Upload progress: ${progress}%`)
+      );
+      console.log('Upload successful:', { optimizedPath, thumbnailPath, optimizedUrl });
 
+      console.log('Updating profile in database...');
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: publicUrl })
+        .update({
+          avatar_url: optimizedUrl,
+          profile_photo_path: optimizedPath,
+          profile_photo_thumb_path: thumbnailPath,
+        })
         .eq('id', user.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Database update error:', updateError);
+        throw new Error(`Failed to update profile: ${updateError.message}`);
+      }
 
+      console.log('Profile updated successfully');
       handleDismiss();
       window.location.reload();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading profile picture:', error);
-      alert('Failed to upload profile picture. Please try again.');
+      const errorMessage = error.message || error.toString() || 'Failed to upload profile picture. Please try again.';
+      alert(`Upload failed: ${errorMessage}`);
     } finally {
       setUploading(false);
     }

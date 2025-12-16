@@ -166,18 +166,21 @@ export async function detectFaceInImage(file: File): Promise<FaceDetectionResult
 /**
  * Validate that image is suitable for profile photo
  * Checks: file size, dimensions, face presence
+ * Note: Face detection is informational only - does not block upload
  */
 export async function validateProfilePhoto(file: File): Promise<{
   valid: boolean;
   message: string;
   faceDetected: boolean;
+  error?: string;
 }> {
   // Check file size (max 10MB)
   if (file.size > 10 * 1024 * 1024) {
     return {
       valid: false,
       message: 'Image size must be less than 10MB',
-      faceDetected: false
+      faceDetected: false,
+      error: 'File size too large'
     };
   }
 
@@ -186,24 +189,29 @@ export async function validateProfilePhoto(file: File): Promise<{
     return {
       valid: false,
       message: 'Please select a valid image file (JPG, PNG, WebP)',
-      faceDetected: false
+      faceDetected: false,
+      error: 'Invalid file type'
     };
   }
 
-  // Detect face
-  const faceDetection = await detectFaceInImage(file);
+  // Try to detect face, but don't block upload if detection fails
+  try {
+    const faceDetection = await detectFaceInImage(file);
 
-  if (!faceDetection.hasFace) {
+    // Allow upload even without face detection - just log it
     return {
-      valid: false,
-      message: faceDetection.message,
+      valid: true,
+      message: faceDetection.hasFace
+        ? 'Profile photo is valid and contains a face'
+        : 'Photo uploaded (face detection inconclusive)',
+      faceDetected: faceDetection.hasFace
+    };
+  } catch (error) {
+    console.warn('Face detection failed, allowing upload anyway:', error);
+    return {
+      valid: true,
+      message: 'Photo uploaded successfully',
       faceDetected: false
     };
   }
-
-  return {
-    valid: true,
-    message: 'Profile photo is valid and contains a face',
-    faceDetected: true
-  };
 }
