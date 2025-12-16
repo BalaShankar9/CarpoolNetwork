@@ -143,7 +143,10 @@ export async function detectFaceInImage(file: File): Promise<FaceDetectionResult
     // Create ImageBitmap for faster processing
     const arrayBuffer = await file.arrayBuffer();
     const blob = new Blob([arrayBuffer], { type: file.type });
-    const imageBitmap = await createImageBitmap(blob);
+    const imageBitmap = await createImageBitmap(blob).catch((err) => {
+      console.error('Failed to create image bitmap:', err);
+      throw new Error('Unable to process image. Please try a different photo.');
+    });
 
     // Detect face
     const result = await detectFaceNative(imageBitmap);
@@ -154,11 +157,12 @@ export async function detectFaceInImage(file: File): Promise<FaceDetectionResult
     return result;
   } catch (error) {
     console.error('Face detection error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error processing image. Please try again.';
     return {
       hasFace: false,
       faceCount: 0,
       confidence: 0,
-      message: 'Error processing image. Please try again.'
+      message: errorMessage
     };
   }
 }
@@ -174,44 +178,55 @@ export async function validateProfilePhoto(file: File): Promise<{
   faceDetected: boolean;
   error?: string;
 }> {
-  // Check file size (max 10MB)
-  if (file.size > 10 * 1024 * 1024) {
-    return {
-      valid: false,
-      message: 'Image size must be less than 10MB',
-      faceDetected: false,
-      error: 'File size too large'
-    };
-  }
-
-  // Check file type
-  if (!file.type.startsWith('image/')) {
-    return {
-      valid: false,
-      message: 'Please select a valid image file (JPG, PNG, WebP)',
-      faceDetected: false,
-      error: 'Invalid file type'
-    };
-  }
-
-  // Try to detect face, but don't block upload if detection fails
   try {
-    const faceDetection = await detectFaceInImage(file);
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      return {
+        valid: false,
+        message: 'Image size must be less than 10MB',
+        faceDetected: false,
+        error: 'File size too large'
+      };
+    }
 
-    // Allow upload even without face detection - just log it
-    return {
-      valid: true,
-      message: faceDetection.hasFace
-        ? 'Profile photo is valid and contains a face'
-        : 'Photo uploaded (face detection inconclusive)',
-      faceDetected: faceDetection.hasFace
-    };
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      return {
+        valid: false,
+        message: 'Please select a valid image file (JPG, PNG, WebP)',
+        faceDetected: false,
+        error: 'Invalid file type'
+      };
+    }
+
+    // Try to detect face, but don't block upload if detection fails
+    try {
+      const faceDetection = await detectFaceInImage(file);
+
+      // Allow upload even without face detection - just log it
+      return {
+        valid: true,
+        message: faceDetection.hasFace
+          ? 'Profile photo is valid and contains a face'
+          : 'Photo uploaded (face detection inconclusive)',
+        faceDetected: faceDetection.hasFace
+      };
+    } catch (error) {
+      console.warn('Face detection failed, allowing upload anyway:', error);
+      return {
+        valid: true,
+        message: 'Photo uploaded successfully',
+        faceDetected: false
+      };
+    }
   } catch (error) {
-    console.warn('Face detection failed, allowing upload anyway:', error);
+    console.error('Profile photo validation error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unable to validate photo';
     return {
-      valid: true,
-      message: 'Photo uploaded successfully',
-      faceDetected: false
+      valid: false,
+      message: errorMessage,
+      faceDetected: false,
+      error: errorMessage
     };
   }
 }

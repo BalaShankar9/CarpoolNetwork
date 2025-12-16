@@ -32,8 +32,14 @@ const WEBP_SUPPORTED = (() => {
 async function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
+    img.onload = () => {
+      URL.revokeObjectURL(img.src);
+      resolve(img);
+    };
+    img.onerror = (error) => {
+      URL.revokeObjectURL(img.src);
+      reject(new Error('Failed to load image. Please try a different photo.'));
+    };
     img.src = URL.createObjectURL(file);
   });
 }
@@ -177,7 +183,7 @@ async function compressImageWithQuality(
         if (blob) {
           resolve({ blob, size: blob.size });
         } else {
-          reject(new Error('Failed to compress image'));
+          reject(new Error('Failed to compress image. Your browser may not support this image format.'));
         }
       },
       format === 'webp' ? 'image/webp' : 'image/jpeg',
@@ -233,69 +239,79 @@ export async function compressImage(
   file: File,
   options: CompressionOptions
 ): Promise<CompressedImage> {
-  if (!file.type.startsWith('image/')) {
-    throw new Error('File must be an image');
-  }
+  try {
+    if (!file.type.startsWith('image/')) {
+      throw new Error('File must be an image');
+    }
 
-  if (file.size > 10 * 1024 * 1024) {
-    throw new Error('Image size must be less than 10MB');
-  }
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error('Image size must be less than 10MB');
+    }
 
-  const orientation = await getImageOrientation(file);
-  let img = await loadImage(file);
+    const orientation = await getImageOrientation(file);
+    let img = await loadImage(file);
 
-  let canvas: HTMLCanvasElement;
-  if (orientation > 1) {
-    canvas = fixImageOrientation(img, orientation);
-    const correctedImg = new Image();
-    await new Promise((resolve) => {
-      correctedImg.onload = resolve;
-      correctedImg.src = canvas.toDataURL();
+    let canvas: HTMLCanvasElement;
+    if (orientation > 1) {
+      canvas = fixImageOrientation(img, orientation);
+      const correctedImg = new Image();
+      await new Promise((resolve, reject) => {
+        correctedImg.onload = resolve;
+        correctedImg.onerror = () => reject(new Error('Failed to process image orientation'));
+        correctedImg.src = canvas.toDataURL();
+      });
+      img = correctedImg;
+    }
+
+    const dimensions = calculateDimensions(
+      img.width,
+      img.height,
+      options.maxWidth,
+      options.maxHeight
+    );
+
+    const format = WEBP_SUPPORTED && options.format === 'webp' ? 'webp' : 'jpeg';
+
+    const { blob, quality } = await findOptimalQuality(
+      img,
+      dimensions.width,
+      dimensions.height,
+      format,
+      options.targetSize,
+      options.maxSize,
+      options.minQuality
+    );
+
+    const extension = format === 'webp' ? 'webp' : 'jpg';
+    const compressedFile = new File([blob], `image.${extension}`, {
+      type: `image/${format}`,
     });
-    img = correctedImg;
+
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Failed to read compressed image'));
+      reader.readAsDataURL(blob);
+    });
+
+    console.log(
+      `Compressed to ${(blob.size / 1024).toFixed(1)}KB (${dimensions.width}x${dimensions.height}) at quality ${(quality * 100).toFixed(0)}%`
+    );
+
+    return {
+      file: compressedFile,
+      dataUrl,
+      width: dimensions.width,
+      height: dimensions.height,
+      size: blob.size,
+    };
+  } catch (error) {
+    console.error('Image compression error:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Failed to compress image. Please try a different photo.');
   }
-
-  const dimensions = calculateDimensions(
-    img.width,
-    img.height,
-    options.maxWidth,
-    options.maxHeight
-  );
-
-  const format = WEBP_SUPPORTED && options.format === 'webp' ? 'webp' : 'jpeg';
-
-  const { blob, quality } = await findOptimalQuality(
-    img,
-    dimensions.width,
-    dimensions.height,
-    format,
-    options.targetSize,
-    options.maxSize,
-    options.minQuality
-  );
-
-  const extension = format === 'webp' ? 'webp' : 'jpg';
-  const compressedFile = new File([blob], `image.${extension}`, {
-    type: `image/${format}`,
-  });
-
-  const dataUrl = await new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.readAsDataURL(blob);
-  });
-
-  console.log(
-    `Compressed to ${(blob.size / 1024).toFixed(1)}KB (${dimensions.width}x${dimensions.height}) at quality ${(quality * 100).toFixed(0)}%`
-  );
-
-  return {
-    file: compressedFile,
-    dataUrl,
-    width: dimensions.width,
-    height: dimensions.height,
-    size: blob.size,
-  };
 }
 
 export async function generateThumbnail(
