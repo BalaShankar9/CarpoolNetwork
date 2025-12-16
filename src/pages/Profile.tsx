@@ -19,6 +19,9 @@ interface Vehicle {
   registration_year?: number;
   engine_capacity?: number;
   image_url?: string;
+  vehicle_photo_url?: string;
+  vehicle_front_photo_path?: string;
+  vehicle_front_photo_thumb_path?: string;
   mot_status?: string;
   mot_expiry_date?: string;
   tax_status?: string;
@@ -57,6 +60,11 @@ export default function Profile() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [vehicleToRemovePhoto, setVehicleToRemovePhoto] = useState<string | null>(null);
+  const [vehicleToDelete, setVehicleToDelete] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
+  const [localPreviews, setLocalPreviews] = useState<{ [key: string]: string | null }>({});
+  const [uploadErrors, setUploadErrors] = useState<{ [key: string]: string | null }>({});
   const [editForm, setEditForm] = useState({
     full_name: '',
     phone: '',
@@ -242,20 +250,6 @@ export default function Profile() {
     }
   };
 
-  const removeVehicle = async (vehicleId: string) => {
-    try {
-      const { error } = await supabase
-        .from('vehicles')
-        .update({ is_active: false })
-        .eq('id', vehicleId);
-
-      if (error) throw error;
-      await loadVehicles();
-    } catch (err: any) {
-      setError(err.message || 'Failed to remove vehicle');
-    }
-  };
-
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -283,26 +277,36 @@ export default function Profile() {
     setSuccess('');
     setUploadingVehicleId(vehicleId);
     setUploadingImage(true);
+    setUploadErrors(prev => ({ ...prev, [vehicleId]: null }));
 
     try {
       if (file.size > 10 * 1024 * 1024) {
-        setError('Image size must be less than 10MB');
+        const errorMsg = 'Image size must be less than 10MB';
+        setError(errorMsg);
+        setUploadErrors(prev => ({ ...prev, [vehicleId]: errorMsg }));
         return;
       }
       if (!file.type.startsWith('image/')) {
-        setError('Please select an image file');
+        const errorMsg = 'Please select an image file';
+        setError(errorMsg);
+        setUploadErrors(prev => ({ ...prev, [vehicleId]: errorMsg }));
         return;
       }
 
       if (!profile?.id) {
-        setError('Profile not found');
+        const errorMsg = 'Profile not found';
+        setError(errorMsg);
+        setUploadErrors(prev => ({ ...prev, [vehicleId]: errorMsg }));
         return;
       }
 
       const { optimizedPath, thumbnailPath, optimizedUrl, thumbnailUrl } = await uploadVehiclePhoto(
         profile.id,
+        vehicleId,
         file,
-        (progress) => console.log(`Upload progress: ${progress}%`)
+        (progress) => {
+          setUploadProgress(prev => ({ ...prev, [vehicleId]: progress }));
+        }
       );
 
       const { error: updateError } = await supabase
@@ -318,13 +322,91 @@ export default function Profile() {
       if (updateError) throw updateError;
 
       setSuccess('Vehicle photo uploaded and optimized!');
+      setLocalPreviews(prev => ({ ...prev, [vehicleId]: null }));
+      setUploadProgress(prev => ({ ...prev, [vehicleId]: 100 }));
       await loadVehicles();
-      setTimeout(() => setSuccess(''), 3000);
+      setTimeout(() => {
+        setSuccess('');
+        setUploadProgress(prev => ({ ...prev, [vehicleId]: undefined }));
+      }, 3000);
     } catch (err: any) {
-      setError(err.message || 'Failed to upload vehicle photo');
+      const errorMsg = err.message || 'Failed to upload vehicle photo';
+      setError(errorMsg);
+      setUploadErrors(prev => ({ ...prev, [vehicleId]: errorMsg }));
     } finally {
       setUploadingVehicleId(null);
       setUploadingImage(false);
+    }
+  };
+
+  const handleRemoveVehiclePhoto = async (vehicleId: string) => {
+    try {
+      setUploadErrors(prev => ({ ...prev, [vehicleId]: null }));
+
+      const vehicle = vehicles.find(v => v.id === vehicleId);
+      if (vehicle?.vehicle_front_photo_path) {
+        try {
+          const { error: deleteError } = await supabase.storage
+            .from('user-media')
+            .remove([vehicle.vehicle_front_photo_path, vehicle.vehicle_front_photo_thumb_path || ''].filter(Boolean));
+          if (deleteError) console.error('Storage deletion error:', deleteError);
+        } catch (err) {
+          console.error('Failed to delete storage file:', err);
+        }
+      }
+
+      const { error } = await supabase
+        .from('vehicles')
+        .update({
+          image_url: null,
+          vehicle_photo_url: null,
+          vehicle_front_photo_path: null,
+          vehicle_front_photo_thumb_path: null,
+        })
+        .eq('id', vehicleId);
+
+      if (error) throw error;
+
+      setSuccess('Photo removed successfully');
+      setVehicleToRemovePhoto(null);
+      setLocalPreviews(prev => ({ ...prev, [vehicleId]: null }));
+      await loadVehicles();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to remove photo');
+      setUploadErrors(prev => ({ ...prev, [vehicleId]: err.message }));
+      console.error('Photo removal error:', err);
+    }
+  };
+
+  const confirmDeleteVehicle = async (vehicleId: string) => {
+    try {
+      const vehicle = vehicles.find(v => v.id === vehicleId);
+      if (vehicle?.vehicle_front_photo_path) {
+        try {
+          const { error: deleteError } = await supabase.storage
+            .from('user-media')
+            .remove([vehicle.vehicle_front_photo_path, vehicle.vehicle_front_photo_thumb_path || ''].filter(Boolean));
+          if (deleteError) console.error('Storage deletion error:', deleteError);
+        } catch (err) {
+          console.error('Failed to delete storage file:', err);
+        }
+      }
+
+      const { error } = await supabase
+        .from('vehicles')
+        .update({ is_active: false })
+        .eq('id', vehicleId);
+
+      if (error) throw error;
+
+      setSuccess('Vehicle deleted successfully');
+      setVehicleToDelete(null);
+      await loadVehicles();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete vehicle');
+      console.error('Vehicle deletion error:', err);
     }
   };
 
@@ -659,12 +741,19 @@ export default function Profile() {
                 className="flex flex-col sm:flex-row items-start gap-4 p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
               >
                 <div className="relative w-full sm:w-32 h-48 sm:h-24 flex-shrink-0">
-                  {vehicle.image_url ? (
-                    <img
-                      src={vehicle.image_url}
-                      alt={`${vehicle.make} ${vehicle.model}`}
-                      className="w-full h-full object-cover rounded-lg"
-                    />
+                  {localPreviews[vehicle.id] || vehicle.image_url ? (
+                    <>
+                      <img
+                        src={localPreviews[vehicle.id] || vehicle.image_url}
+                        alt={`${vehicle.make} ${vehicle.model}`}
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                      {uploadProgress[vehicle.id] !== undefined && uploadProgress[vehicle.id] < 100 && (
+                        <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center">
+                          <div className="text-white text-sm font-medium">{uploadProgress[vehicle.id]}%</div>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="w-full h-full bg-blue-100 rounded-lg flex items-center justify-center">
                       <Car className="w-12 h-12 sm:w-8 sm:h-8 text-blue-600" />
@@ -677,24 +766,38 @@ export default function Profile() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
+                        const previewUrl = URL.createObjectURL(file);
+                        setLocalPreviews(prev => ({ ...prev, [vehicle.id]: previewUrl }));
                         handleVehicleImageUpload(vehicle.id, file);
                         e.target.value = '';
                       }
                     }}
                     className="hidden"
                   />
-                  <button
-                    onClick={() => vehicleImageInputRefs.current[vehicle.id]?.click()}
-                    disabled={uploadingVehicleId === vehicle.id}
-                    className="absolute bottom-2 right-2 p-1.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors disabled:bg-blue-300 shadow-lg"
-                    title={vehicle.image_url ? "Change image" : "Upload image"}
-                  >
-                    {uploadingVehicleId === vehicle.id ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <ImageIcon className="w-4 h-4" />
+                  <div className="absolute bottom-2 right-2 flex gap-2">
+                    {(vehicle.image_url || localPreviews[vehicle.id]) && (
+                      <button
+                        onClick={() => setVehicleToRemovePhoto(vehicle.id)}
+                        disabled={uploadingVehicleId === vehicle.id}
+                        className="p-1.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors disabled:bg-red-300 shadow-lg"
+                        title="Remove photo"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     )}
-                  </button>
+                    <button
+                      onClick={() => vehicleImageInputRefs.current[vehicle.id]?.click()}
+                      disabled={uploadingVehicleId === vehicle.id}
+                      className="p-1.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors disabled:bg-blue-300 shadow-lg"
+                      title={vehicle.image_url ? "Change image" : "Upload image"}
+                    >
+                      {uploadingVehicleId === vehicle.id ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <ImageIcon className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <div className="flex-1 min-w-0 w-full">
                   <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
@@ -773,12 +876,27 @@ export default function Profile() {
                       </div>
                     </div>
                     <button
-                      onClick={() => removeVehicle(vehicle.id)}
+                      onClick={() => setVehicleToDelete(vehicle.id)}
                       className="w-full sm:w-auto px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-200"
                     >
-                      Remove
+                      Delete Vehicle
                     </button>
                   </div>
+
+                  {profile?.email === 'admin@carpoolnetwork.co.uk' && (
+                    <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono space-y-1">
+                      <div className="font-semibold text-gray-700 mb-2">Debug Info (Admin Only)</div>
+                      <div className="text-gray-600">
+                        <div>ID: {vehicle.id}</div>
+                        <div>Path: {vehicle.vehicle_front_photo_path || 'None'}</div>
+                        <div>URL: {vehicle.image_url ? '✓ Set' : '✗ None'}</div>
+                        <div>Upload: {uploadProgress[vehicle.id] ? `${uploadProgress[vehicle.id]}%` : 'Idle'}</div>
+                        {uploadErrors[vehicle.id] && (
+                          <div className="text-red-600 mt-1">Error: {uploadErrors[vehicle.id]}</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -945,6 +1063,62 @@ export default function Profile() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {vehicleToRemovePhoto && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Remove Photo?</h3>
+            <p className="text-gray-600 mb-6">
+              This will remove the photo from this vehicle. The vehicle will remain.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setVehicleToRemovePhoto(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRemoveVehiclePhoto(vehicleToRemovePhoto)}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {vehicleToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Vehicle?</h3>
+            <p className="text-gray-600 mb-6">
+              This will permanently delete this vehicle. This action cannot be undone.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setVehicleToDelete(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => confirmDeleteVehicle(vehicleToDelete)}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

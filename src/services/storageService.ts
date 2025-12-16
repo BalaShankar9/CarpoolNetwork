@@ -75,6 +75,7 @@ export async function uploadProfilePhoto(
 
 export async function uploadVehiclePhoto(
   userId: string,
+  vehicleId: string,
   file: File,
   onProgress?: (progress: number) => void
 ): Promise<UploadResult> {
@@ -84,10 +85,10 @@ export async function uploadVehiclePhoto(
     const { optimized, thumbnail } = await compressVehiclePhoto(file);
     onProgress?.(60);
 
-    const optimizedPath = `users/${userId}/vehicle_front.webp`;
-    const thumbnailPath = `users/${userId}/vehicle_front_thumb.webp`;
+    const optimizedPath = `vehicles/${userId}/${vehicleId}/front.webp`;
+    const thumbnailPath = `vehicles/${userId}/${vehicleId}/front_thumb.webp`;
 
-    console.log('Uploading vehicle photo to path:', optimizedPath, 'userId:', userId);
+    console.log('Uploading vehicle photo to path:', optimizedPath, { userId, vehicleId });
     const { data: uploadedData, error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(optimizedPath, optimized.file, {
