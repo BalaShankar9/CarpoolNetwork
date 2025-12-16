@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Car, Star, Phone, Mail, Calendar, Plus, Edit, X, Shield, AlertCircle, CheckCircle, Upload, Image as ImageIcon, Camera } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { uploadProfilePhoto, uploadVehiclePhoto } from '../services/storageService';
+import { uploadProfilePhoto, uploadVehiclePhoto, getPublicUrlSync } from '../services/storageService';
 import { validateProfilePhoto } from '../services/faceDetection';
 
 interface Vehicle {
@@ -88,7 +88,16 @@ export default function Profile() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setVehicles(data || []);
+
+      // Convert paths to URLs for vehicles that have paths but no URLs
+      const vehiclesWithUrls = (data || []).map(vehicle => {
+        if (!vehicle.image_url && vehicle.vehicle_front_photo_path) {
+          vehicle.image_url = getPublicUrlSync(vehicle.vehicle_front_photo_path);
+        }
+        return vehicle;
+      });
+
+      setVehicles(vehiclesWithUrls);
     } catch (err) {
       console.error('Error loading vehicles:', err);
     }
@@ -290,7 +299,7 @@ export default function Profile() {
         return;
       }
 
-      const { optimizedPath, thumbnailPath } = await uploadVehiclePhoto(
+      const { optimizedPath, thumbnailPath, optimizedUrl, thumbnailUrl } = await uploadVehiclePhoto(
         profile.id,
         file,
         (progress) => console.log(`Upload progress: ${progress}%`)
@@ -300,7 +309,9 @@ export default function Profile() {
         .from('vehicles')
         .update({
           vehicle_front_photo_path: optimizedPath,
-          vehicle_front_photo_thumb_path: thumbnailPath
+          vehicle_front_photo_thumb_path: thumbnailPath,
+          vehicle_photo_url: optimizedUrl,
+          image_url: optimizedUrl
         })
         .eq('id', vehicleId);
 
@@ -336,7 +347,7 @@ export default function Profile() {
         return;
       }
 
-      const { optimizedPath, thumbnailPath } = await uploadProfilePhoto(
+      const { optimizedPath, thumbnailPath, optimizedUrl, thumbnailUrl } = await uploadProfilePhoto(
         profile.id,
         file,
         (progress) => console.log(`Upload progress: ${progress}%`)
@@ -345,6 +356,8 @@ export default function Profile() {
       const { error: updateError } = await updateProfile({
         profile_photo_path: optimizedPath,
         profile_photo_thumb_path: thumbnailPath,
+        profile_photo_url: optimizedUrl,
+        avatar_url: optimizedUrl,
         profile_verified: true
       } as any);
 
@@ -367,6 +380,11 @@ export default function Profile() {
     );
   }
 
+  // Get profile photo URL, with fallback to converting path to URL
+  const profilePhotoUrl = profile.profile_photo_url
+    || profile.avatar_url
+    || ((profile as any).profile_photo_path ? getPublicUrlSync((profile as any).profile_photo_path) : '');
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto px-4 py-6">
       <div>
@@ -378,10 +396,8 @@ export default function Profile() {
         <div className="flex flex-col md:flex-row items-start gap-6 mb-6">
           <div className="relative w-24 h-24 flex-shrink-0">
             <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200">
-              {profile.profile_photo_url ? (
-                <img src={profile.profile_photo_url} alt={profile.full_name} className="w-24 h-24 rounded-full object-cover" />
-              ) : profile.avatar_url ? (
-                <img src={profile.avatar_url} alt={profile.full_name} className="w-24 h-24 rounded-full object-cover" />
+              {profilePhotoUrl ? (
+                <img src={profilePhotoUrl} alt={profile.full_name} className="w-24 h-24 rounded-full object-cover" />
               ) : (
                 <span className="text-3xl font-bold text-blue-600">
                   {profile.full_name.charAt(0).toUpperCase()}

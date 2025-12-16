@@ -53,11 +53,19 @@ export async function uploadProfilePhoto(
     }
 
     console.log('Profile thumbnail uploaded successfully:', thumbData);
+    onProgress?.(90);
+
+    const optimizedUrl = await getPublicUrl(optimizedPath);
+    const thumbnailUrl = await getPublicUrl(thumbnailPath);
+
+    console.log('Generated URLs:', { optimizedUrl, thumbnailUrl });
     onProgress?.(100);
 
     return {
       optimizedPath,
       thumbnailPath,
+      optimizedUrl,
+      thumbnailUrl,
     };
   } catch (error) {
     console.error('Error uploading profile photo:', error);
@@ -108,11 +116,19 @@ export async function uploadVehiclePhoto(
     }
 
     console.log('Vehicle thumbnail uploaded successfully:', thumbData);
+    onProgress?.(90);
+
+    const optimizedUrl = await getPublicUrl(optimizedPath);
+    const thumbnailUrl = await getPublicUrl(thumbnailPath);
+
+    console.log('Generated URLs:', { optimizedUrl, thumbnailUrl });
     onProgress?.(100);
 
     return {
       optimizedPath,
       thumbnailPath,
+      optimizedUrl,
+      thumbnailUrl,
     };
   } catch (error) {
     console.error('Error uploading vehicle photo:', error);
@@ -137,4 +153,20 @@ export async function getPublicUrl(path: string): Promise<string> {
 export async function deletePhoto(path: string): Promise<void> {
   const { error } = await supabase.storage.from(BUCKET_NAME).remove([path]);
   if (error) throw error;
+}
+
+/**
+ * Helper to convert a storage path to a public URL
+ * Use this when you have a path saved in the database and need to display it
+ */
+export function getPublicUrlSync(path: string): string {
+  if (!path) return '';
+
+  // If it's already a full URL, return it
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+
+  const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(path);
+  return data.publicUrl;
 }
