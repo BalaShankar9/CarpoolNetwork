@@ -17,8 +17,6 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'admin@carpoolnetwork.co.uk';
-
 interface UserProfile {
   id: string;
   email: string;
@@ -32,7 +30,7 @@ interface UserProfile {
 }
 
 export default function UserManagement() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,10 +38,6 @@ export default function UserManagement() {
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'created_at' | 'full_name' | 'email'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-
-  const isAdmin = user?.email === ADMIN_EMAIL ||
-    user?.email?.endsWith('@carpoolnetwork.co.uk') ||
-    user?.email === 'balashankarbollineni4@gmail.com';
 
   useEffect(() => {
     if (!isAdmin) {

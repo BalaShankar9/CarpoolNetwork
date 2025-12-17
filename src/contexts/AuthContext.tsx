@@ -11,6 +11,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isEmailVerified: boolean;
+  isAdmin: boolean;
   signUp: (email: string, password: string, fullName: string, phone: string) => Promise<{ error: AuthError | null }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
@@ -214,6 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const isEmailVerified = !!user?.email_confirmed_at;
+  const isAdmin = profile?.is_admin === true;
 
   const value = {
     user,
@@ -221,6 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     loading,
     isEmailVerified,
+    isAdmin,
     signUp,
     signIn,
     signInWithGoogle,

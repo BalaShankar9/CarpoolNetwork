@@ -4,8 +4,6 @@ import { ArrowLeft, MessageSquare, User, Calendar, ExternalLink, Trash2, LayoutD
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'admin@carpoolnetwork.co.uk';
-
 interface BugReport {
   id: string;
   text: string;
@@ -19,15 +17,11 @@ interface BugReport {
 }
 
 export default function FeedbackManagement() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [reports, setReports] = useState<BugReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  const isAdmin = user?.email === ADMIN_EMAIL ||
-    user?.email?.endsWith('@carpoolnetwork.co.uk') ||
-    user?.email === 'balashankarbollineni4@gmail.com';
 
   useEffect(() => {
     if (!isAdmin) {

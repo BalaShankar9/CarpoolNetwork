@@ -12,8 +12,6 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
-const ADMIN_EMAIL = 'balashankarbollineni4@gmail.com';
-
 interface BugReport {
   id: string;
   user_id: string;
@@ -24,14 +22,12 @@ interface BugReport {
 }
 
 export default function BugReports() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [reports, setReports] = useState<BugReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-
-  const isAdmin = user?.email === ADMIN_EMAIL;
 
   useEffect(() => {
     if (!isAdmin) {

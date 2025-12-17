@@ -5,17 +5,11 @@ import { useRealtime } from '../../contexts/RealtimeContext';
 import Logo from '../shared/Logo';
 import { useNavigate } from 'react-router-dom';
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'admin@carpoolnetwork.co.uk';
-
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, isAdmin } = useAuth();
   const { unreadNotifications } = useRealtime();
   const navigate = useNavigate();
-
-  const isAdmin = user?.email === ADMIN_EMAIL ||
-    user?.email?.endsWith('@carpoolnetwork.co.uk') ||
-    user?.email === 'balashankarbollineni4@gmail.com';
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">

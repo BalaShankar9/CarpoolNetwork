@@ -8,14 +8,8 @@ import FeedbackButton from '../shared/FeedbackButton';
 import ProfilePictureBanner from '../shared/ProfilePictureBanner';
 import ProfileCompletionBanner from '../shared/ProfileCompletionBanner';
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'admin@carpoolnetwork.co.uk';
-
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { user, profile, signOut } = useAuth();
-
-  const isAdmin = user?.email === ADMIN_EMAIL ||
-    user?.email?.endsWith('@carpoolnetwork.co.uk') ||
-    user?.email === 'balashankarbollineni4@gmail.com';
+  const { user, profile, signOut, isAdmin } = useAuth();
 
   const handleSignOut = async () => {
     try {

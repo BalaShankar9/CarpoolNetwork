@@ -22,8 +22,6 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'admin@carpoolnetwork.co.uk';
-
 type TestStatus = 'pending' | 'running' | 'pass' | 'fail' | 'warn';
 
 interface TestResult {
@@ -45,17 +43,13 @@ interface DatabaseStats {
 }
 
 export default function Diagnostics() {
-  const { user, session } = useAuth();
+  const { user, session, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [results, setResults] = useState<TestResult[]>([]);
   const [running, setRunning] = useState(false);
   const [copied, setCopied] = useState(false);
   const [dbStats, setDbStats] = useState<DatabaseStats | null>(null);
   const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-
-  const isAdmin = user?.email === ADMIN_EMAIL ||
-    user?.email?.endsWith('@carpoolnetwork.co.uk') ||
-    user?.email === 'balashankarbollineni4@gmail.com';
 
   useEffect(() => {
     if (!isAdmin) {

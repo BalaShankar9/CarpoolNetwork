@@ -4,16 +4,14 @@ import { ArrowLeft, Plus, Trash2, Users, Shield, LayoutDashboard } from 'lucide-
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'admin@carpoolnetwork.co.uk';
-
-interface AllowlistEntry {
+interface AllowlistEntry{
   email: string;
   added_at: string;
   added_by: string | null;
 }
 
 export default function BetaManagement() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [entries, setEntries] = useState<AllowlistEntry[]>([]);
   const [newEmail, setNewEmail] = useState('');
@@ -21,10 +19,6 @@ export default function BetaManagement() {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  const isAdmin = user?.email === ADMIN_EMAIL ||
-    user?.email?.endsWith('@carpoolnetwork.co.uk') ||
-    user?.email === 'balashankarbollineni4@gmail.com';
 
   useEffect(() => {
     if (!isAdmin) {
