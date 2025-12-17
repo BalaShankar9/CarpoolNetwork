@@ -7,6 +7,7 @@ import { RealtimeProvider } from './contexts/RealtimeContext';
 import SignIn from './pages/auth/SignIn';
 import SignUp from './pages/auth/SignUp';
 import VerifyOtp from './pages/auth/VerifyOtp';
+import VerifyEmail from './pages/auth/VerifyEmail';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import Home from './pages/Home';
@@ -30,7 +31,7 @@ import Layout from './components/layout/Layout';
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, isEmailVerified } = useAuth();
 
   if (loading) {
     return (
@@ -45,6 +46,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <Navigate to="/signin" replace />;
+  }
+
+  if (!isEmailVerified) {
+    return <Navigate to="/verify-email" replace />;
   }
 
   return <>{children}</>;
@@ -90,6 +95,7 @@ function AppContent() {
             <VerifyOtp />
           </PublicRoute>
         } />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={
           <PublicRoute>
             <ForgotPassword />
