@@ -3,8 +3,6 @@ import { Bug, X, Send, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 
-const ADMIN_EMAIL = 'balashankarbollineni4@gmail.com';
-
 export default function FeedbackButton() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -13,9 +11,7 @@ export default function FeedbackButton() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
-  const isAdmin = user?.email === ADMIN_EMAIL;
-
-  if (!user || !isAdmin) return null;
+  if (!user) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,11 +47,11 @@ export default function FeedbackButton() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-[140px] md:bottom-24 right-4 md:right-6 z-[85] bg-red-600 text-white p-3 rounded-full shadow-lg hover:bg-red-700 transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+        className="fixed bottom-[180px] md:bottom-24 right-4 md:right-6 z-[85] bg-red-600 text-white p-3 md:p-4 rounded-full shadow-lg hover:bg-red-700 transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
         title="Report a problem"
         style={{ pointerEvents: 'auto' }}
       >
-        <Bug className="w-6 h-6" />
+        <Bug className="w-5 h-5 md:w-6 md:h-6" />
       </button>
 
       {isOpen && (
