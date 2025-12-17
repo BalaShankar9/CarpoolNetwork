@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { User, Mail, Phone, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { User, Mail, Phone, Lock, Loader2, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
+import { validateEmail } from '../../services/emailValidation';
 
 interface PasswordSignupFormProps {
   onSubmit: (email: string, password: string, fullName: string, phone: string) => Promise<void>;
@@ -15,6 +16,32 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [emailValidating, setEmailValidating] = useState(false);
+  const [emailValid, setEmailValid] = useState<boolean | null>(null);
+  const [emailError, setEmailError] = useState<string>('');
+
+  useEffect(() => {
+    if (!email || email.length < 3) {
+      setEmailValid(null);
+      setEmailError('');
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setEmailValidating(true);
+      setEmailError('');
+
+      const result = await validateEmail(email);
+
+      setEmailValid(result.valid);
+      if (!result.valid && result.error) {
+        setEmailError(result.error);
+      }
+      setEmailValidating(false);
+    }, 800);
+
+    return () => clearTimeout(timeoutId);
+  }, [email]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,9 +95,26 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
             placeholder="Enter your email"
             required
             disabled={disabled || loading}
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
+            className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed ${
+              emailValid === false ? 'border-red-300 bg-red-50' : emailValid === true ? 'border-green-300 bg-green-50' : 'border-gray-300'
+            }`}
           />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            {emailValidating && <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />}
+            {!emailValidating && emailValid === true && <CheckCircle className="w-5 h-5 text-green-600" />}
+            {!emailValidating && emailValid === false && <XCircle className="w-5 h-5 text-red-600" />}
+          </div>
         </div>
+        {emailError && (
+          <p className="mt-1 text-xs text-red-600">
+            {emailError}
+          </p>
+        )}
+        {emailValid === true && (
+          <p className="mt-1 text-xs text-green-600">
+            ✓ Email is valid
+          </p>
+        )}
       </div>
 
       <div>
@@ -155,7 +199,7 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
 
       <button
         type="submit"
-        disabled={disabled || loading || !passwordLongEnough || !passwordsMatch || !fullName.trim() || !email.trim()}
+        disabled={disabled || loading || !passwordLongEnough || !passwordsMatch || !fullName.trim() || !email.trim() || emailValidating || emailValid !== true}
         className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {loading ? (

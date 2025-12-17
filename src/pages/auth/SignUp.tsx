@@ -43,7 +43,7 @@ export default function SignUp() {
       if (error) {
         setError(error.message);
       } else {
-        navigate('/verify-email');
+        navigate('/');
       }
     } catch (err) {
       setError('An unexpected error occurred');

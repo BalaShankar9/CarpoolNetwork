@@ -31,7 +31,7 @@ import Layout from './components/layout/Layout';
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading, isEmailVerified } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -46,10 +46,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <Navigate to="/signin" replace />;
-  }
-
-  if (!isEmailVerified) {
-    return <Navigate to="/verify-email" replace />;
   }
 
   return <>{children}</>;
