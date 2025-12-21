@@ -14,6 +14,8 @@ import PrivacyControls from '../components/profile/PrivacyControls';
 import StatisticsDashboard from '../components/profile/StatisticsDashboard';
 import DocumentUploadCenter from '../components/profile/DocumentUploadCenter';
 import RideAnalyticsDashboard from '../components/profile/RideAnalyticsDashboard';
+import FriendsManager from '../components/social/FriendsManager';
+import AchievementsBadges from '../components/gamification/AchievementsBadges';
 
 interface Vehicle {
   id: string;
@@ -1144,6 +1146,10 @@ export default function Profile() {
       </div>
 
       <ReviewsDisplay />
+
+      <FriendsManager />
+
+      <AchievementsBadges />
 
       {showEditProfile && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">

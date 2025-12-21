@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Car, Calendar, MapPin, Users, Edit2, Trash2, Eye, AlertCircle, XCircle, CheckCircle, Star, Shield, MessageSquare, Phone } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import RecurringRidesManager from '../components/rides/RecurringRidesManager';
 
 interface Ride {
   id: string;
@@ -1049,6 +1050,8 @@ export default function MyRides() {
           ) : null}
         </div>
       </div>
+
+      <RecurringRidesManager />
     </div>
   );
 }
