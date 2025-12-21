@@ -20,9 +20,11 @@ export default function SignIn() {
   const handlePasskeyLogin = async () => {
     setError('');
     try {
-      setError('Passkey authentication is not yet configured. Please use another sign-in method.');
-    } catch (err) {
-      setError('Passkey authentication failed. Please try another method.');
+      const { authenticateWithPasskey } = await import('../../services/passkeyService');
+      await authenticateWithPasskey();
+      navigate('/');
+    } catch (err: any) {
+      setError(err.message || 'Passkey authentication failed. Please try another method.');
     }
   };
 

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Fingerprint, Loader2 } from 'lucide-react';
+import { isPasskeySupported } from '../../services/passkeyService';
 
 interface PasskeyButtonProps {
   onPasskeyLogin: () => Promise<void>;
@@ -8,13 +9,11 @@ interface PasskeyButtonProps {
 
 export default function PasskeyButton({ onPasskeyLogin, disabled = false }: PasskeyButtonProps) {
   const [loading, setLoading] = useState(false);
-  const [isSupported, setIsSupported] = useState(true);
+  const [isSupported, setIsSupported] = useState(false);
 
-  useState(() => {
-    if (typeof window !== 'undefined' && !window.PublicKeyCredential) {
-      setIsSupported(false);
-    }
-  });
+  useEffect(() => {
+    setIsSupported(isPasskeySupported());
+  }, []);
 
   const handleClick = async () => {
     setLoading(true);

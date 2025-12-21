@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { uploadProfilePhoto, uploadVehiclePhoto, getPublicUrlSync } from '../services/storageService';
 import { validateProfilePhoto } from '../services/faceDetection';
+import PasskeyManagement from '../components/shared/PasskeyManagement';
 
 interface Vehicle {
   id: string;
@@ -605,6 +606,8 @@ export default function Profile() {
           )}
         </div>
       </div>
+
+      <PasskeyManagement />
 
       <div className="bg-white rounded-xl p-6 md:p-8 border border-gray-200 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
