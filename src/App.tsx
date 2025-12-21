@@ -21,6 +21,7 @@ import RideDetails from './pages/RideDetails';
 import BookingDetails from './pages/BookingDetails';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import Preferences from './pages/Preferences';
 import BetaManagement from './pages/admin/BetaManagement';
 import FeedbackManagement from './pages/admin/FeedbackManagement';
 import Diagnostics from './pages/admin/Diagnostics';
@@ -147,6 +148,11 @@ function AppContent() {
             <Layout>
               <Profile />
             </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/preferences" element={
+          <ProtectedRoute>
+            <Preferences />
           </ProtectedRoute>
         } />
         <Route path="/rides/:rideId" element={

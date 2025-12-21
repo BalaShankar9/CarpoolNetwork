@@ -65,6 +65,7 @@ export type Database = {
       user_preferences: {
         Row: {
           user_id: string;
+          // Original preferences
           music_preference: 'none' | 'quiet' | 'moderate' | 'loud' | null;
           temperature_preference: 'cold' | 'cool' | 'moderate' | 'warm' | null;
           conversation_level: 'quiet' | 'moderate' | 'chatty' | null;
@@ -73,6 +74,67 @@ export type Database = {
           max_detour_minutes: number;
           gender_preference: 'any' | 'same' | 'male' | 'female';
           auto_accept_rides: boolean;
+          // Driver-side: Vehicle & Comfort
+          luggage_policy: 'none' | 'small-bags-only' | 'medium-allowed' | 'large-allowed';
+          food_drinks_allowed: 'none' | 'drinks-only' | 'snacks-ok' | 'meals-ok';
+          child_seats_available: number;
+          wheelchair_accessible: boolean;
+          pet_policy_details: Json;
+          music_genres_preferred: string[];
+          ac_heating_available: boolean;
+          phone_charging_available: boolean;
+          wifi_available: boolean;
+          luggage_space_description: string | null;
+          special_equipment: string[];
+          // Driver-side: Passenger Screening
+          instant_booking_enabled: boolean;
+          minimum_passenger_rating: number;
+          require_passenger_verification: boolean;
+          require_passenger_profile_photo: boolean;
+          max_stops_allowed: number;
+          same_gender_only: boolean;
+          age_restriction_min: number | null;
+          age_restriction_max: number | null;
+          allow_minors_with_guardian: boolean;
+          allow_groups: boolean;
+          max_group_size: number;
+          // Driver-side: Safety & Communication
+          share_live_location_automatically: boolean;
+          emergency_contact_auto_notify: boolean;
+          require_photo_verification_at_pickup: boolean;
+          communication_preference: 'in-app-only' | 'phone-ok' | 'whatsapp-ok' | 'any';
+          // Passenger-side: Search Filters
+          search_max_price_per_km: number | null;
+          search_max_total_price: number | null;
+          search_min_driver_rating: number;
+          search_require_verified_driver: boolean;
+          search_smoking_filter: 'no-smoking-only' | 'outside-only-ok' | 'any';
+          search_pets_filter: 'no-pets' | 'pets-ok-only' | 'any';
+          search_music_filter: 'quiet-only' | 'moderate-max' | 'any';
+          search_require_ac: boolean;
+          search_require_charging: boolean;
+          search_require_wifi: boolean;
+          search_luggage_needed: 'none' | 'small' | 'medium' | 'large';
+          search_require_child_seat: boolean;
+          search_require_wheelchair: boolean;
+          search_max_detour_minutes: number;
+          search_preferred_vehicle_types: string[];
+          search_eco_friendly_only: boolean;
+          search_instant_booking_only: boolean;
+          search_friends_only: boolean;
+          search_carpooling_ok: boolean;
+          search_priority_algorithm: 'cheapest' | 'fastest' | 'highest-rated' | 'eco-friendly' | 'comfort';
+          // Smart Matching
+          auto_match_enabled: boolean;
+          auto_match_criteria: Json;
+          flexible_time_window_minutes: number;
+          flexible_price_percentage: number;
+          notification_on_perfect_match: boolean;
+          // Accessibility
+          accessibility_requirements: Json;
+          service_animal: boolean;
+          language_preferences: string[];
+          sensory_preferences: Json;
           created_at: string;
           updated_at: string;
         };
@@ -86,6 +148,61 @@ export type Database = {
           max_detour_minutes?: number;
           gender_preference?: 'any' | 'same' | 'male' | 'female';
           auto_accept_rides?: boolean;
+          luggage_policy?: 'none' | 'small-bags-only' | 'medium-allowed' | 'large-allowed';
+          food_drinks_allowed?: 'none' | 'drinks-only' | 'snacks-ok' | 'meals-ok';
+          child_seats_available?: number;
+          wheelchair_accessible?: boolean;
+          pet_policy_details?: Json;
+          music_genres_preferred?: string[];
+          ac_heating_available?: boolean;
+          phone_charging_available?: boolean;
+          wifi_available?: boolean;
+          luggage_space_description?: string | null;
+          special_equipment?: string[];
+          instant_booking_enabled?: boolean;
+          minimum_passenger_rating?: number;
+          require_passenger_verification?: boolean;
+          require_passenger_profile_photo?: boolean;
+          max_stops_allowed?: number;
+          same_gender_only?: boolean;
+          age_restriction_min?: number | null;
+          age_restriction_max?: number | null;
+          allow_minors_with_guardian?: boolean;
+          allow_groups?: boolean;
+          max_group_size?: number;
+          share_live_location_automatically?: boolean;
+          emergency_contact_auto_notify?: boolean;
+          require_photo_verification_at_pickup?: boolean;
+          communication_preference?: 'in-app-only' | 'phone-ok' | 'whatsapp-ok' | 'any';
+          search_max_price_per_km?: number | null;
+          search_max_total_price?: number | null;
+          search_min_driver_rating?: number;
+          search_require_verified_driver?: boolean;
+          search_smoking_filter?: 'no-smoking-only' | 'outside-only-ok' | 'any';
+          search_pets_filter?: 'no-pets' | 'pets-ok-only' | 'any';
+          search_music_filter?: 'quiet-only' | 'moderate-max' | 'any';
+          search_require_ac?: boolean;
+          search_require_charging?: boolean;
+          search_require_wifi?: boolean;
+          search_luggage_needed?: 'none' | 'small' | 'medium' | 'large';
+          search_require_child_seat?: boolean;
+          search_require_wheelchair?: boolean;
+          search_max_detour_minutes?: number;
+          search_preferred_vehicle_types?: string[];
+          search_eco_friendly_only?: boolean;
+          search_instant_booking_only?: boolean;
+          search_friends_only?: boolean;
+          search_carpooling_ok?: boolean;
+          search_priority_algorithm?: 'cheapest' | 'fastest' | 'highest-rated' | 'eco-friendly' | 'comfort';
+          auto_match_enabled?: boolean;
+          auto_match_criteria?: Json;
+          flexible_time_window_minutes?: number;
+          flexible_price_percentage?: number;
+          notification_on_perfect_match?: boolean;
+          accessibility_requirements?: Json;
+          service_animal?: boolean;
+          language_preferences?: string[];
+          sensory_preferences?: Json;
           created_at?: string;
           updated_at?: string;
         };
@@ -99,6 +216,61 @@ export type Database = {
           max_detour_minutes?: number;
           gender_preference?: 'any' | 'same' | 'male' | 'female';
           auto_accept_rides?: boolean;
+          luggage_policy?: 'none' | 'small-bags-only' | 'medium-allowed' | 'large-allowed';
+          food_drinks_allowed?: 'none' | 'drinks-only' | 'snacks-ok' | 'meals-ok';
+          child_seats_available?: number;
+          wheelchair_accessible?: boolean;
+          pet_policy_details?: Json;
+          music_genres_preferred?: string[];
+          ac_heating_available?: boolean;
+          phone_charging_available?: boolean;
+          wifi_available?: boolean;
+          luggage_space_description?: string | null;
+          special_equipment?: string[];
+          instant_booking_enabled?: boolean;
+          minimum_passenger_rating?: number;
+          require_passenger_verification?: boolean;
+          require_passenger_profile_photo?: boolean;
+          max_stops_allowed?: number;
+          same_gender_only?: boolean;
+          age_restriction_min?: number | null;
+          age_restriction_max?: number | null;
+          allow_minors_with_guardian?: boolean;
+          allow_groups?: boolean;
+          max_group_size?: number;
+          share_live_location_automatically?: boolean;
+          emergency_contact_auto_notify?: boolean;
+          require_photo_verification_at_pickup?: boolean;
+          communication_preference?: 'in-app-only' | 'phone-ok' | 'whatsapp-ok' | 'any';
+          search_max_price_per_km?: number | null;
+          search_max_total_price?: number | null;
+          search_min_driver_rating?: number;
+          search_require_verified_driver?: boolean;
+          search_smoking_filter?: 'no-smoking-only' | 'outside-only-ok' | 'any';
+          search_pets_filter?: 'no-pets' | 'pets-ok-only' | 'any';
+          search_music_filter?: 'quiet-only' | 'moderate-max' | 'any';
+          search_require_ac?: boolean;
+          search_require_charging?: boolean;
+          search_require_wifi?: boolean;
+          search_luggage_needed?: 'none' | 'small' | 'medium' | 'large';
+          search_require_child_seat?: boolean;
+          search_require_wheelchair?: boolean;
+          search_max_detour_minutes?: number;
+          search_preferred_vehicle_types?: string[];
+          search_eco_friendly_only?: boolean;
+          search_instant_booking_only?: boolean;
+          search_friends_only?: boolean;
+          search_carpooling_ok?: boolean;
+          search_priority_algorithm?: 'cheapest' | 'fastest' | 'highest-rated' | 'eco-friendly' | 'comfort';
+          auto_match_enabled?: boolean;
+          auto_match_criteria?: Json;
+          flexible_time_window_minutes?: number;
+          flexible_price_percentage?: number;
+          notification_on_perfect_match?: boolean;
+          accessibility_requirements?: Json;
+          service_animal?: boolean;
+          language_preferences?: string[];
+          sensory_preferences?: Json;
           created_at?: string;
           updated_at?: string;
         };
@@ -387,12 +559,264 @@ export type Database = {
           created_at?: string;
         };
       };
+      ride_preference_overrides: {
+        Row: {
+          id: string;
+          ride_id: string;
+          override_preferences: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          ride_id: string;
+          override_preferences?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          ride_id?: string;
+          override_preferences?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      passenger_search_filters: {
+        Row: {
+          id: string;
+          user_id: string;
+          filter_name: string;
+          filter_settings: Json;
+          is_default: boolean;
+          use_count: number;
+          last_used_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          filter_name: string;
+          filter_settings?: Json;
+          is_default?: boolean;
+          use_count?: number;
+          last_used_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          filter_name?: string;
+          filter_settings?: Json;
+          is_default?: boolean;
+          use_count?: number;
+          last_used_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      preferred_drivers: {
+        Row: {
+          id: string;
+          user_id: string;
+          preferred_driver_id: string;
+          preference_level: 'favorite' | 'trusted' | 'priority-notification';
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          preferred_driver_id: string;
+          preference_level?: 'favorite' | 'trusted' | 'priority-notification';
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          preferred_driver_id?: string;
+          preference_level?: 'favorite' | 'trusted' | 'priority-notification';
+          notes?: string | null;
+          created_at?: string;
+        };
+      };
+      blocked_users_preferences: {
+        Row: {
+          id: string;
+          user_id: string;
+          blocked_user_id: string;
+          block_reason: string | null;
+          block_type: 'as-driver' | 'as-passenger' | 'both';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          blocked_user_id: string;
+          block_reason?: string | null;
+          block_type?: 'as-driver' | 'as-passenger' | 'both';
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          blocked_user_id?: string;
+          block_reason?: string | null;
+          block_type?: 'as-driver' | 'as-passenger' | 'both';
+          created_at?: string;
+        };
+      };
+      recurring_ride_templates: {
+        Row: {
+          id: string;
+          user_id: string;
+          template_name: string;
+          route_data: Json;
+          schedule_data: Json;
+          preferences_data: Json;
+          vehicle_id: string | null;
+          is_active: boolean;
+          use_count: number;
+          last_used_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          template_name: string;
+          route_data?: Json;
+          schedule_data?: Json;
+          preferences_data?: Json;
+          vehicle_id?: string | null;
+          is_active?: boolean;
+          use_count?: number;
+          last_used_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          template_name?: string;
+          route_data?: Json;
+          schedule_data?: Json;
+          preferences_data?: Json;
+          vehicle_id?: string | null;
+          is_active?: boolean;
+          use_count?: number;
+          last_used_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      search_history_analytics: {
+        Row: {
+          id: string;
+          user_id: string;
+          search_parameters: Json;
+          results_shown: number;
+          result_clicked: string | null;
+          booking_completed: boolean;
+          search_timestamp: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          search_parameters?: Json;
+          results_shown?: number;
+          result_clicked?: string | null;
+          booking_completed?: boolean;
+          search_timestamp?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          search_parameters?: Json;
+          results_shown?: number;
+          result_clicked?: string | null;
+          booking_completed?: boolean;
+          search_timestamp?: string;
+        };
+      };
+      preference_profiles: {
+        Row: {
+          id: string;
+          user_id: string;
+          profile_name: string;
+          profile_type: 'driver' | 'passenger' | 'both';
+          profile_category: 'budget' | 'comfort' | 'safety' | 'eco' | 'social' | 'quiet' | 'flexible' | 'custom' | null;
+          preferences: Json;
+          is_active: boolean;
+          is_system_default: boolean;
+          use_count: number;
+          last_used_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          profile_name: string;
+          profile_type: 'driver' | 'passenger' | 'both';
+          profile_category?: 'budget' | 'comfort' | 'safety' | 'eco' | 'social' | 'quiet' | 'flexible' | 'custom' | null;
+          preferences?: Json;
+          is_active?: boolean;
+          is_system_default?: boolean;
+          use_count?: number;
+          last_used_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          profile_name?: string;
+          profile_type?: 'driver' | 'passenger' | 'both';
+          profile_category?: 'budget' | 'comfort' | 'safety' | 'eco' | 'social' | 'quiet' | 'flexible' | 'custom' | null;
+          preferences?: Json;
+          is_active?: boolean;
+          is_system_default?: boolean;
+          use_count?: number;
+          last_used_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      calculate_compatibility_score: {
+        Args: {
+          p_driver_id: string;
+          p_passenger_id: string;
+          p_ride_id?: string;
+        };
+        Returns: Json;
+      };
+      get_filtered_rides_with_scores: {
+        Args: {
+          p_user_id: string;
+          p_filter_settings?: Json;
+        };
+        Returns: {
+          ride_id: string;
+          driver_id: string;
+          origin: string;
+          destination: string;
+          departure_time: string;
+          available_seats: number;
+          compatibility_score: number;
+          compatibility_breakdown: Json;
+          is_preferred_driver: boolean;
+          is_instant_bookable: boolean;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;
