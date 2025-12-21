@@ -29,6 +29,15 @@ interface Vehicle {
   tax_due_date?: string;
 }
 
+interface UserPreferences {
+  auto_accept_rides: boolean;
+  smoking_policy: string;
+  pets_allowed: boolean;
+  music_preference: string;
+  conversation_level: string;
+  instant_booking_enabled: boolean;
+}
+
 function isDateExpiringSoon(dateString?: string, daysThreshold: number = 30): boolean {
   if (!dateString) return false;
   const expiryDate = new Date(dateString);
@@ -73,10 +82,21 @@ export default function Profile() {
     whatsapp_number: '',
     preferred_contact_method: 'both' as 'in_app' | 'whatsapp' | 'both',
   });
+  const [preferences, setPreferences] = useState<UserPreferences>({
+    auto_accept_rides: false,
+    smoking_policy: 'no-smoking',
+    pets_allowed: false,
+    music_preference: 'any',
+    conversation_level: 'any',
+    instant_booking_enabled: false,
+  });
+  const [preferencesLoading, setPreferencesLoading] = useState(false);
+  const [preferencesSaving, setPreferencesSaving] = useState(false);
 
   useEffect(() => {
     if (profile) {
       loadVehicles();
+      loadPreferences();
       setEditForm({
         full_name: profile.full_name || '',
         phone: profile.phone || '',
@@ -109,6 +129,69 @@ export default function Profile() {
       setVehicles(vehiclesWithUrls);
     } catch (err) {
       console.error('Error loading vehicles:', err);
+    }
+  };
+
+  const loadPreferences = async () => {
+    if (!profile?.id) return;
+
+    try {
+      setPreferencesLoading(true);
+      const { data, error } = await supabase
+        .from('user_preferences')
+        .select('auto_accept_rides, smoking_policy, pets_allowed, music_preference, conversation_level, instant_booking_enabled')
+        .eq('user_id', profile.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setPreferences({
+          auto_accept_rides: data.auto_accept_rides ?? false,
+          smoking_policy: data.smoking_policy ?? 'no-smoking',
+          pets_allowed: data.pets_allowed ?? false,
+          music_preference: data.music_preference ?? 'any',
+          conversation_level: data.conversation_level ?? 'any',
+          instant_booking_enabled: data.instant_booking_enabled ?? false,
+        });
+      }
+    } catch (err) {
+      console.error('Error loading preferences:', err);
+    } finally {
+      setPreferencesLoading(false);
+    }
+  };
+
+  const updatePreference = async (key: keyof UserPreferences, value: boolean | string) => {
+    if (!profile?.id) return;
+
+    try {
+      setPreferencesSaving(true);
+
+      const { error } = await supabase
+        .from('user_preferences')
+        .upsert({
+          user_id: profile.id,
+          [key]: value,
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (error) throw error;
+
+      setPreferences(prev => ({
+        ...prev,
+        [key]: value,
+      }));
+
+      setSuccess('Preferences updated successfully');
+      setTimeout(() => setSuccess(''), 2000);
+    } catch (err) {
+      console.error('Error updating preference:', err);
+      setError('Failed to update preference');
+      setTimeout(() => setError(''), 3000);
+    } finally {
+      setPreferencesSaving(false);
     }
   };
 
@@ -908,30 +991,123 @@ export default function Profile() {
       </div>
 
       <div className="bg-white rounded-xl p-6 md:p-8 border border-gray-200 shadow-sm">
-        <h3 className="text-xl font-bold text-gray-900 mb-6">Ride Preferences</h3>
-        <div className="space-y-4">
-          <div className="flex items-start sm:items-center justify-between gap-4 py-3 border-b border-gray-100">
-            <div className="flex-1">
-              <p className="font-medium text-gray-900">Auto-accept ride requests</p>
-              <p className="text-sm text-gray-600 mt-1">Automatically accept matching ride requests</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
-              <input type="checkbox" className="sr-only peer" />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-
-          <div className="flex items-start sm:items-center justify-between gap-4 py-3 border-b border-gray-100">
-            <div className="flex-1">
-              <p className="font-medium text-gray-900">Email notifications</p>
-              <p className="text-sm text-gray-600 mt-1">Receive email updates about rides</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
-              <input type="checkbox" className="sr-only peer" defaultChecked />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-gray-900">Ride Preferences</h3>
+          {preferencesSaving && (
+            <span className="text-sm text-blue-600">Saving...</span>
+          )}
         </div>
+
+        {preferencesLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-start sm:items-center justify-between gap-4 py-3 border-b border-gray-100">
+              <div className="flex-1">
+                <p className="font-medium text-gray-900">Auto-accept ride requests</p>
+                <p className="text-sm text-gray-600 mt-1">Automatically accept matching ride requests</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={preferences.auto_accept_rides}
+                  onChange={(e) => updatePreference('auto_accept_rides', e.target.checked)}
+                  disabled={preferencesSaving}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+              </label>
+            </div>
+
+            <div className="flex items-start sm:items-center justify-between gap-4 py-3 border-b border-gray-100">
+              <div className="flex-1">
+                <p className="font-medium text-gray-900">Instant booking</p>
+                <p className="text-sm text-gray-600 mt-1">Allow passengers to book without approval</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={preferences.instant_booking_enabled}
+                  onChange={(e) => updatePreference('instant_booking_enabled', e.target.checked)}
+                  disabled={preferencesSaving}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+              </label>
+            </div>
+
+            <div className="flex items-start sm:items-center justify-between gap-4 py-3 border-b border-gray-100">
+              <div className="flex-1">
+                <p className="font-medium text-gray-900">No smoking</p>
+                <p className="text-sm text-gray-600 mt-1">Smoking is not allowed in your vehicle</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={preferences.smoking_policy === 'no-smoking'}
+                  onChange={(e) => updatePreference('smoking_policy', e.target.checked ? 'no-smoking' : 'smoking-allowed')}
+                  disabled={preferencesSaving}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+              </label>
+            </div>
+
+            <div className="flex items-start sm:items-center justify-between gap-4 py-3 border-b border-gray-100">
+              <div className="flex-1">
+                <p className="font-medium text-gray-900">Pets allowed</p>
+                <p className="text-sm text-gray-600 mt-1">Allow passengers to bring pets</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={preferences.pets_allowed}
+                  onChange={(e) => updatePreference('pets_allowed', e.target.checked)}
+                  disabled={preferencesSaving}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+              </label>
+            </div>
+
+            <div className="flex items-start sm:items-center justify-between gap-4 py-3 border-b border-gray-100">
+              <div className="flex-1">
+                <p className="font-medium text-gray-900">Music allowed</p>
+                <p className="text-sm text-gray-600 mt-1">Passengers can request music during the ride</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={preferences.music_preference !== 'no-music'}
+                  onChange={(e) => updatePreference('music_preference', e.target.checked ? 'any' : 'no-music')}
+                  disabled={preferencesSaving}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+              </label>
+            </div>
+
+            <div className="flex items-start sm:items-center justify-between gap-4 py-3">
+              <div className="flex-1">
+                <p className="font-medium text-gray-900">Conversation level</p>
+                <p className="text-sm text-gray-600 mt-1">Prefer chatty or quiet rides</p>
+              </div>
+              <select
+                value={preferences.conversation_level}
+                onChange={(e) => updatePreference('conversation_level', e.target.value)}
+                disabled={preferencesSaving}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+              >
+                <option value="any">Any</option>
+                <option value="quiet">Quiet</option>
+                <option value="moderate">Moderate</option>
+                <option value="chatty">Chatty</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       {showEditProfile && (
