@@ -8,10 +8,11 @@ import { validateProfilePhoto } from '../services/faceDetection';
 import PasskeyManagement from '../components/shared/PasskeyManagement';
 import ProfileCompletionTracker from '../components/profile/ProfileCompletionTracker';
 import EmergencyContactsManager from '../components/profile/EmergencyContactsManager';
-import VerificationBadges from '../components/profile/VerificationBadges';
+import TrustScoreVisualization from '../components/profile/TrustScoreVisualization';
 import ReviewsDisplay from '../components/profile/ReviewsDisplay';
 import PrivacyControls from '../components/profile/PrivacyControls';
 import StatisticsDashboard from '../components/profile/StatisticsDashboard';
+import DocumentUploadCenter from '../components/profile/DocumentUploadCenter';
 
 interface Vehicle {
   id: string;
@@ -711,7 +712,9 @@ export default function Profile() {
 
       <StatisticsDashboard />
 
-      <VerificationBadges />
+      <TrustScoreVisualization />
+
+      <DocumentUploadCenter />
 
       <PasskeyManagement />
 
