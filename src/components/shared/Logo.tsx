@@ -1,4 +1,3 @@
-import { Car, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface LogoProps {
@@ -15,18 +14,6 @@ export default function Logo({ size = 'md', showText = true, className = '', cli
     lg: 'w-16 h-16',
   };
 
-  const iconSizes = {
-    sm: 'w-5 h-5',
-    md: 'w-7 h-7',
-    lg: 'w-8 h-8',
-  };
-
-  const smallIconSizes = {
-    sm: 'w-3 h-3',
-    md: 'w-4 h-4',
-    lg: 'w-4 h-4',
-  };
-
   const textSizes = {
     sm: 'text-base',
     md: 'text-xl',
@@ -36,13 +23,11 @@ export default function Logo({ size = 'md', showText = true, className = '', cli
   const content = (
     <div className={`flex items-center gap-3 ${className}`}>
       <div className="relative">
-        <div className={`${sizeClasses[size]} bg-gradient-to-br from-red-500 via-red-600 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-200`}>
-          <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent rounded-2xl"></div>
-          <div className="relative">
-            <Car className={`${iconSizes[size]} text-white drop-shadow-md`} strokeWidth={2.5} />
-            <Users className={`${smallIconSizes[size]} text-white absolute -bottom-1 -right-1 bg-orange-500 rounded-full p-0.5`} strokeWidth={3} />
-          </div>
-        </div>
+        <img
+          src="/{a5cd9703-4f5f-4721-b7d1-1107e978797e}.png"
+          alt="Carpool Network Logo"
+          className={`${sizeClasses[size]} object-contain transform hover:scale-105 transition-transform duration-200`}
+        />
       </div>
       {showText && (
         <div>
