@@ -17,6 +17,7 @@ import RequestRide from './pages/RequestRide';
 import MyRides from './pages/MyRides';
 import Messages from './pages/Messages';
 import Profile from './pages/Profile';
+import SecuritySettings from './pages/SecuritySettings';
 import RideDetails from './pages/RideDetails';
 import BookingDetails from './pages/BookingDetails';
 import TermsOfService from './pages/TermsOfService';
@@ -148,6 +149,11 @@ function AppContent() {
             <Layout>
               <Profile />
             </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/security" element={
+          <ProtectedRoute>
+            <SecuritySettings />
           </ProtectedRoute>
         } />
         <Route path="/preferences" element={

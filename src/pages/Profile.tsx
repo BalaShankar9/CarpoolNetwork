@@ -1,10 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
-import { Car, Star, Phone, Mail, Calendar, Plus, Edit, X, Shield, AlertCircle, CheckCircle, Upload, Image as ImageIcon, Camera } from 'lucide-react';
+import { Car, Star, Phone, Mail, Calendar, Plus, Edit, X, Shield, AlertCircle, CheckCircle, Upload, Image as ImageIcon, Camera, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { uploadProfilePhoto, uploadVehiclePhoto, getPublicUrlSync } from '../services/storageService';
 import { validateProfilePhoto } from '../services/faceDetection';
 import PasskeyManagement from '../components/shared/PasskeyManagement';
+import ProfileCompletionTracker from '../components/profile/ProfileCompletionTracker';
+import EmergencyContactsManager from '../components/profile/EmergencyContactsManager';
+import VerificationBadges from '../components/profile/VerificationBadges';
+import ReviewsDisplay from '../components/profile/ReviewsDisplay';
+import PrivacyControls from '../components/profile/PrivacyControls';
+import StatisticsDashboard from '../components/profile/StatisticsDashboard';
 
 interface Vehicle {
   id: string;
@@ -55,6 +62,7 @@ function isDateExpired(dateString?: string): boolean {
 
 export default function Profile() {
   const { profile, updateProfile } = useAuth();
+  const navigate = useNavigate();
   const [showVehicleForm, setShowVehicleForm] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -638,13 +646,22 @@ export default function Profile() {
               <span>{profile.total_rides_taken} rides taken</span>
             </div>
           </div>
-          <button
-            onClick={() => setShowEditProfile(true)}
-            className="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-          >
-            <Edit className="w-4 h-4" />
-            Edit Profile
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            <button
+              onClick={() => setShowEditProfile(true)}
+              className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+            >
+              <Edit className="w-4 h-4" />
+              Edit Profile
+            </button>
+            <button
+              onClick={() => navigate('/security')}
+              className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+            >
+              <Settings className="w-4 h-4" />
+              Security
+            </button>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6 pt-6 border-t border-gray-200">
@@ -690,7 +707,17 @@ export default function Profile() {
         </div>
       </div>
 
+      <ProfileCompletionTracker />
+
+      <StatisticsDashboard />
+
+      <VerificationBadges />
+
       <PasskeyManagement />
+
+      <EmergencyContactsManager />
+
+      <PrivacyControls />
 
       <div className="bg-white rounded-xl p-6 md:p-8 border border-gray-200 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -1109,6 +1136,8 @@ export default function Profile() {
           </div>
         )}
       </div>
+
+      <ReviewsDisplay />
 
       {showEditProfile && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
