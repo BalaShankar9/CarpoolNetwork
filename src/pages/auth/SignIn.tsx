@@ -105,21 +105,33 @@ export default function SignIn() {
         impactFactsRoute="/signin"
       >
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <div className="flex-1 text-sm">{error}</div>
+          <div className="mb-6 bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl flex items-start gap-3 animate-shake shadow-lg shadow-red-100">
+            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 animate-pulse" />
+            <div className="flex-1 text-sm font-medium">{error}</div>
           </div>
         )}
+
+        <style>{`
+          @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+          }
+
+          .animate-shake {
+            animation: shake 0.4s ease-in-out;
+          }
+        `}</style>
 
         <div className="space-y-4">
           <PasskeyButton onPasskeyLogin={handlePasskeyLogin} />
 
-          <div className="relative my-6">
+          <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className="w-full border-t border-gray-200"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">or</span>
+              <span className="px-4 bg-white text-gray-400 font-medium">or</span>
             </div>
           </div>
 
@@ -128,12 +140,12 @@ export default function SignIn() {
             onFacebookSignIn={handleFacebookSignIn}
           />
 
-          <div className="relative my-6">
+          <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className="w-full border-t border-gray-200"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">or continue with</span>
+              <span className="px-4 bg-white text-gray-400 font-medium">or continue with</span>
             </div>
           </div>
 
@@ -158,8 +170,8 @@ export default function SignIn() {
             </>
           ) : (
             <>
-              <div className="mb-4 text-sm text-gray-600 text-center">
-                We'll send a one-time code to your email or phone.
+              <div className="mb-4 text-sm text-gray-600 text-center bg-blue-50 border border-blue-100 rounded-xl p-3">
+                <span className="font-medium">📧 We'll send a one-time code to your email or phone.</span>
               </div>
               <OtpRequestForm onSendOTP={handleSendOTP} />
               <div className="mt-4 text-center text-sm">
@@ -174,9 +186,12 @@ export default function SignIn() {
           )}
         </div>
 
-        <div className="mt-6 pt-6 border-t border-gray-200 text-center text-sm">
+        <div className="mt-8 pt-6 border-t border-gray-200 text-center text-sm">
           <span className="text-gray-600">Don't have an account? </span>
-          <Link to="/signup" className="text-blue-600 hover:text-blue-700 font-semibold">
+          <Link
+            to="/signup"
+            className="text-blue-600 hover:text-blue-700 font-semibold hover:underline transition-all"
+          >
             Sign up
           </Link>
         </div>
