@@ -13,6 +13,7 @@ import ReviewsDisplay from '../components/profile/ReviewsDisplay';
 import PrivacyControls from '../components/profile/PrivacyControls';
 import StatisticsDashboard from '../components/profile/StatisticsDashboard';
 import DocumentUploadCenter from '../components/profile/DocumentUploadCenter';
+import RideAnalyticsDashboard from '../components/profile/RideAnalyticsDashboard';
 
 interface Vehicle {
   id: string;
@@ -711,6 +712,8 @@ export default function Profile() {
       <ProfileCompletionTracker />
 
       <StatisticsDashboard />
+
+      <RideAnalyticsDashboard />
 
       <TrustScoreVisualization />
 

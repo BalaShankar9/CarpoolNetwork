@@ -1,8 +1,9 @@
-import { User, Menu, X, Bell, MessageSquare, Settings } from 'lucide-react';
+import { User, Menu, X, MessageSquare, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRealtime } from '../../contexts/RealtimeContext';
 import Logo from '../shared/Logo';
+import NotificationCenter from '../shared/NotificationCenter';
 import { useNavigate } from 'react-router-dom';
 
 export default function Navbar() {
@@ -35,14 +36,7 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-4">
             {user ? (
               <>
-                <button className="p-2 text-gray-600 hover:text-blue-600 transition-colors relative" title="Notifications">
-                  <Bell className="w-6 h-6" />
-                  {unreadNotifications > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                      {unreadNotifications > 9 ? '9+' : unreadNotifications}
-                    </span>
-                  )}
-                </button>
+                <NotificationCenter />
                 <button className="p-2 text-gray-600 hover:text-blue-600 transition-colors relative" title="Messages">
                   <MessageSquare className="w-6 h-6" />
                 </button>

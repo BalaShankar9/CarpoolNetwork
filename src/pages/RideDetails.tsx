@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import EnhancedRideMap from '../components/rides/EnhancedRideMap';
 import TripInsights from '../components/rides/TripInsights';
+import RideStatusTracker from '../components/rides/RideStatusTracker';
 import { RouteOption, PlaceDetails } from '../services/googleMapsService';
 
 interface RideDetails {
@@ -441,6 +442,10 @@ export default function RideDetails() {
             onRouteSelect={handleRouteSelect}
             onGasStationsUpdate={handleGasStationsUpdate}
           />
+        </div>
+
+        <div className="p-6 border-b border-gray-200">
+          <RideStatusTracker rideId={ride.id} isDriver={ride.driver.id === profile?.id} />
         </div>
 
         <div className="p-6 border-b border-gray-200">
