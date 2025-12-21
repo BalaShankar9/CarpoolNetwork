@@ -70,9 +70,9 @@ export default function ForgotPassword() {
           }
 
           .method-tab.active {
-            background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+            background: linear-gradient(135deg, #E53E3E, #F97316);
             color: white;
-            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+            box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
           }
         `}</style>
 
@@ -88,13 +88,13 @@ export default function ForgotPassword() {
             <p className="font-semibold text-gray-900 mb-6 text-lg">
               {recoveryMethod === 'email' ? email : phone}
             </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-gray-700">
-              <Shield className="w-5 h-5 text-blue-600 mx-auto mb-2" />
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-sm text-gray-700">
+              <Shield className="w-5 h-5 text-red-600 mx-auto mb-2" />
               <p>For security, the link expires in 1 hour. Check your spam folder if you don't see it.</p>
             </div>
             <Link
               to="/signin"
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg hover:shadow-xl"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-red-600 to-orange-500 text-white px-6 py-3 rounded-xl font-semibold hover:from-red-700 hover:to-orange-600 transition-all shadow-lg hover:shadow-xl"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Sign In
@@ -102,9 +102,9 @@ export default function ForgotPassword() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-2xl p-4">
+            <div className="bg-gradient-to-br from-red-50 to-orange-50 border border-red-200 rounded-2xl p-4">
               <div className="flex items-start gap-3">
-                <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
+                <Shield className="w-5 h-5 text-red-600 mt-0.5" />
                 <div className="text-sm text-gray-700">
                   <p className="font-semibold mb-1">Secure Account Recovery</p>
                   <p>Choose your preferred method to reset your password securely.</p>
@@ -119,7 +119,7 @@ export default function ForgotPassword() {
                 className={`method-tab flex flex-col items-center gap-2 p-4 rounded-xl border-2 ${
                   recoveryMethod === 'email'
                     ? 'active border-transparent'
-                    : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                    : 'border-gray-200 hover:border-red-300 hover:bg-red-50'
                 }`}
               >
                 <Mail className="w-6 h-6" />
@@ -131,7 +131,7 @@ export default function ForgotPassword() {
                 className={`method-tab flex flex-col items-center gap-2 p-4 rounded-xl border-2 ${
                   recoveryMethod === 'phone'
                     ? 'active border-transparent'
-                    : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                    : 'border-gray-200 hover:border-red-300 hover:bg-red-50'
                 }`}
               >
                 <Phone className="w-6 h-6" />
@@ -155,7 +155,7 @@ export default function ForgotPassword() {
                       placeholder="Enter your email"
                       required
                       disabled={loading}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed transition-all"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed transition-all"
                     />
                   </div>
                   <p className="mt-2 text-xs text-gray-500">We'll send a secure reset link to this email</p>
@@ -177,7 +177,7 @@ export default function ForgotPassword() {
                       placeholder="+44 7700 900000"
                       required
                       disabled={loading}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed transition-all"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed transition-all"
                     />
                   </div>
                   <p className="mt-2 text-xs text-gray-500">We'll send a verification code via SMS</p>
@@ -188,7 +188,7 @@ export default function ForgotPassword() {
             <button
               type="submit"
               disabled={loading || (recoveryMethod === 'email' ? !email.trim() : !phone.trim())}
-              className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+              className="w-full bg-gradient-to-r from-red-600 to-orange-500 text-white py-3 rounded-xl font-semibold hover:from-red-700 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-red-500/30 hover:shadow-xl"
             >
               {loading ? (
                 <>

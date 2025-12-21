@@ -53,21 +53,21 @@ export default function AuthCard({
         }
 
         .logo-glow {
-          filter: drop-shadow(0 4px 12px rgba(14, 165, 233, 0.3));
+          filter: drop-shadow(0 4px 12px rgba(229, 62, 62, 0.3));
           animation: logo-pulse 3s ease-in-out infinite;
         }
 
         @keyframes logo-pulse {
           0%, 100% {
-            filter: drop-shadow(0 4px 12px rgba(14, 165, 233, 0.3));
+            filter: drop-shadow(0 4px 12px rgba(229, 62, 62, 0.3));
           }
           50% {
-            filter: drop-shadow(0 6px 20px rgba(14, 165, 233, 0.5));
+            filter: drop-shadow(0 6px 20px rgba(229, 62, 62, 0.5));
           }
         }
 
         .title-gradient {
-          background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 50%, #10b981 100%);
+          background: linear-gradient(135deg, #E53E3E 0%, #F56565 50%, #F97316 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;

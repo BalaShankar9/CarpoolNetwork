@@ -41,7 +41,7 @@ export default function PasswordLoginForm({ onSubmit, disabled = false }: Passwo
             required
             autoComplete="username"
             disabled={disabled || loading}
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed transition-all hover:border-gray-400"
+            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed transition-all hover:border-gray-400"
           />
         </div>
       </div>
@@ -61,7 +61,7 @@ export default function PasswordLoginForm({ onSubmit, disabled = false }: Passwo
             required
             autoComplete="current-password"
             disabled={disabled || loading}
-            className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed transition-all hover:border-gray-400"
+            className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed transition-all hover:border-gray-400"
           />
           <button
             type="button"
@@ -77,7 +77,7 @@ export default function PasswordLoginForm({ onSubmit, disabled = false }: Passwo
       <button
         type="submit"
         disabled={disabled || loading || !identifier.trim() || !password.trim()}
-        className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+        className="w-full bg-gradient-to-r from-red-600 to-orange-500 text-white py-3 rounded-xl font-semibold hover:from-red-700 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40"
       >
         {loading ? (
           <>

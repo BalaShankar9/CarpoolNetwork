@@ -31,7 +31,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         }
 
         .auth-bg {
-          background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 25%, #10b981 50%, #f59e0b 75%, #ef4444 100%);
+          background: linear-gradient(135deg, #E53E3E 0%, #F56565 25%, #FC8181 50%, #F97316 75%, #FFA500 100%);
           background-size: 400% 400%;
           animation: gradient-flow 15s ease infinite;
         }
@@ -64,7 +64,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         .shape-1 {
           width: 500px;
           height: 500px;
-          background: linear-gradient(135deg, rgba(6, 182, 212, 0.3), rgba(14, 165, 233, 0.2));
+          background: linear-gradient(135deg, rgba(229, 62, 62, 0.3), rgba(245, 101, 101, 0.2));
           top: -250px;
           left: -250px;
           animation: float 20s ease-in-out infinite;
@@ -73,7 +73,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         .shape-2 {
           width: 400px;
           height: 400px;
-          background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(5, 150, 105, 0.2));
+          background: linear-gradient(135deg, rgba(252, 129, 129, 0.3), rgba(255, 107, 107, 0.2));
           bottom: -200px;
           right: -200px;
           animation: float-delayed 25s ease-in-out infinite;
@@ -82,7 +82,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         .shape-3 {
           width: 350px;
           height: 350px;
-          background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(251, 146, 60, 0.2));
+          background: linear-gradient(135deg, rgba(249, 115, 22, 0.25), rgba(251, 146, 60, 0.2));
           top: 50%;
           right: -150px;
           animation: float 22s ease-in-out infinite 5s;
@@ -91,7 +91,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         .shape-4 {
           width: 300px;
           height: 300px;
-          background: linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(99, 102, 241, 0.15));
+          background: linear-gradient(135deg, rgba(245, 101, 101, 0.2), rgba(252, 129, 129, 0.15));
           bottom: 20%;
           left: -100px;
           animation: float-delayed 18s ease-in-out infinite 3s;

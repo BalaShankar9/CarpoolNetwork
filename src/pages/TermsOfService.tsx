@@ -6,7 +6,7 @@ export default function TermsOfService() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-sm p-8">
           <div className="flex items-center gap-3 mb-8">
-            <FileText className="w-8 h-8 text-blue-600" />
+            <FileText className="w-8 h-8 text-red-600" />
             <h1 className="text-3xl font-bold text-gray-900">Terms of Service</h1>
           </div>
 
