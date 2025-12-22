@@ -31,6 +31,8 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
 import BugReports from './pages/admin/BugReports';
 import VerificationQueue from './pages/admin/VerificationQueue';
+import Leaderboards from './pages/Leaderboards';
+import Challenges from './pages/Challenges';
 import Layout from './components/layout/Layout';
 
 
@@ -166,6 +168,16 @@ function AppContent() {
         <Route path="/analytics" element={
           <ProtectedRoute>
             <Analytics />
+          </ProtectedRoute>
+        } />
+        <Route path="/leaderboards" element={
+          <ProtectedRoute>
+            <Leaderboards />
+          </ProtectedRoute>
+        } />
+        <Route path="/challenges" element={
+          <ProtectedRoute>
+            <Challenges />
           </ProtectedRoute>
         } />
         <Route path="/rides/:rideId" element={
