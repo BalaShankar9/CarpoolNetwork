@@ -1,0 +1,54 @@
+{
+  "name": "Carpool Network",
+  "short_name": "Carpool",
+  "description": "Sustainable carpooling platform to reduce carbon emissions and save money",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["travel", "lifestyle", "productivity"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Find Rides",
+      "short_name": "Find",
+      "description": "Search for available rides",
+      "url": "/find-rides",
+      "icons": []
+    },
+    {
+      "name": "Post Ride",
+      "short_name": "Post",
+      "description": "Offer a ride",
+      "url": "/post-ride",
+      "icons": []
+    },
+    {
+      "name": "My Rides",
+      "short_name": "Rides",
+      "description": "View your rides",
+      "url": "/my-rides",
+      "icons": []
+    }
+  ],
+  "prefer_related_applications": false
+}
