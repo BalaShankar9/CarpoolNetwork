@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Calendar, Users, Clock, FileText } from 'lucide-react';
+import { MapPin, Users, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from '../components/shared/LocationAutocomplete';
+import TrainlineDateTimePicker from '../components/shared/TrainlineDateTimePicker';
 import { useServiceGating } from '../hooks/useServiceGating';
 
 interface LocationDetails {
@@ -21,7 +22,11 @@ export default function RequestRide() {
 
   const [fromLocation, setFromLocation] = useState<LocationDetails | null>(null);
   const [toLocation, setToLocation] = useState<LocationDetails | null>(null);
-  const [departureTime, setDepartureTime] = useState('');
+  const [dateTime, setDateTime] = useState({
+    date: new Date().toISOString().split('T')[0],
+    time: '',
+    timeType: 'depart' as 'depart' | 'arrive',
+  });
   const [flexibleTime, setFlexibleTime] = useState(false);
   const [seatsNeeded, setSeatsNeeded] = useState(1);
   const [notes, setNotes] = useState('');
@@ -46,8 +51,8 @@ export default function RequestRide() {
       return;
     }
 
-    if (!departureTime) {
-      setError('Please select a departure time');
+    if (!dateTime.date || !dateTime.time) {
+      setError('Please select a date and time');
       return;
     }
 
@@ -55,17 +60,22 @@ export default function RequestRide() {
     setError('');
 
     try {
+      const departureDateTime = new Date(
+        `${dateTime.date}T${dateTime.time}`
+      ).toISOString();
+
       const { error: insertError } = await supabase
-        .from('ride_requests')
+        .from('trip_requests')
         .insert({
-          requester_id: user.id,
+          rider_id: user.id,
           from_location: fromLocation.address,
           from_lat: fromLocation.lat,
           from_lng: fromLocation.lng,
           to_location: toLocation.address,
           to_lat: toLocation.lat,
           to_lng: toLocation.lng,
-          departure_time: departureTime,
+          departure_time: departureDateTime,
+          time_type: dateTime.timeType,
           flexible_time: flexibleTime,
           seats_needed: seatsNeeded,
           notes: notes.trim(),
@@ -76,14 +86,12 @@ export default function RequestRide() {
 
       navigate('/my-rides?tab=requests');
     } catch (err: any) {
-      console.error('Error creating ride request:', err);
-      setError(err.message || 'Failed to create ride request');
+      console.error('Error creating trip request:', err);
+      setError(err.message || 'Failed to create trip request');
     } finally {
       setLoading(false);
     }
   };
-
-  const minDateTime = new Date().toISOString().slice(0, 16);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -116,22 +124,15 @@ export default function RequestRide() {
             />
           </div>
 
-          <div>
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-              <Calendar className="w-4 h-4" />
-              Departure Time
-            </label>
-            <input
-              type="datetime-local"
-              value={departureTime}
-              onChange={(e) => setDepartureTime(e.target.value)}
-              min={minDateTime}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+          <TrainlineDateTimePicker
+            value={dateTime}
+            onChange={setDateTime}
+            minDate={new Date().toISOString().split('T')[0]}
+            label="When"
+            required
+          />
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 p-4 bg-gray-50 rounded-lg">
             <input
               type="checkbox"
               id="flexible"
@@ -139,8 +140,7 @@ export default function RequestRide() {
               onChange={(e) => setFlexibleTime(e.target.checked)}
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
-            <label htmlFor="flexible" className="flex items-center gap-2 text-sm text-gray-700">
-              <Clock className="w-4 h-4" />
+            <label htmlFor="flexible" className="text-sm text-gray-700">
               Flexible with time (within 1-2 hours)
             </label>
           </div>

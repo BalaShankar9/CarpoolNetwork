@@ -6,7 +6,6 @@ import {
   Calendar,
   TrendingUp,
   Users,
-  DollarSign,
   Car,
   BarChart3,
   PieChart,
@@ -35,13 +34,6 @@ export function AdvancedReporting() {
       description: 'High-level overview of platform performance, KPIs, and trends',
       icon: <TrendingUp className="w-6 h-6" />,
       type: 'executive'
-    },
-    {
-      id: 'financial',
-      name: 'Financial Report',
-      description: 'Detailed financial analysis including revenue, payouts, and transactions',
-      icon: <DollarSign className="w-6 h-6" />,
-      type: 'financial'
     },
     {
       id: 'user-analytics',
@@ -101,26 +93,6 @@ export function AdvancedReporting() {
             period: `${startDate} to ${endDate}`,
             metrics: businessMetrics,
             activeUsers: activeUsers
-          };
-          break;
-
-        case 'financial':
-          const { data: financialSummary } = await supabase.rpc('get_financial_summary', {
-            start_date: startDate,
-            end_date: endDate
-          });
-
-          const { data: transactions } = await supabase
-            .from('transactions')
-            .select('*')
-            .gte('created_at', startDate)
-            .lte('created_at', endDate);
-
-          reportData = {
-            title: 'Financial Report',
-            period: `${startDate} to ${endDate}`,
-            summary: financialSummary,
-            transactions: transactions
           };
           break;
 

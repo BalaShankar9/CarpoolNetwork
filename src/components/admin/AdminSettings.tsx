@@ -17,11 +17,9 @@ interface PlatformSettings {
   maintenanceMode: boolean;
   signupsEnabled: boolean;
   ridesEnabled: boolean;
-  paymentsEnabled: boolean;
   verificationRequired: boolean;
   minTrustScore: number;
   maxCancellationRate: number;
-  platformFeePercentage: number;
 }
 
 export function AdminSettings() {
@@ -29,11 +27,9 @@ export function AdminSettings() {
     maintenanceMode: false,
     signupsEnabled: true,
     ridesEnabled: true,
-    paymentsEnabled: false,
     verificationRequired: true,
     minTrustScore: 50,
-    maxCancellationRate: 20,
-    platformFeePercentage: 10
+    maxCancellationRate: 20
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -137,22 +133,6 @@ export function AdminSettings() {
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
               </label>
             </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-gray-900">Payment Processing</p>
-                <p className="text-sm text-gray-600">Enable payment transactions</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.paymentsEnabled}
-                  onChange={(e) => setSettings({ ...settings, paymentsEnabled: e.target.checked })}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
-            </div>
           </div>
         </div>
 
@@ -209,32 +189,6 @@ export function AdminSettings() {
               />
               <p className="text-sm text-gray-600 mt-1">
                 Maximum allowed cancellation rate before restrictions
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Database className="w-5 h-5 text-green-600" />
-            <h3 className="text-lg font-semibold text-gray-900">Business Settings</h3>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <label className="block font-medium text-gray-900 mb-2">
-                Platform Fee (%)
-              </label>
-              <input
-                type="number"
-                value={settings.platformFeePercentage}
-                onChange={(e) => setSettings({ ...settings, platformFeePercentage: parseInt(e.target.value) })}
-                min="0"
-                max="50"
-                step="0.5"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-              />
-              <p className="text-sm text-gray-600 mt-1">
-                Percentage fee charged on each ride
               </p>
             </div>
           </div>

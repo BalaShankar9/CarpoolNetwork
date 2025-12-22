@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Clock, Users, Car, AlertCircle, CheckCircle } from 'lucide-react';
+import { Users, Car, AlertCircle, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from '../components/shared/LocationAutocomplete';
 import EmailVerificationBanner from '../components/shared/EmailVerificationBanner';
+import TrainlineDateTimePicker from '../components/shared/TrainlineDateTimePicker';
 import { useServiceGating } from '../hooks/useServiceGating';
 
 export default function PostRide() {
@@ -17,11 +18,13 @@ export default function PostRide() {
   const [formData, setFormData] = useState({
     origin: '',
     destination: '',
-    departureDate: '',
-    departureTime: '',
     availableSeats: 1,
     notes: '',
     isRecurring: false,
+  });
+  const [dateTime, setDateTime] = useState({
+    date: new Date().toISOString().split('T')[0],
+    time: '',
     timeType: 'depart' as 'depart' | 'arrive',
   });
   const [originCoords, setOriginCoords] = useState({ lat: 0, lng: 0 });
@@ -92,7 +95,7 @@ export default function PostRide() {
       }
 
       const departureDateTime = new Date(
-        `${formData.departureDate}T${formData.departureTime}`
+        `${dateTime.date}T${dateTime.time}`
       ).toISOString();
 
       const passengerSeats = (vehicles.capacity || 5) - 1;
@@ -108,6 +111,7 @@ export default function PostRide() {
         destination_lat: destCoords.lat,
         destination_lng: destCoords.lng,
         departure_time: departureDateTime,
+        time_type: dateTime.timeType,
         available_seats: seatsToOffer,
         total_seats: seatsToOffer,
         notes: formData.notes,
@@ -120,11 +124,13 @@ export default function PostRide() {
       setFormData({
         origin: '',
         destination: '',
-        departureDate: '',
-        departureTime: '',
         availableSeats: 1,
         notes: '',
         isRecurring: false,
+      });
+      setDateTime({
+        date: new Date().toISOString().split('T')[0],
+        time: '',
         timeType: 'depart',
       });
 
@@ -231,71 +237,13 @@ export default function PostRide() {
             required
           />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Time Type
-            </label>
-            <div className="flex gap-4 mb-4">
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, timeType: 'depart' })}
-                className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${
-                  formData.timeType === 'depart'
-                    ? 'bg-blue-600 text-white ring-2 ring-blue-400'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Depart After
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, timeType: 'arrive' })}
-                className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${
-                  formData.timeType === 'arrive'
-                    ? 'bg-blue-600 text-white ring-2 ring-blue-400'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Arrive By
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mb-4">
-              {formData.timeType === 'depart'
-                ? 'You will depart after this time'
-                : 'You want to arrive by this time'}
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Calendar className="w-4 h-4 inline mr-1" />
-                Date
-              </label>
-              <input
-                type="date"
-                value={formData.departureDate}
-                onChange={(e) => setFormData({ ...formData, departureDate: e.target.value })}
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Clock className="w-4 h-4 inline mr-1" />
-                {formData.timeType === 'depart' ? 'Departure Time' : 'Arrival Time'}
-              </label>
-              <input
-                type="time"
-                value={formData.departureTime}
-                onChange={(e) => setFormData({ ...formData, departureTime: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
-          </div>
+          <TrainlineDateTimePicker
+            value={dateTime}
+            onChange={setDateTime}
+            minDate={new Date().toISOString().split('T')[0]}
+            label="When"
+            required
+          />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

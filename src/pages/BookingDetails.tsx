@@ -37,7 +37,6 @@ interface BookingDetails {
     origin_lng: number;
     destination_lat: number;
     destination_lng: number;
-    price_per_seat: number;
     notes?: string;
     driver: {
       id: string;
@@ -542,14 +541,6 @@ export default function BookingDetails() {
             <div className="flex justify-between">
               <span className="text-gray-600">Seats</span>
               <span className="font-medium">{booking.seats_requested}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Price per seat</span>
-              <span className="font-medium">${booking.ride.price_per_seat}</span>
-            </div>
-            <div className="border-t border-gray-300 pt-2 mt-2 flex justify-between font-semibold">
-              <span>Total Cost</span>
-              <span className="text-blue-600">${booking.ride.price_per_seat * booking.seats_requested}</span>
             </div>
           </div>
         </div>

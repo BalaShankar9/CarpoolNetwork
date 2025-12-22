@@ -9,7 +9,6 @@ import {
   TrendingUp,
   MapPin,
   Calendar,
-  DollarSign,
   Users,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -155,10 +154,6 @@ export default function SmartRecommendations() {
                       <div className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
                         {new Date(rideDetails.departure_time).toLocaleDateString()}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <DollarSign className="w-4 h-4" />
-                        £{rideDetails.price_per_seat}
                       </div>
                       <div className="flex items-center gap-1">
                         <Users className="w-4 h-4" />
