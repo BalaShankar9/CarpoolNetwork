@@ -32,6 +32,9 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
 import BugReports from './pages/admin/BugReports';
 import VerificationQueue from './pages/admin/VerificationQueue';
+import SafetyReports from './pages/admin/SafetyReports';
+import SafetyReportDetail from './pages/admin/SafetyReportDetail';
+import SafetyDashboard from './pages/admin/SafetyDashboard';
 import Leaderboards from './pages/Leaderboards';
 import Challenges from './pages/Challenges';
 import Layout from './components/layout/Layout';
@@ -237,6 +240,21 @@ function AppContent() {
         <Route path="/admin/verifications" element={
           <ProtectedRoute>
             <VerificationQueue />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/safety" element={
+          <ProtectedRoute>
+            <SafetyReports />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/safety/report/:reportId" element={
+          <ProtectedRoute>
+            <SafetyReportDetail />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/safety/dashboard" element={
+          <ProtectedRoute>
+            <SafetyDashboard />
           </ProtectedRoute>
         } />
       </Routes>
