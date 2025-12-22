@@ -17,9 +17,22 @@ import {
   UserCheck,
   AlertCircle,
   ArrowLeft,
+  BarChart3,
+  DollarSign,
+  Mail,
+  Brain,
+  Target,
+  FileText,
+  Eye,
+  Flag,
+  Settings,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { ContentModeration } from '../../components/admin/ContentModeration';
+import { AuditLogViewer } from '../../components/admin/AuditLogViewer';
+import { AdvancedReporting } from '../../components/admin/AdvancedReporting';
+import { AdminSettings } from '../../components/admin/AdminSettings';
 
 interface DashboardStats {
   totalUsers: number;
@@ -39,6 +52,8 @@ interface RecentActivity {
   details?: string;
 }
 
+type TabType = 'overview' | 'moderation' | 'audit' | 'reports' | 'settings';
+
 export default function AdminDashboard() {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -46,6 +61,7 @@ export default function AdminDashboard() {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
 
   useEffect(() => {
     if (!isAdmin) {
@@ -189,6 +205,29 @@ export default function AdminDashboard() {
     teal: 'bg-teal-50 text-teal-600 border-teal-100',
   };
 
+  const tabs = [
+    { id: 'overview' as TabType, label: 'Overview', icon: LayoutDashboard },
+    { id: 'moderation' as TabType, label: 'Content Moderation', icon: Flag },
+    { id: 'audit' as TabType, label: 'Audit Logs', icon: Eye },
+    { id: 'reports' as TabType, label: 'Advanced Reports', icon: FileText },
+    { id: 'settings' as TabType, label: 'Settings', icon: Settings },
+  ];
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'moderation':
+        return <ContentModeration />;
+      case 'audit':
+        return <AuditLogViewer />;
+      case 'reports':
+        return <AdvancedReporting />;
+      case 'settings':
+        return <AdminSettings />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200">
@@ -221,10 +260,35 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex gap-1 overflow-x-auto">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                }`}
+              >
+                <tab.icon className="w-4 h-4" />
+                <span className="text-sm font-medium">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {loading ? (
+        {loading && activeTab === 'overview' ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : activeTab !== 'overview' ? (
+          <div className="py-4">
+            {renderTabContent()}
           </div>
         ) : (
           <>
