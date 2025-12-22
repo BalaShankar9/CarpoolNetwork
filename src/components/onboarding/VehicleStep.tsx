@@ -29,15 +29,20 @@ export default function VehicleStep({ onNext, onSkipStep }: VehicleStepProps) {
         .from('vehicles')
         .insert({
           user_id: user.id,
-          ...formData,
-          registration_number: 'PENDING'
+          make: formData.make,
+          model: formData.model,
+          color: formData.color,
+          year: formData.year,
+          capacity: formData.seats,
+          license_plate: 'PENDING',
+          is_active: true
         });
 
       if (error) throw error;
       onNext();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding vehicle:', error);
-      alert('Failed to add vehicle. Please try again.');
+      alert(error.message || 'Failed to add vehicle. Please try again.');
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bug, X, Send, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -10,6 +10,18 @@ export default function FeedbackButton() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  useEffect(() => {
+    const tooltipSeen = localStorage.getItem('bug-report-tooltip-seen');
+    if (!tooltipSeen) {
+      setShowTooltip(true);
+      setTimeout(() => {
+        setShowTooltip(false);
+        localStorage.setItem('bug-report-tooltip-seen', 'true');
+      }, 5000);
+    }
+  }, []);
 
   if (!user) return null;
 
@@ -45,14 +57,31 @@ export default function FeedbackButton() {
 
   return (
     <>
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-[180px] md:bottom-24 right-4 md:right-6 z-[85] bg-red-600 text-white p-3 md:p-4 rounded-full shadow-lg hover:bg-red-700 transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-        title="Report a problem"
-        style={{ pointerEvents: 'auto' }}
-      >
-        <Bug className="w-5 h-5 md:w-6 md:h-6" />
-      </button>
+      <div className="fixed bottom-[180px] md:bottom-24 right-4 md:right-6 z-[85]">
+        <button
+          onClick={() => setIsOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsOpen(true);
+            }
+          }}
+          className="bg-red-600 text-white p-3 md:p-4 rounded-full shadow-lg hover:bg-red-700 transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 animate-pulse"
+          title="Report a problem"
+          aria-label="Report a problem or bug"
+          tabIndex={0}
+          style={{ pointerEvents: 'auto' }}
+        >
+          <Bug className="w-5 h-5 md:w-6 md:h-6" />
+        </button>
+
+        {showTooltip && (
+          <div className="absolute bottom-full right-0 mb-2 w-48 bg-gray-900 text-white text-sm rounded-lg px-3 py-2 shadow-lg animate-fade-in">
+            Found a bug? Click here to report it!
+            <div className="absolute -bottom-1 right-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+          </div>
+        )}
+      </div>
 
       {isOpen && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center p-4 bg-black/50" style={{ pointerEvents: 'auto' }}>

@@ -17,6 +17,7 @@ import RequestRide from './pages/RequestRide';
 import MyRides from './pages/MyRides';
 import Messages from './pages/Messages';
 import Profile from './pages/Profile';
+import PublicProfile from './pages/PublicProfile';
 import SecuritySettings from './pages/SecuritySettings';
 import Analytics from './pages/Analytics';
 import RideDetails from './pages/RideDetails';
@@ -152,6 +153,13 @@ function AppContent() {
           <ProtectedRoute>
             <Layout>
               <Profile />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/user/:userId" element={
+          <ProtectedRoute>
+            <Layout>
+              <PublicProfile />
             </Layout>
           </ProtectedRoute>
         } />

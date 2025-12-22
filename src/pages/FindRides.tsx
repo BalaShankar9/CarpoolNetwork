@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from '../components/shared/LocationAutocomplete';
 import { googleMapsService } from '../services/googleMapsService';
+import UserAvatar from '../components/shared/UserAvatar';
+import { getUserProfilePath } from '../utils/profileNavigation';
 
 interface Ride {
   id: string;
@@ -19,6 +21,7 @@ interface Ride {
   driver: {
     id: string;
     full_name: string;
+    avatar_url: string | null;
     average_rating: number;
     total_rides_offered: number;
   };
@@ -514,13 +517,19 @@ export default function FindRides() {
                 )}
                 <div className="flex flex-col lg:flex-row gap-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-2xl font-bold text-blue-600">
-                        {ride.driver.full_name.charAt(0)}
-                      </span>
-                    </div>
+                    <UserAvatar
+                      user={ride.driver}
+                      size="lg"
+                      rating={ride.driver.average_rating}
+                      onClick={() => navigate(getUserProfilePath(ride.driver.id, user?.id))}
+                    />
                     <div>
-                      <p className="font-semibold text-gray-900">{ride.driver.full_name}</p>
+                      <p
+                        onClick={() => navigate(getUserProfilePath(ride.driver.id, user?.id))}
+                        className="font-semibold text-gray-900 cursor-pointer hover:text-green-600 transition-colors"
+                      >
+                        {ride.driver.full_name}
+                      </p>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <span className="flex items-center gap-1">
                           <Star className="w-4 h-4 text-yellow-400 fill-current" />

@@ -7,6 +7,8 @@ import EnhancedRideMap from '../components/rides/EnhancedRideMap';
 import TripInsights from '../components/rides/TripInsights';
 import RideStatusTracker from '../components/rides/RideStatusTracker';
 import { RouteOption, PlaceDetails } from '../services/googleMapsService';
+import UserAvatar from '../components/shared/UserAvatar';
+import { getUserProfilePath } from '../utils/profileNavigation';
 
 interface RideDetails {
   id: string;
@@ -25,6 +27,7 @@ interface RideDetails {
   driver: {
     id: string;
     full_name: string;
+    avatar_url: string | null;
     average_rating: number;
     total_rides_offered: number;
     bio: string | null;
@@ -325,28 +328,17 @@ export default function RideDetails() {
 
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-start gap-4">
-            <div
-              className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-blue-200 transition-colors"
-              onClick={() => {
-                if (ride.driver.id !== user?.id) {
-                  navigate('/messages', { state: { rideId: ride.id, driverId: ride.driver.id } });
-                }
-              }}
-              title="Click to message driver"
-            >
-              <span className="text-3xl font-bold text-blue-600">
-                {ride.driver.full_name.charAt(0)}
-              </span>
-            </div>
+            <UserAvatar
+              user={ride.driver}
+              size="xl"
+              rating={ride.driver.average_rating}
+              onClick={() => navigate(getUserProfilePath(ride.driver.id, user?.id))}
+            />
             <div className="flex-1">
               <h2
-                className="text-xl font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
-                onClick={() => {
-                  if (ride.driver.id !== user?.id) {
-                    navigate('/messages', { state: { rideId: ride.id, driverId: ride.driver.id } });
-                  }
-                }}
-                title="Click to message driver"
+                className="text-xl font-bold text-gray-900 cursor-pointer hover:text-green-600 transition-colors"
+                onClick={() => navigate(getUserProfilePath(ride.driver.id, user?.id))}
+                title="Click to view profile"
               >
                 {ride.driver.full_name}
               </h2>

@@ -298,27 +298,30 @@ export default function Profile() {
 
       const vehicleData = lookupResult.data;
 
+      const vehicleInsert: any = {
+        user_id: profile?.id,
+        make: vehicleData.make || 'Unknown',
+        model: vehicleData.model || 'Unknown',
+        year: vehicleData.year || new Date().getFullYear(),
+        color: vehicleData.color || 'Unknown',
+        license_plate: plateNumber,
+        capacity: vehicleData.capacity || 4,
+        is_active: true,
+      };
+
+      if (vehicleData.fuel_type) vehicleInsert.fuel_type = vehicleData.fuel_type;
+      if (vehicleData.vehicle_type) vehicleInsert.vehicle_type = vehicleData.vehicle_type;
+      if (vehicleData.registration_year) vehicleInsert.registration_year = vehicleData.registration_year;
+      if (vehicleData.engine_capacity) vehicleInsert.engine_capacity = vehicleData.engine_capacity;
+      if (vehicleData.image_url) vehicleInsert.image_url = vehicleData.image_url;
+      if (vehicleData.mot_status) vehicleInsert.mot_status = vehicleData.mot_status;
+      if (vehicleData.mot_expiry_date) vehicleInsert.mot_expiry_date = vehicleData.mot_expiry_date;
+      if (vehicleData.tax_status) vehicleInsert.tax_status = vehicleData.tax_status;
+      if (vehicleData.tax_due_date) vehicleInsert.tax_due_date = vehicleData.tax_due_date;
+
       const { data, error: insertError } = await supabase
         .from('vehicles')
-        .insert({
-          user_id: profile?.id,
-          make: vehicleData.make,
-          model: vehicleData.model,
-          year: vehicleData.year,
-          color: vehicleData.color,
-          license_plate: plateNumber,
-          capacity: vehicleData.capacity,
-          fuel_type: vehicleData.fuel_type,
-          vehicle_type: vehicleData.vehicle_type,
-          registration_year: vehicleData.registration_year,
-          engine_capacity: vehicleData.engine_capacity,
-          image_url: vehicleData.image_url,
-          mot_status: vehicleData.mot_status,
-          mot_expiry_date: vehicleData.mot_expiry_date,
-          tax_status: vehicleData.tax_status,
-          tax_due_date: vehicleData.tax_due_date,
-          is_active: true,
-        })
+        .insert(vehicleInsert)
         .select()
         .single();
 
