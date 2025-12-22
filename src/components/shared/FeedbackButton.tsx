@@ -36,6 +36,7 @@ export default function FeedbackButton() {
       const { error: submitError } = await supabase
         .from('bug_reports')
         .insert([{
+          user_id: user.id,
           text: feedback.trim(),
           page: window.location.pathname,
         }]);
@@ -48,8 +49,9 @@ export default function FeedbackButton() {
         setSuccess(false);
         setIsOpen(false);
       }, 2000);
-    } catch (err) {
-      setError('Failed to submit feedback. Please try again.');
+    } catch (err: any) {
+      console.error('Failed to submit feedback:', err);
+      setError(err?.message || 'Failed to submit feedback. Please try again.');
     } finally {
       setLoading(false);
     }
