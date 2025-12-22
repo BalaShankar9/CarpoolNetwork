@@ -366,6 +366,16 @@ export default function AdminDashboard() {
                       <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
                     </Link>
                     <Link
+                      to="/admin/analytics"
+                      className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <BarChart3 className="w-5 h-5 text-green-500" />
+                        <span className="font-medium text-gray-700">Advanced Analytics</span>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                    </Link>
+                    <Link
                       to="/admin/diagnostics"
                       className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
                     >
