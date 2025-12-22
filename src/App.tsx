@@ -41,6 +41,7 @@ import BulkOperations from './pages/admin/BulkOperations';
 import PerformanceMonitor from './pages/admin/PerformanceMonitor';
 import Leaderboards from './pages/Leaderboards';
 import Challenges from './pages/Challenges';
+import Settings from './pages/Settings';
 import Layout from './components/layout/Layout';
 import { ProductionErrorBoundary } from './components/shared/ProductionErrorBoundary';
 import { LoadingProvider } from './components/shared/LoadingStateManager';
@@ -175,6 +176,13 @@ function AppContent() {
         <Route path="/security" element={
           <ProtectedRoute>
             <SecuritySettings />
+          </ProtectedRoute>
+        } />
+        <Route path="/settings" element={
+          <ProtectedRoute>
+            <Layout>
+              <Settings />
+            </Layout>
           </ProtectedRoute>
         } />
         <Route path="/preferences" element={

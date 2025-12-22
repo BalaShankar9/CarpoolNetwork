@@ -1,4 +1,4 @@
-import { User, Menu, X, MessageSquare, Settings } from 'lucide-react';
+import { User, Menu, X, MessageSquare, Settings, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRealtime } from '../../contexts/RealtimeContext';
@@ -40,13 +40,20 @@ export default function Navbar() {
                 <button className="p-2 text-gray-600 hover:text-blue-600 transition-colors relative" title="Messages">
                   <MessageSquare className="w-6 h-6" />
                 </button>
+                <button
+                  onClick={() => navigate('/settings')}
+                  className="p-2 text-gray-600 hover:text-blue-600 transition-colors relative"
+                  title="Settings"
+                >
+                  <Settings className="w-6 h-6" />
+                </button>
                 {isAdmin && (
                   <button
                     onClick={() => navigate('/admin/diagnostics')}
-                    className="p-2 text-gray-600 hover:text-blue-600 transition-colors relative"
+                    className="p-2 text-gray-600 hover:text-purple-600 transition-colors relative"
                     title="Admin Panel"
                   >
-                    <Settings className="w-6 h-6" />
+                    <Shield className="w-6 h-6" />
                   </button>
                 )}
                 <div className="flex items-center gap-3 pl-3 border-l border-gray-300">
