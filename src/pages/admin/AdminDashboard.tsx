@@ -9,6 +9,7 @@ import {
   Shield,
   TrendingUp,
   Calendar,
+  CheckCircle,
   MapPin,
   Clock,
   ChevronRight,
@@ -28,6 +29,7 @@ interface DashboardStats {
   feedbackCount: number;
   activeRides: number;
   recentSignups: number;
+  pendingVerifications: number;
 }
 
 interface RecentActivity {
@@ -65,6 +67,8 @@ export default function AdminDashboard() {
         feedbackResult,
         activeRidesResult,
         recentSignupsResult,
+        pendingLicensesResult,
+        pendingInsuranceResult,
       ] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('rides').select('id', { count: 'exact', head: true }),
@@ -75,6 +79,8 @@ export default function AdminDashboard() {
           .gte('departure_time', new Date().toISOString()),
         supabase.from('profiles').select('id', { count: 'exact', head: true })
           .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+        supabase.from('driver_licenses').select('id', { count: 'exact', head: true }).eq('verified', false),
+        supabase.from('vehicle_insurance').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
       ]);
 
       setStats({
@@ -85,6 +91,7 @@ export default function AdminDashboard() {
         feedbackCount: feedbackResult.count || 0,
         activeRides: activeRidesResult.count || 0,
         recentSignups: recentSignupsResult.count || 0,
+        pendingVerifications: (pendingLicensesResult.count || 0) + (pendingInsuranceResult.count || 0),
       });
 
       const activities: RecentActivity[] = [];
@@ -170,7 +177,7 @@ export default function AdminDashboard() {
   const statCards = [
     { label: 'Total Users', value: stats?.totalUsers || 0, icon: Users, color: 'blue', link: '/admin/users' },
     { label: 'Active Rides', value: stats?.activeRides || 0, icon: Car, color: 'green', subtext: `${stats?.totalRides || 0} total` },
-    { label: 'Bookings', value: stats?.totalBookings || 0, icon: Calendar, color: 'orange', subtext: `${stats?.pendingBookings || 0} pending` },
+    { label: 'Verifications', value: stats?.pendingVerifications || 0, icon: CheckCircle, color: 'orange', link: '/admin/verifications', highlight: (stats?.pendingVerifications || 0) > 0 },
     { label: 'Feedback', value: stats?.feedbackCount || 0, icon: MessageSquare, color: 'teal', link: '/admin/feedback' },
     { label: 'New This Week', value: stats?.recentSignups || 0, icon: TrendingUp, color: 'green' },
   ];
@@ -225,7 +232,7 @@ export default function AdminDashboard() {
               {statCards.map((stat) => (
                 <div
                   key={stat.label}
-                  className={`bg-white rounded-xl p-4 border shadow-sm hover:shadow-md transition-all ${stat.link ? 'cursor-pointer' : ''}`}
+                  className={`bg-white rounded-xl p-4 border shadow-sm hover:shadow-md transition-all ${stat.link ? 'cursor-pointer' : ''} ${stat.highlight ? 'ring-2 ring-orange-400 ring-offset-2' : ''}`}
                   onClick={() => stat.link && navigate(stat.link)}
                 >
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${colorClasses[stat.color as keyof typeof colorClasses]}`}>
@@ -235,6 +242,9 @@ export default function AdminDashboard() {
                   <p className="text-sm text-gray-500">{stat.label}</p>
                   {stat.subtext && (
                     <p className="text-xs text-gray-400 mt-1">{stat.subtext}</p>
+                  )}
+                  {stat.highlight && stat.value > 0 && (
+                    <p className="text-xs text-orange-600 font-medium mt-1">Needs attention</p>
                   )}
                 </div>
               ))}
@@ -277,11 +287,26 @@ export default function AdminDashboard() {
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                   <div className="space-y-2">
                     <Link
+                      to="/admin/verifications"
+                      className={`flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group ${(stats?.pendingVerifications || 0) > 0 ? 'bg-orange-50' : ''}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <CheckCircle className="w-5 h-5 text-orange-500" />
+                        <span className="font-medium text-gray-700">Verification Queue</span>
+                        {(stats?.pendingVerifications || 0) > 0 && (
+                          <span className="px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded-full">
+                            {stats?.pendingVerifications}
+                          </span>
+                        )}
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                    </Link>
+                    <Link
                       to="/admin/diagnostics"
                       className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
                     >
                       <div className="flex items-center gap-3">
-                        <Activity className="w-5 h-5 text-orange-500" />
+                        <Activity className="w-5 h-5 text-blue-500" />
                         <span className="font-medium text-gray-700">System Diagnostics</span>
                       </div>
                       <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />

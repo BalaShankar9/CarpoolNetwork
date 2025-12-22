@@ -3,6 +3,7 @@ import { Shield, Lock, Key, Trash2, AlertTriangle, CheckCircle, ArrowLeft } from
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import TwoFactorAuth from '../components/security/TwoFactorAuth';
 
 export default function SecuritySettings() {
   const navigate = useNavigate();
@@ -161,6 +162,8 @@ export default function SecuritySettings() {
               </button>
             </form>
           </div>
+
+          <TwoFactorAuth />
 
           <div className="bg-white rounded-xl p-6 md:p-8 border border-gray-200 shadow-sm">
             <div className="flex items-center gap-2 mb-6">

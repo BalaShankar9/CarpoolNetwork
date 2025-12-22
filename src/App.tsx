@@ -18,6 +18,7 @@ import MyRides from './pages/MyRides';
 import Messages from './pages/Messages';
 import Profile from './pages/Profile';
 import SecuritySettings from './pages/SecuritySettings';
+import Analytics from './pages/Analytics';
 import RideDetails from './pages/RideDetails';
 import BookingDetails from './pages/BookingDetails';
 import TermsOfService from './pages/TermsOfService';
@@ -29,6 +30,7 @@ import Diagnostics from './pages/admin/Diagnostics';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
 import BugReports from './pages/admin/BugReports';
+import VerificationQueue from './pages/admin/VerificationQueue';
 import Layout from './components/layout/Layout';
 
 
@@ -161,6 +163,11 @@ function AppContent() {
             <Preferences />
           </ProtectedRoute>
         } />
+        <Route path="/analytics" element={
+          <ProtectedRoute>
+            <Analytics />
+          </ProtectedRoute>
+        } />
         <Route path="/rides/:rideId" element={
           <ProtectedRoute>
             <Layout>
@@ -205,6 +212,11 @@ function AppContent() {
         <Route path="/admin/bugs" element={
           <ProtectedRoute>
             <BugReports />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/verifications" element={
+          <ProtectedRoute>
+            <VerificationQueue />
           </ProtectedRoute>
         } />
       </Routes>
