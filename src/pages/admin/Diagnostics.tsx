@@ -811,7 +811,7 @@ export default function Diagnostics() {
               <div>
                 <span className="text-gray-500 block mb-1">Admin Email</span>
                 <p className="font-mono text-gray-900 bg-gray-50 px-3 py-2 rounded">
-                  {ADMIN_EMAIL}
+                  {import.meta.env.VITE_ADMIN_EMAIL || 'Not configured'}
                 </p>
               </div>
             </div>
