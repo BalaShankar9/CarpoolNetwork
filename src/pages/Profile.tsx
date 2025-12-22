@@ -16,6 +16,7 @@ import DocumentUploadCenter from '../components/profile/DocumentUploadCenter';
 import RideAnalyticsDashboard from '../components/profile/RideAnalyticsDashboard';
 import FriendsManager from '../components/social/FriendsManager';
 import AchievementsBadges from '../components/gamification/AchievementsBadges';
+import ReliabilityScoreDisplay from '../components/profile/ReliabilityScoreDisplay';
 
 interface Vehicle {
   id: string;
@@ -716,6 +717,8 @@ export default function Profile() {
       <StatisticsDashboard />
 
       <RideAnalyticsDashboard />
+
+      <ReliabilityScoreDisplay />
 
       <TrustScoreVisualization />
 

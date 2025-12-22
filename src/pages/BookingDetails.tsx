@@ -132,18 +132,39 @@ export default function BookingDetails() {
     const reason = prompt('Please provide a reason for cancellation (optional):');
     if (reason === null) return;
 
-    if (!confirm('Are you sure you want to cancel this booking?')) return;
+    if (!confirm('Are you sure you want to cancel this booking? This may affect your reliability score.')) return;
 
     setCancelling(true);
     try {
-      const { error } = await supabase.rpc('cancel_booking', {
+      const { data, error } = await supabase.rpc('cancel_booking_with_impact', {
         p_booking_id: bookingId!,
         p_reason: reason || 'No reason provided'
       });
 
       if (error) throw error;
 
-      alert('Booking cancelled successfully!');
+      if (data && data.length > 0) {
+        const result = data[0];
+        if (result.success) {
+          let message = 'Booking cancelled successfully!';
+          if (result.reliability_impact > 0) {
+            message += `\n\nReliability Impact: -${result.reliability_impact} points`;
+            message += `\nNew Reliability Score: ${result.new_reliability_score}/100`;
+          }
+          if (result.warning_issued) {
+            message += '\n\n⚠️ Warning: Frequent cancellations may result in booking restrictions.';
+          }
+          if (result.restriction_applied) {
+            message += '\n\n🚫 Your booking privileges have been temporarily restricted due to reliability concerns.';
+          }
+          alert(message);
+        } else {
+          alert(result.message || 'Failed to cancel booking');
+          setCancelling(false);
+          return;
+        }
+      }
+
       navigate('/my-rides');
     } catch (error: any) {
       console.error('Error cancelling booking:', error);
