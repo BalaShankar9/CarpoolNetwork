@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Search, PlusCircle, Calendar, MessageSquare, User, LogOut, Users, MessageCircle, LayoutDashboard, UserCheck, Activity, Bug, MapPin } from 'lucide-react';
+import { Home, Search, PlusCircle, Calendar, MessageSquare, User, LogOut, Users, MessageCircle, LayoutDashboard, UserCheck, Activity, Bug, MapPin, Settings } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import Logo from '../shared/Logo';
 import AIChatbot from '../shared/AIChatbot';
@@ -30,6 +30,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: '/my-rides', icon: Calendar, label: 'My Rides' },
     { to: '/messages', icon: MessageSquare, label: 'Messages' },
     { to: '/profile', icon: User, label: 'Profile' },
+    { to: '/settings', icon: Settings, label: 'Settings' },
   ];
 
   const adminItems = [
@@ -124,21 +125,97 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <FeedbackButton />
 
       <nav className="md:hidden bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 z-50">
-        <div className="grid grid-cols-7 gap-1 p-2">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
-                  isActive ? 'text-blue-600' : 'text-gray-600'
-                }`
-              }
-            >
-              <item.icon className="w-5 h-5" />
-              <span className="text-xs">{item.label}</span>
-            </NavLink>
-          ))}
+        <div className="grid grid-cols-4 gap-1 p-2">
+          <NavLink
+            to="/"
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
+                isActive ? 'text-blue-600' : 'text-gray-600'
+              }`
+            }
+          >
+            <Home className="w-5 h-5" />
+            <span className="text-xs">Home</span>
+          </NavLink>
+          <NavLink
+            to="/find-rides"
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
+                isActive ? 'text-blue-600' : 'text-gray-600'
+              }`
+            }
+          >
+            <Search className="w-5 h-5" />
+            <span className="text-xs">Find</span>
+          </NavLink>
+          <NavLink
+            to="/my-rides"
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
+                isActive ? 'text-blue-600' : 'text-gray-600'
+              }`
+            }
+          >
+            <Calendar className="w-5 h-5" />
+            <span className="text-xs">Rides</span>
+          </NavLink>
+          <NavLink
+            to="/messages"
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
+                isActive ? 'text-blue-600' : 'text-gray-600'
+              }`
+            }
+          >
+            <MessageSquare className="w-5 h-5" />
+            <span className="text-xs">Messages</span>
+          </NavLink>
+        </div>
+        <div className="grid grid-cols-4 gap-1 px-2 pb-2">
+          <NavLink
+            to="/post-ride"
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
+                isActive ? 'text-blue-600' : 'text-gray-600'
+              }`
+            }
+          >
+            <PlusCircle className="w-5 h-5" />
+            <span className="text-xs">Post</span>
+          </NavLink>
+          <NavLink
+            to="/request-ride"
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
+                isActive ? 'text-blue-600' : 'text-gray-600'
+              }`
+            }
+          >
+            <MapPin className="w-5 h-5" />
+            <span className="text-xs">Request</span>
+          </NavLink>
+          <NavLink
+            to="/profile"
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
+                isActive ? 'text-blue-600' : 'text-gray-600'
+              }`
+            }
+          >
+            <User className="w-5 h-5" />
+            <span className="text-xs">Profile</span>
+          </NavLink>
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
+                isActive ? 'text-blue-600' : 'text-gray-600'
+              }`
+            }
+          >
+            <Settings className="w-5 h-5" />
+            <span className="text-xs">Settings</span>
+          </NavLink>
         </div>
       </nav>
     </div>
