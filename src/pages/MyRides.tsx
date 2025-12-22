@@ -87,16 +87,33 @@ interface PendingReview {
   role: string;
 }
 
+interface MatchedPassenger {
+  match_id: string;
+  passenger_id: string;
+  passenger_name: string;
+  passenger_rating: number;
+  from_location: string;
+  to_location: string;
+  seats_needed: number;
+  match_score: number;
+  created_at: string;
+  ride_id: string;
+  ride_origin: string;
+  ride_destination: string;
+  departure_time: string;
+}
+
 export default function MyRides() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'offered' | 'booked' | 'requests' | 'passengers' | 'myRequests' | 'pendingReviews'>('offered');
+  const [activeTab, setActiveTab] = useState<'offered' | 'booked' | 'requests' | 'passengers' | 'myRequests' | 'pendingReviews' | 'matchedPassengers'>('offered');
   const [offeredRides, setOfferedRides] = useState<Ride[]>([]);
   const [bookedRides, setBookedRides] = useState<Booking[]>([]);
   const [bookingRequests, setBookingRequests] = useState<BookingRequest[]>([]);
   const [confirmedPassengers, setConfirmedPassengers] = useState<BookingRequest[]>([]);
   const [rideRequests, setRideRequests] = useState<RideRequest[]>([]);
   const [pendingReviews, setPendingReviews] = useState<PendingReview[]>([]);
+  const [matchedPassengers, setMatchedPassengers] = useState<MatchedPassenger[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
@@ -289,6 +306,35 @@ export default function MyRides() {
           throw error;
         }
         setPendingReviews(data || []);
+      } else if (activeTab === 'matchedPassengers') {
+        const { data: rides, error: ridesError } = await supabase
+          .from('rides')
+          .select('id, origin, destination, departure_time')
+          .eq('driver_id', user.id)
+          .eq('status', 'active')
+          .gte('departure_time', new Date().toISOString());
+
+        if (ridesError) throw ridesError;
+
+        const allMatches: MatchedPassenger[] = [];
+
+        for (const ride of (rides || [])) {
+          const { data: matches, error: matchError } = await supabase.rpc('get_ride_matches_for_driver', {
+            p_ride_id: ride.id
+          });
+
+          if (!matchError && matches) {
+            allMatches.push(...matches.map((m: any) => ({
+              ...m,
+              ride_id: ride.id,
+              ride_origin: ride.origin,
+              ride_destination: ride.destination,
+              departure_time: ride.departure_time
+            })));
+          }
+        }
+
+        setMatchedPassengers(allMatches);
       }
     } catch (error) {
       console.error('Error loading rides:', error);
@@ -555,6 +601,21 @@ export default function MyRides() {
             {pendingReviews.length > 0 && activeTab !== 'pendingReviews' && (
               <span className="ml-2 inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-yellow-600 rounded-full">
                 {pendingReviews.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('matchedPassengers')}
+            className={`flex-1 px-6 py-4 font-medium transition-colors relative ${
+              activeTab === 'matchedPassengers'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+          >
+            Matched Passengers
+            {matchedPassengers.length > 0 && activeTab !== 'matchedPassengers' && (
+              <span className="ml-2 inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-blue-600 rounded-full">
+                {matchedPassengers.length}
               </span>
             )}
           </button>
@@ -1163,6 +1224,97 @@ export default function MyRides() {
                     </button>
                   </div>
                 ))
+              )}
+            </div>
+          ) : activeTab === 'matchedPassengers' ? (
+            <div className="space-y-4">
+              {matchedPassengers.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Users className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                  <p className="font-medium mb-2">No matched passengers yet</p>
+                  <p className="text-sm">Our algorithm will find potential passengers that match your upcoming rides.</p>
+                </div>
+              ) : (
+                matchedPassengers.map((match) => {
+                  const matchScoreColor =
+                    match.match_score >= 80 ? 'bg-green-100 text-green-800' :
+                    match.match_score >= 60 ? 'bg-blue-100 text-blue-800' :
+                    match.match_score >= 40 ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-gray-100 text-gray-800';
+
+                  return (
+                    <div
+                      key={match.match_id}
+                      className="border-2 border-blue-200 rounded-xl p-6 bg-gradient-to-br from-blue-50 to-white"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-start gap-4 flex-1">
+                          <div className="w-14 h-14 bg-blue-200 rounded-full flex items-center justify-center text-2xl font-bold text-blue-700 flex-shrink-0">
+                            {match.passenger_name.charAt(0)}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-lg text-gray-900">{match.passenger_name}</h3>
+                            <div className="flex items-center gap-2 mt-1 text-sm">
+                              <span className="flex items-center gap-1">
+                                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                                {match.passenger_rating.toFixed(1)}
+                              </span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-bold ${matchScoreColor}`}>
+                                {match.match_score}% Match
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-lg p-4 mb-4">
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                              <MapPin className="w-4 h-4 text-blue-600" />
+                              Passenger's Trip
+                            </h4>
+                            <div className="space-y-1 text-sm text-gray-700">
+                              <p><span className="font-medium">From:</span> {match.from_location}</p>
+                              <p><span className="font-medium">To:</span> {match.to_location}</p>
+                              <p><span className="font-medium">Seats Needed:</span> {match.seats_needed}</p>
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                              <Car className="w-4 h-4 text-blue-600" />
+                              Your Ride
+                            </h4>
+                            <div className="space-y-1 text-sm text-gray-700">
+                              <p><span className="font-medium">Route:</span> {match.ride_origin} → {match.ride_destination}</p>
+                              <p><span className="font-medium">Departure:</span> {formatDateTime(match.departure_time)}</p>
+                              <p className="text-xs text-gray-500 mt-2">Matched {new Date(match.created_at).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => {
+                            navigate('/messages', { state: { userId: match.passenger_id, userName: match.passenger_name } });
+                          }}
+                          className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+                        >
+                          <MessageSquare className="w-5 h-5" />
+                          Contact Passenger
+                        </button>
+                        <button
+                          onClick={() => navigate(`/rides/${match.ride_id}`)}
+                          className="flex-1 border-2 border-blue-600 text-blue-600 px-6 py-3 rounded-lg hover:bg-blue-50 transition-colors font-medium flex items-center justify-center gap-2"
+                        >
+                          <Eye className="w-5 h-5" />
+                          View Ride
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
           ) : null}

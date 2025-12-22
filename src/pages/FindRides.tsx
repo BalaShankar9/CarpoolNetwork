@@ -530,14 +530,35 @@ export default function FindRides() {
                       >
                         {ride.driver.full_name}
                       </p>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
                         <span className="flex items-center gap-1">
                           <Star className="w-4 h-4 text-yellow-400 fill-current" />
                           {ride.driver.average_rating.toFixed(1)}
                         </span>
                         <span>•</span>
                         <span>{ride.driver.total_rides_offered} rides</span>
+                        {ride.reliabilityScore && (
+                          <>
+                            <span>•</span>
+                            <span className={`flex items-center gap-1 font-medium ${getReliabilityColor(ride.reliabilityScore)}`}>
+                              <Shield className="w-4 h-4" />
+                              {ride.reliabilityScore} reliability
+                            </span>
+                          </>
+                        )}
                       </div>
+                      {ride.matchScore && (
+                        <div className="mt-1">
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                            ride.matchScore >= 80 ? 'bg-green-100 text-green-800' :
+                            ride.matchScore >= 60 ? 'bg-blue-100 text-blue-800' :
+                            ride.matchScore >= 40 ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {ride.matchScore}% Match
+                          </span>
+                        </div>
+                      )}
                       {ride.weather && (
                         <div className="flex items-center gap-1 mt-1 text-xs text-gray-600">
                           <Cloud className="w-3 h-3" />
