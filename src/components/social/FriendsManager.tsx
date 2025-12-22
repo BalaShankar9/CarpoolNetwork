@@ -3,6 +3,7 @@ import { UserPlus, UserCheck, Users, X, Search, MessageCircle, Star, Car, Shield
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import ClickableUserProfile from '../shared/ClickableUserProfile';
 
 interface Friend {
   id: string;
@@ -94,7 +95,7 @@ export default function FriendsManager() {
         .from('friends')
         .select(`
           *,
-          friend:profiles!friends_friend_id_fkey(*)
+          friend:profiles!friends_friend_id_fkey(id, full_name, avatar_url, profile_photo_url, bio, average_rating, trust_score, profile_verified, total_rides_offered, total_rides_taken)
         `)
         .eq('user_id', profile?.id)
         .eq('status', 'accepted');
@@ -105,7 +106,7 @@ export default function FriendsManager() {
         .from('friends')
         .select(`
           *,
-          friend:profiles!friends_user_id_fkey(*)
+          friend:profiles!friends_user_id_fkey(id, full_name, avatar_url, profile_photo_url, bio, average_rating, trust_score, profile_verified)
         `)
         .eq('friend_id', profile?.id)
         .eq('status', 'pending');
@@ -116,7 +117,7 @@ export default function FriendsManager() {
         .from('friends')
         .select(`
           *,
-          friend:profiles!friends_friend_id_fkey(*)
+          friend:profiles!friends_friend_id_fkey(id, full_name, avatar_url, profile_photo_url, bio, average_rating, trust_score, profile_verified)
         `)
         .eq('user_id', profile?.id)
         .eq('status', 'pending');
@@ -143,7 +144,7 @@ export default function FriendsManager() {
       setSearching(true);
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, bio, average_rating, trust_score, profile_verified')
+        .select('id, full_name, avatar_url, profile_photo_url, bio, average_rating, trust_score, profile_verified')
         .ilike('full_name', `%${query}%`)
         .neq('id', profile?.id)
         .limit(10);
@@ -334,31 +335,25 @@ export default function FriendsManager() {
             ) : (
               friends.map((friendship) => (
                 <div key={friendship.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0">
-                    {friendship.friend.full_name.charAt(0)}
-                  </div>
+                  <ClickableUserProfile
+                    user={{
+                      id: friendship.friend.id,
+                      full_name: friendship.friend.full_name,
+                      avatar_url: friendship.friend.avatar_url,
+                      profile_photo_url: friendship.friend.profile_photo_url
+                    }}
+                    size="md"
+                    rating={friendship.friend.average_rating}
+                    verified={friendship.friend.profile_verified}
+                    showNameRight={true}
+                    additionalInfo={
+                      friendship.friend.trust_score && (
+                        <span className="text-sm text-gray-600">Trust: {friendship.friend.trust_score}/100</span>
+                      )
+                    }
+                  />
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-900">
-                        {friendship.friend.full_name}
-                      </p>
-                      {friendship.friend.profile_verified && (
-                        <Shield className="w-4 h-4 text-blue-600" />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-gray-600">
-                      {friendship.friend.average_rating && (
-                        <span className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-amber-500 fill-current" />
-                          {friendship.friend.average_rating.toFixed(1)}
-                        </span>
-                      )}
-                      {friendship.friend.trust_score && (
-                        <span>Trust: {friendship.friend.trust_score}/100</span>
-                      )}
-                    </div>
-                  </div>
+                  <div className="flex-1 min-w-0"></div>
 
                   <div className="flex gap-2">
                     <button
@@ -397,14 +392,23 @@ export default function FriendsManager() {
                     <div className="space-y-3">
                       {pendingRequests.map((request) => (
                         <div key={request.id} className="flex items-center gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                          <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0">
-                            {request.friend.full_name.charAt(0)}
-                          </div>
+                          <ClickableUserProfile
+                            user={{
+                              id: request.friend.id,
+                              full_name: request.friend.full_name,
+                              avatar_url: request.friend.avatar_url,
+                              profile_photo_url: request.friend.profile_photo_url
+                            }}
+                            size="md"
+                            rating={request.friend.average_rating}
+                            verified={request.friend.profile_verified}
+                            showNameRight={true}
+                            additionalInfo={
+                              <p className="text-sm text-gray-600">{request.friend.bio || 'No bio'}</p>
+                            }
+                          />
 
-                          <div className="flex-1">
-                            <p className="font-semibold text-gray-900">{request.friend.full_name}</p>
-                            <p className="text-sm text-gray-600">{request.friend.bio || 'No bio'}</p>
-                          </div>
+                          <div className="flex-1"></div>
 
                           <div className="flex gap-2">
                             <button
@@ -432,14 +436,21 @@ export default function FriendsManager() {
                     <div className="space-y-3">
                       {sentRequests.map((request) => (
                         <div key={request.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                          <div className="w-12 h-12 bg-gray-600 text-white rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0">
-                            {request.friend.full_name.charAt(0)}
-                          </div>
+                          <ClickableUserProfile
+                            user={{
+                              id: request.friend.id,
+                              full_name: request.friend.full_name,
+                              avatar_url: request.friend.avatar_url,
+                              profile_photo_url: request.friend.profile_photo_url
+                            }}
+                            size="md"
+                            showNameRight={true}
+                            additionalInfo={
+                              <p className="text-sm text-gray-500">Request pending...</p>
+                            }
+                          />
 
-                          <div className="flex-1">
-                            <p className="font-semibold text-gray-900">{request.friend.full_name}</p>
-                            <p className="text-sm text-gray-500">Request pending...</p>
-                          </div>
+                          <div className="flex-1"></div>
 
                           <button
                             onClick={() => rejectFriendRequest(request.id)}
@@ -481,29 +492,25 @@ export default function FriendsManager() {
               <div className="space-y-3">
                 {searchResults.map((user) => (
                   <div key={user.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0">
-                      {user.full_name.charAt(0)}
-                    </div>
+                    <ClickableUserProfile
+                      user={{
+                        id: user.id,
+                        full_name: user.full_name,
+                        avatar_url: user.avatar_url,
+                        profile_photo_url: user.profile_photo_url
+                      }}
+                      size="md"
+                      rating={user.average_rating}
+                      verified={user.profile_verified}
+                      showNameRight={true}
+                      additionalInfo={
+                        user.trust_score && (
+                          <span className="text-sm text-gray-600">Trust: {user.trust_score}/100</span>
+                        )
+                      }
+                    />
 
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-gray-900">{user.full_name}</p>
-                        {user.profile_verified && (
-                          <Shield className="w-4 h-4 text-blue-600" />
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 text-sm text-gray-600">
-                        {user.average_rating && (
-                          <span className="flex items-center gap-1">
-                            <Star className="w-4 h-4 text-amber-500 fill-current" />
-                            {user.average_rating.toFixed(1)}
-                          </span>
-                        )}
-                        {user.trust_score && (
-                          <span>Trust: {user.trust_score}/100</span>
-                        )}
-                      </div>
-                    </div>
+                    <div className="flex-1"></div>
 
                     <button
                       onClick={() => sendFriendRequest(user.id)}

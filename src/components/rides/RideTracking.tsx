@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { MapPin, Navigation, CheckCircle, XCircle, AlertTriangle, Users } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import ClickableUserProfile from '../shared/ClickableUserProfile';
 
 interface RideTrackingProps {
   rideId: string;
@@ -15,6 +16,8 @@ interface Passenger {
   status: string;
   pickup_location: string;
   dropoff_location: string;
+  avatar_url?: string | null;
+  profile_photo_url?: string | null;
 }
 
 export default function RideTracking({ rideId, onComplete }: RideTrackingProps) {
@@ -66,7 +69,7 @@ export default function RideTracking({ rideId, onComplete }: RideTrackingProps) 
           status,
           pickup_location,
           dropoff_location,
-          passenger:profiles!ride_bookings_passenger_id_fkey(full_name)
+          passenger:profiles!ride_bookings_passenger_id_fkey(id, full_name, avatar_url, profile_photo_url)
         `)
         .eq('ride_id', rideId)
         .in('status', ['confirmed', 'active', 'completed']);
@@ -79,7 +82,9 @@ export default function RideTracking({ rideId, onComplete }: RideTrackingProps) 
         seats_requested: booking.seats_requested,
         status: booking.status,
         pickup_location: booking.pickup_location,
-        dropoff_location: booking.dropoff_location
+        dropoff_location: booking.dropoff_location,
+        avatar_url: booking.passenger.avatar_url,
+        profile_photo_url: booking.passenger.profile_photo_url
       }));
 
       setPassengers(formattedPassengers);
@@ -271,7 +276,18 @@ export default function RideTracking({ rideId, onComplete }: RideTrackingProps) 
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <div className="font-semibold text-gray-900">{passenger.full_name}</div>
+                      <div className="mb-2">
+                        <ClickableUserProfile
+                          user={{
+                            id: passenger.id,
+                            full_name: passenger.full_name,
+                            avatar_url: passenger.avatar_url,
+                            profile_photo_url: passenger.profile_photo_url
+                          }}
+                          size="sm"
+                          showNameRight={true}
+                        />
+                      </div>
                       <div className="text-sm text-gray-600 mt-1">
                         <div className="flex items-center gap-1">
                           <MapPin className="w-3 h-3" />

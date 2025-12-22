@@ -87,6 +87,8 @@ interface PendingReview {
   booking_id: string;
   reviewee_id: string;
   reviewee_name: string;
+  reviewee_avatar_url?: string | null;
+  reviewee_profile_photo_url?: string | null;
   ride_origin: string;
   ride_destination: string;
   completed_at: string;
@@ -98,6 +100,8 @@ interface MatchedPassenger {
   passenger_id: string;
   passenger_name: string;
   passenger_rating: number;
+  passenger_avatar_url?: string | null;
+  passenger_profile_photo_url?: string | null;
   from_location: string;
   to_location: string;
   seats_needed: number;
@@ -1219,11 +1223,17 @@ export default function MyRides() {
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-start gap-4 flex-1">
-                        <div className="w-14 h-14 bg-yellow-200 rounded-full flex items-center justify-center text-2xl font-bold text-yellow-700 flex-shrink-0">
-                          {review.reviewee_name.charAt(0)}
-                        </div>
+                        <ClickableUserProfile
+                          user={{
+                            id: review.reviewee_id,
+                            full_name: review.reviewee_name,
+                            avatar_url: review.reviewee_avatar_url,
+                            profile_photo_url: review.reviewee_profile_photo_url
+                          }}
+                          size="lg"
+                          showNameRight={false}
+                        />
                         <div className="flex-1">
-                          <h3 className="font-bold text-lg text-gray-900">{review.reviewee_name}</h3>
                           <p className="text-sm text-gray-600 mt-1">
                             As: <span className="font-medium capitalize">{review.role}</span>
                           </p>
@@ -1279,16 +1289,19 @@ export default function MyRides() {
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-start gap-4 flex-1">
-                          <div className="w-14 h-14 bg-blue-200 rounded-full flex items-center justify-center text-2xl font-bold text-blue-700 flex-shrink-0">
-                            {match.passenger_name.charAt(0)}
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-bold text-lg text-gray-900">{match.passenger_name}</h3>
-                            <div className="flex items-center gap-2 mt-1 text-sm">
-                              <span className="flex items-center gap-1">
-                                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                                {match.passenger_rating.toFixed(1)}
-                              </span>
+                          <ClickableUserProfile
+                            user={{
+                              id: match.passenger_id,
+                              full_name: match.passenger_name,
+                              avatar_url: match.passenger_avatar_url,
+                              profile_photo_url: match.passenger_profile_photo_url
+                            }}
+                            size="lg"
+                            rating={match.passenger_rating}
+                            showNameRight={false}
+                          />
+                          <div className="flex-1 mt-2">
+                            <div className="flex items-center gap-2 text-sm">
                               <span className={`px-2 py-1 rounded-full text-xs font-bold ${matchScoreColor}`}>
                                 {match.match_score}% Match
                               </span>

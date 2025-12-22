@@ -4,6 +4,7 @@ import { Car, Users, TrendingUp, Calendar, MapPin, ArrowRight } from 'lucide-rea
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import SmartRecommendations from '../components/shared/SmartRecommendations';
+import ClickableUserProfile from '../components/shared/ClickableUserProfile';
 
 interface Stats {
   totalRidesOffered: number;
@@ -19,8 +20,11 @@ interface RecentRide {
   departure_time: string;
   available_seats: number;
   driver: {
+    id: string;
     full_name: string;
     average_rating: number;
+    avatar_url?: string | null;
+    profile_photo_url?: string | null;
   } | null;
 }
 
@@ -86,7 +90,7 @@ export default function Home() {
           destination,
           departure_time,
           available_seats,
-          driver:profiles!rides_driver_id_fkey(full_name, average_rating)
+          driver:profiles!rides_driver_id_fkey(id, full_name, average_rating, avatar_url, profile_photo_url)
         `)
         .eq('status', 'active')
         .gt('available_seats', 0)
@@ -255,22 +259,31 @@ export default function Home() {
               recentRides.filter(ride => ride.available_seats > 0).map((ride) => (
                 <div
                   key={ride.id}
-                  className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors cursor-pointer"
-                  onClick={() => navigate('/find-rides')}
+                  className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 text-sm text-gray-700 mb-1">
+                      <div className="flex items-center gap-2 text-sm text-gray-700 mb-2">
                         <span className="font-medium">{ride.origin}</span>
                         <span className="text-gray-400">→</span>
                         <span className="font-medium">{ride.destination}</span>
                       </div>
-                      <p className="text-xs text-gray-600">{formatDateTime(ride.departure_time)}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-xs text-gray-600">{ride.driver?.full_name}</span>
-                        <span className="text-xs text-gray-400">•</span>
-                        <span className="text-xs text-gray-600">⭐ {ride.driver?.average_rating.toFixed(1)}</span>
-                      </div>
+                      <p className="text-xs text-gray-600 mb-3">{formatDateTime(ride.departure_time)}</p>
+                      {ride.driver && (
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <ClickableUserProfile
+                            user={{
+                              id: ride.driver.id,
+                              full_name: ride.driver.full_name,
+                              avatar_url: ride.driver.avatar_url,
+                              profile_photo_url: ride.driver.profile_photo_url
+                            }}
+                            size="sm"
+                            rating={ride.driver.average_rating}
+                            showNameRight={true}
+                          />
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <span className="text-sm font-medium text-blue-600">

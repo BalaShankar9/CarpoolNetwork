@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Star, ThumbsUp, Car, User, Calendar, Filter } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import ClickableUserProfile from '../shared/ClickableUserProfile';
 
 interface Review {
   id: string;
@@ -10,6 +11,7 @@ interface Review {
   review_type: 'driver' | 'passenger';
   created_at: string;
   reviewer: {
+    id: string;
     full_name: string;
     avatar_url: string;
     profile_photo_url: string;
@@ -40,6 +42,7 @@ export default function ReviewsDisplay() {
           review_type,
           created_at,
           reviewer:reviewer_id (
+            id,
             full_name,
             avatar_url,
             profile_photo_url
@@ -195,33 +198,31 @@ export default function ReviewsDisplay() {
                 className="p-5 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
               >
                 <div className="flex items-start justify-between gap-4 mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center overflow-hidden">
-                      {review.reviewer?.profile_photo_url || review.reviewer?.avatar_url ? (
-                        <img
-                          src={review.reviewer.profile_photo_url || review.reviewer.avatar_url}
-                          alt={review.reviewer.full_name}
-                          className="w-12 h-12 object-cover"
-                        />
-                      ) : (
-                        <span className="text-lg font-bold text-blue-600">
-                          {review.reviewer?.full_name?.[0]?.toUpperCase() || '?'}
-                        </span>
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">{review.reviewer?.full_name || 'Anonymous'}</p>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <Calendar className="w-3 h-3" />
-                        {new Date(review.created_at).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
-                        <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded capitalize">
-                          {review.review_type}
-                        </span>
-                      </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <ClickableUserProfile
+                        user={{
+                          id: review.reviewer.id,
+                          full_name: review.reviewer.full_name,
+                          avatar_url: review.reviewer.avatar_url,
+                          profile_photo_url: review.reviewer.profile_photo_url
+                        }}
+                        size="md"
+                        showNameRight={true}
+                        additionalInfo={
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(review.created_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                            <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded capitalize">
+                              {review.review_type}
+                            </span>
+                          </div>
+                        }
+                      />
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
