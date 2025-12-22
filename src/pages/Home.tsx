@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Car, Users, TrendingUp, Calendar, MapPin, ArrowRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import SmartRecommendations from '../components/shared/SmartRecommendations';
 
 interface Stats {
   totalRidesOffered: number;
@@ -136,6 +137,8 @@ export default function Home() {
         <h1 className="text-3xl font-bold text-gray-900">Welcome back, {profile?.full_name?.split(' ')[0]}!</h1>
         <p className="text-gray-600 mt-1">Here's your carpooling activity</p>
       </div>
+
+      <SmartRecommendations />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-shadow">

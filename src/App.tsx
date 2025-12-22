@@ -38,9 +38,12 @@ import SafetyDashboard from './pages/admin/SafetyDashboard';
 import AdvancedAnalytics from './pages/admin/AdvancedAnalytics';
 import LiveActivityMonitor from './pages/admin/LiveActivityMonitor';
 import BulkOperations from './pages/admin/BulkOperations';
+import PerformanceMonitor from './pages/admin/PerformanceMonitor';
 import Leaderboards from './pages/Leaderboards';
 import Challenges from './pages/Challenges';
 import Layout from './components/layout/Layout';
+import { ProductionErrorBoundary } from './components/shared/ProductionErrorBoundary';
+import { LoadingProvider } from './components/shared/LoadingStateManager';
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -275,6 +278,11 @@ function AppContent() {
             <BulkOperations />
           </ProtectedRoute>
         } />
+        <Route path="/admin/performance" element={
+          <ProtectedRoute>
+            <PerformanceMonitor />
+          </ProtectedRoute>
+        } />
       </Routes>
     </Router>
   );
@@ -282,11 +290,15 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <RealtimeProvider>
-        <AppContent />
-      </RealtimeProvider>
-    </AuthProvider>
+    <ProductionErrorBoundary>
+      <LoadingProvider>
+        <AuthProvider>
+          <RealtimeProvider>
+            <AppContent />
+          </RealtimeProvider>
+        </AuthProvider>
+      </LoadingProvider>
+    </ProductionErrorBoundary>
   );
 }
 
