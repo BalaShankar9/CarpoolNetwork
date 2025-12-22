@@ -445,8 +445,36 @@ export default function RideDetails() {
         </div>
 
         <div className="p-6 border-b border-gray-200">
-          <RideStatusTracker rideId={ride.id} isDriver={ride.driver.id === profile?.id} />
+          <RideStatusTracker rideId={ride.id} isDriver={ride.driver.id === user?.id} />
         </div>
+
+        {userBooking &&
+         (userBooking.status === 'confirmed' || userBooking.status === 'active') &&
+         (ride.status === 'in-progress' || ride.status === 'active') && (
+          <div className="p-6 border-b border-gray-200">
+            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Navigation className="w-5 h-5 text-blue-600" />
+              Live Ride Tracking
+            </h3>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-gray-700">
+                The driver has started this ride. You can view real-time tracking and trip progress here.
+              </p>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium text-gray-700">Tracking active - Updates every 30 seconds</span>
+              </div>
+              <p className="text-sm text-gray-600">
+                Driver: <span className="font-medium">{ride.driver.full_name}</span>
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                Your booking: {userBooking.seats_requested} seat{userBooking.seats_requested > 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="p-6 border-b border-gray-200">
           <TripInsights

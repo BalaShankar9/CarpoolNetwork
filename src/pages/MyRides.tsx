@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Car, Calendar, MapPin, Users, Edit2, Trash2, Eye, AlertCircle, XCircle, CheckCircle, Star, Shield, MessageSquare, Phone } from 'lucide-react';
+import { Car, Calendar, MapPin, Users, Edit2, Trash2, Eye, AlertCircle, XCircle, CheckCircle, Star, Shield, MessageSquare, Phone, Navigation } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import RecurringRidesManager from '../components/rides/RecurringRidesManager';
+import RideTracking from '../components/rides/RideTracking';
 
 interface Ride {
   id: string;
@@ -76,18 +77,30 @@ interface RideRequest {
   created_at: string;
 }
 
+interface PendingReview {
+  booking_id: string;
+  reviewee_id: string;
+  reviewee_name: string;
+  ride_origin: string;
+  ride_destination: string;
+  completed_at: string;
+  role: string;
+}
+
 export default function MyRides() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'offered' | 'booked' | 'requests' | 'passengers' | 'myRequests'>('offered');
+  const [activeTab, setActiveTab] = useState<'offered' | 'booked' | 'requests' | 'passengers' | 'myRequests' | 'pendingReviews'>('offered');
   const [offeredRides, setOfferedRides] = useState<Ride[]>([]);
   const [bookedRides, setBookedRides] = useState<Booking[]>([]);
   const [bookingRequests, setBookingRequests] = useState<BookingRequest[]>([]);
   const [confirmedPassengers, setConfirmedPassengers] = useState<BookingRequest[]>([]);
   const [rideRequests, setRideRequests] = useState<RideRequest[]>([]);
+  const [pendingReviews, setPendingReviews] = useState<PendingReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+  const [expandedTrackingRideId, setExpandedTrackingRideId] = useState<string | null>(null);
 
   useEffect(() => {
     loadRides();
@@ -268,6 +281,14 @@ export default function MyRides() {
 
         if (error) throw error;
         setRideRequests(data || []);
+      } else if (activeTab === 'pendingReviews') {
+        const { data, error } = await supabase.rpc('get_pending_reviews');
+
+        if (error) {
+          console.error('Error loading pending reviews:', error);
+          throw error;
+        }
+        setPendingReviews(data || []);
       }
     } catch (error) {
       console.error('Error loading rides:', error);
@@ -522,6 +543,21 @@ export default function MyRides() {
           >
             My Ride Requests
           </button>
+          <button
+            onClick={() => setActiveTab('pendingReviews')}
+            className={`flex-1 px-6 py-4 font-medium transition-colors relative ${
+              activeTab === 'pendingReviews'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+          >
+            Pending Reviews
+            {pendingReviews.length > 0 && activeTab !== 'pendingReviews' && (
+              <span className="ml-2 inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-yellow-600 rounded-full">
+                {pendingReviews.length}
+              </span>
+            )}
+          </button>
         </div>
 
         <div className="p-6">
@@ -646,6 +682,35 @@ export default function MyRides() {
                         <p className="mt-3 text-sm text-gray-600 border-t border-gray-100 pt-3 line-clamp-2">
                           {ride.notes}
                         </p>
+                      )}
+
+                      {(ride.status === 'active' || ride.status === 'in-progress') && !expired && (
+                        <div className="mt-4 border-t border-gray-200 pt-4">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedTrackingRideId(
+                                expandedTrackingRideId === ride.id ? null : ride.id
+                              );
+                            }}
+                            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+                          >
+                            <Navigation className="w-4 h-4" />
+                            {expandedTrackingRideId === ride.id ? 'Hide Tracking' : 'Manage Ride Tracking'}
+                          </button>
+
+                          {expandedTrackingRideId === ride.id && (
+                            <div className="mt-4 border-t border-gray-200 pt-4">
+                              <RideTracking
+                                rideId={ride.id}
+                                onComplete={() => {
+                                  setExpandedTrackingRideId(null);
+                                  loadRides();
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   );
@@ -1045,6 +1110,59 @@ export default function MyRides() {
                     </div>
                   );
                 })
+              )}
+            </div>
+          ) : activeTab === 'pendingReviews' ? (
+            <div className="space-y-4">
+              {pendingReviews.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Star className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                  <p className="font-medium mb-2">No pending reviews</p>
+                  <p className="text-sm">You're all caught up! Reviews will appear here after completing rides.</p>
+                </div>
+              ) : (
+                pendingReviews.map((review) => (
+                  <div
+                    key={review.booking_id}
+                    className="border-2 border-yellow-200 rounded-xl p-6 bg-yellow-50"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-start gap-4 flex-1">
+                        <div className="w-14 h-14 bg-yellow-200 rounded-full flex items-center justify-center text-2xl font-bold text-yellow-700 flex-shrink-0">
+                          {review.reviewee_name.charAt(0)}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-bold text-lg text-gray-900">{review.reviewee_name}</h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            As: <span className="font-medium capitalize">{review.role}</span>
+                          </p>
+                          <div className="mt-2 flex items-center gap-2 text-sm text-gray-700">
+                            <MapPin className="w-4 h-4" />
+                            <span>{review.ride_origin} → {review.ride_destination}</span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Completed: {new Date(review.completed_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 mb-4">
+                      <p className="text-sm text-gray-700 mb-2">
+                        <Star className="w-4 h-4 inline text-yellow-500 mr-1" />
+                        Please share your experience to help other users
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => navigate(`/bookings/${review.booking_id}`)}
+                      className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Star className="w-5 h-5" />
+                      Leave Review
+                    </button>
+                  </div>
+                ))
               )}
             </div>
           ) : null}

@@ -18,6 +18,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import RideDetailsMap from '../components/rides/RideDetailsMap';
+import ReviewSubmission from '../components/rides/ReviewSubmission';
 
 interface BookingDetails {
   id: string;
@@ -68,15 +69,37 @@ export default function BookingDetails() {
   const [cancelling, setCancelling] = useState(false);
   const [sosActive, setSosActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasReviewed, setHasReviewed] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
 
   useEffect(() => {
     if (bookingId && user) {
       loadBookingDetails();
+      checkIfReviewed();
     } else if (!user) {
       setError('Please sign in to view booking details');
       setLoading(false);
     }
   }, [bookingId, user]);
+
+  const checkIfReviewed = async () => {
+    if (!bookingId || !user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('ride_reviews_detailed')
+        .select('id')
+        .eq('booking_id', bookingId)
+        .eq('reviewer_id', user.id)
+        .maybeSingle();
+
+      if (!error && data) {
+        setHasReviewed(true);
+      }
+    } catch (error) {
+      console.error('Error checking review status:', error);
+    }
+  };
 
   const loadBookingDetails = async () => {
     try {
@@ -531,6 +554,72 @@ export default function BookingDetails() {
           </div>
         </div>
       </div>
+
+      {(booking.status === 'active' || booking.status === 'in-progress') && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+          <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+            <Navigation className="w-5 h-5 text-blue-600" />
+            Ride in Progress
+          </h3>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="text-sm font-medium text-gray-700">Live tracking active</span>
+          </div>
+          <p className="text-sm text-gray-600 mb-3">
+            Your driver has started the ride. Location updates are being tracked for safety.
+          </p>
+          <div className="text-sm text-gray-700">
+            <p><strong>Driver:</strong> {booking.ride.driver.full_name}</p>
+            <p><strong>Your seats:</strong> {booking.seats_requested}</p>
+          </div>
+        </div>
+      )}
+
+      {booking.status === 'completed' && !hasReviewed && !showReviewForm && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+          <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+            <Star className="w-5 h-5 text-yellow-500" />
+            How was your ride?
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Help other passengers by sharing your experience with {booking.ride.driver.full_name}.
+          </p>
+          <button
+            onClick={() => setShowReviewForm(true)}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            Leave a Review
+          </button>
+        </div>
+      )}
+
+      {booking.status === 'completed' && showReviewForm && !hasReviewed && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <ReviewSubmission
+            bookingId={booking.id}
+            revieweeName={booking.ride.driver.full_name}
+            onSubmitted={() => {
+              setHasReviewed(true);
+              setShowReviewForm(false);
+              alert('Thank you for your review!');
+            }}
+          />
+        </div>
+      )}
+
+      {booking.status === 'completed' && hasReviewed && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+              <Star className="w-5 h-5 text-green-600 fill-current" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Review Submitted</h3>
+              <p className="text-sm text-gray-600">Thank you for sharing your feedback!</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {canCancel && isUpcoming && (
         <div className="bg-white rounded-xl border border-red-200 p-6">
