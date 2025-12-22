@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Calendar, Users, Star, Eye, Cloud, CheckCircle } from 'lucide-react';
+import { Search, MapPin, Calendar, Users, Star, Eye, Cloud, CheckCircle, AlertCircle, TrendingUp, Filter, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from '../components/shared/LocationAutocomplete';
@@ -35,6 +35,18 @@ interface Ride {
     temperature: number;
     condition: string;
   };
+  matchScore?: number;
+  reliabilityScore?: number;
+}
+
+interface TripRequest {
+  id: string;
+  from_location: string;
+  to_location: string;
+  departure_time: string;
+  flexible_time: boolean;
+  seats_needed: number;
+  status: string;
 }
 
 export default function FindRides() {
@@ -47,9 +59,18 @@ export default function FindRides() {
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [minRating, setMinRating] = useState(0);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [sortBy, setSortBy] = useState<'match_score' | 'departure_time' | 'rating'>('match_score');
+  const [myTripRequests, setMyTripRequests] = useState<TripRequest[]>([]);
+  const [showCreateRequest, setShowCreateRequest] = useState(false);
+  const [eligibilityStatus, setEligibilityStatus] = useState<any>(null);
 
   useEffect(() => {
+    checkEligibility();
     loadAllRides();
+    loadMyTripRequests();
 
     const ridesChannel = supabase
       .channel('rides-changes')
@@ -82,6 +103,37 @@ export default function FindRides() {
     };
   }, []);
 
+  const checkEligibility = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase.rpc('check_booking_eligibility');
+      if (!error && data && data.length > 0) {
+        setEligibilityStatus(data[0]);
+      }
+    } catch (error) {
+      console.error('Error checking eligibility:', error);
+    }
+  };
+
+  const loadMyTripRequests = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('trip_requests')
+        .select('*')
+        .eq('rider_id', user.id)
+        .in('status', ['active', 'pending'])
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setMyTripRequests(data || []);
+    } catch (error) {
+      console.error('Error loading trip requests:', error);
+    }
+  };
+
   const loadAllRides = async () => {
     if (!user) return;
 
@@ -99,19 +151,29 @@ export default function FindRides() {
         .gt('available_seats', 0)
         .gte('departure_time', new Date().toISOString())
         .order('departure_time', { ascending: true })
-        .limit(20);
+        .limit(50);
 
       if (error) throw error;
       const ridesData = data || [];
 
-      const { data: bookings } = await supabase
-        .from('ride_bookings')
-        .select('ride_id, id, status')
-        .eq('passenger_id', user.id)
-        .in('ride_id', ridesData.map(r => r.id));
+      const [bookingsResult, reliabilityResult] = await Promise.all([
+        supabase
+          .from('ride_bookings')
+          .select('ride_id, id, status')
+          .eq('passenger_id', user.id)
+          .in('ride_id', ridesData.map(r => r.id)),
+        supabase
+          .from('reliability_scores')
+          .select('user_id, reliability_score')
+          .in('user_id', ridesData.map(r => r.driver_id))
+      ]);
+
+      const bookings = bookingsResult.data || [];
+      const reliabilityScores = reliabilityResult.data || [];
 
       const ridesWithBookings = await Promise.all(ridesData.map(async (ride) => {
-        const booking = bookings?.find(b => b.ride_id === ride.id);
+        const booking = bookings.find(b => b.ride_id === ride.id);
+        const reliability = reliabilityScores.find(r => r.user_id === ride.driver_id);
         let weather = null;
 
         if (ride.origin_lat && ride.origin_lng) {
@@ -125,6 +187,7 @@ export default function FindRides() {
         return {
           ...ride,
           userBooking: booking ? { id: booking.id, status: booking.status } : undefined,
+          reliabilityScore: reliability?.reliability_score || 100,
           weather: weather && weather.condition !== 'Unavailable' ? {
             temperature: weather.temperature,
             condition: weather.condition
@@ -132,8 +195,23 @@ export default function FindRides() {
         };
       }));
 
-      const availableRides = ridesWithBookings.filter(ride => ride.available_seats > 0);
-      setRides(availableRides);
+      let filteredRides = ridesWithBookings.filter(ride => ride.available_seats > 0);
+
+      if (minRating > 0) {
+        filteredRides = filteredRides.filter(ride => ride.driver.average_rating >= minRating);
+      }
+
+      if (verifiedOnly) {
+        filteredRides = filteredRides.filter(ride => ride.driver.email_verified && ride.driver.phone_verified);
+      }
+
+      if (sortBy === 'rating') {
+        filteredRides.sort((a, b) => b.driver.average_rating - a.driver.average_rating);
+      } else if (sortBy === 'match_score' && filteredRides.some(r => r.matchScore)) {
+        filteredRides.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+      }
+
+      setRides(filteredRides);
     } catch (error) {
       console.error('Error loading rides:', error);
     } finally {
@@ -248,6 +326,57 @@ export default function FindRides() {
     }
   };
 
+  const createTripRequest = async () => {
+    if (!user || !origin || !destination || !date) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    if (!eligibilityStatus?.is_eligible) {
+      alert(eligibilityStatus?.reason || 'You are not eligible to book rides at this time');
+      return;
+    }
+
+    try {
+      const departureTime = new Date(date);
+
+      const { data: originCoords } = await googleMapsService.geocodeAddress(origin);
+      const { data: destCoords } = await googleMapsService.geocodeAddress(destination);
+
+      if (!originCoords || !destCoords) {
+        alert('Could not geocode locations');
+        return;
+      }
+
+      const { error } = await supabase.from('trip_requests').insert({
+        rider_id: user.id,
+        from_location: origin,
+        to_location: destination,
+        from_lat: originCoords.lat,
+        from_lng: originCoords.lng,
+        to_lat: destCoords.lat,
+        to_lng: destCoords.lng,
+        departure_time: departureTime.toISOString(),
+        flexible_time: true,
+        time_window_start: new Date(departureTime.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+        time_window_end: new Date(departureTime.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+        seats_needed: seats,
+        status: 'active'
+      });
+
+      if (error) throw error;
+
+      await supabase.rpc('match_trip_requests_to_rides');
+
+      alert('Trip request created! We will notify you when matching rides are found.');
+      setShowCreateRequest(false);
+      loadMyTripRequests();
+    } catch (error) {
+      console.error('Error creating trip request:', error);
+      alert('Failed to create trip request');
+    }
+  };
+
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('en-US', {
@@ -257,6 +386,20 @@ export default function FindRides() {
       hour: 'numeric',
       minute: '2-digit',
     });
+  };
+
+  const getMatchScoreColor = (score: number) => {
+    if (score >= 80) return 'text-green-600 bg-green-100';
+    if (score >= 60) return 'text-blue-600 bg-blue-100';
+    if (score >= 40) return 'text-yellow-600 bg-yellow-100';
+    return 'text-gray-600 bg-gray-100';
+  };
+
+  const getReliabilityColor = (score: number) => {
+    if (score >= 90) return 'text-green-600';
+    if (score >= 70) return 'text-blue-600';
+    if (score >= 50) return 'text-yellow-600';
+    return 'text-red-600';
   };
 
   return (
