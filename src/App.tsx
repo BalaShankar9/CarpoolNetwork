@@ -36,6 +36,7 @@ import SafetyReports from './pages/admin/SafetyReports';
 import SafetyReportDetail from './pages/admin/SafetyReportDetail';
 import SafetyDashboard from './pages/admin/SafetyDashboard';
 import AdvancedAnalytics from './pages/admin/AdvancedAnalytics';
+import LiveActivityMonitor from './pages/admin/LiveActivityMonitor';
 import Leaderboards from './pages/Leaderboards';
 import Challenges from './pages/Challenges';
 import Layout from './components/layout/Layout';
@@ -261,6 +262,11 @@ function AppContent() {
         <Route path="/admin/analytics" element={
           <ProtectedRoute>
             <AdvancedAnalytics />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/activity" element={
+          <ProtectedRoute>
+            <LiveActivityMonitor />
           </ProtectedRoute>
         } />
       </Routes>
