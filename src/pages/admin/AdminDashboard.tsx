@@ -27,6 +27,7 @@ import {
   Flag,
   Settings,
   Zap,
+  Package,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -413,6 +414,16 @@ export default function AdminDashboard() {
                       <div className="flex items-center gap-3">
                         <UserCheck className="w-5 h-5 text-green-500" />
                         <span className="font-medium text-gray-700">User Management</span>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                    </Link>
+                    <Link
+                      to="/admin/bulk-operations"
+                      className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Package className="w-5 h-5 text-purple-500" />
+                        <span className="font-medium text-gray-700">Bulk Operations</span>
                       </div>
                       <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
                     </Link>
