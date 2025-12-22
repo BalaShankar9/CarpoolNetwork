@@ -19,6 +19,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import RideDetailsMap from '../components/rides/RideDetailsMap';
 import ReviewSubmission from '../components/rides/ReviewSubmission';
+import ClickableUserProfile from '../components/shared/ClickableUserProfile';
 
 interface BookingDetails {
   id: string;
@@ -432,11 +433,17 @@ export default function BookingDetails() {
             Driver Information
           </h3>
           <div className="flex items-start gap-4">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-2xl font-bold text-blue-600">
-              {booking.ride.driver.full_name.charAt(0)}
-            </div>
+            <ClickableUserProfile
+              user={{
+                id: booking.ride.driver.id,
+                full_name: booking.ride.driver.full_name,
+                avatar_url: null
+              }}
+              size="xl"
+              rating={booking.ride.driver.average_rating}
+            />
             <div className="flex-1">
-              <p className="font-semibold text-lg text-gray-900">{booking.ride.driver.full_name}</p>
+              <p className="font-semibold text-lg text-gray-900 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => navigate(`/user/${booking.ride.driver.id}`)}>{booking.ride.driver.full_name}</p>
               <div className="flex items-center gap-3 mt-1 text-sm text-gray-600">
                 <span className="flex items-center gap-1">
                   <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />

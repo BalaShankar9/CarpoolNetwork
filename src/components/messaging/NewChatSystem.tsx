@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { Send, Search, ArrowLeft, AlertTriangle, MessageSquare } from 'lucide-react';
+import ClickableUserProfile from '../shared/ClickableUserProfile';
 
 interface Profile {
   id: string;
@@ -369,6 +370,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
             filteredConversations.map((conv) => {
               const otherMembers = getOtherMembers(conv);
               const initial = getConversationTitle(conv).charAt(0).toUpperCase();
+              const otherMember = otherMembers[0]?.profiles;
 
               return (
                 <button
@@ -379,10 +381,25 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold text-lg">
-                        {initial}
-                      </div>
+                    <div className="relative" onClick={(e) => {
+                      e.stopPropagation();
+                      if (otherMember) navigate(`/user/${otherMember.id}`);
+                    }}>
+                      {otherMember ? (
+                        <ClickableUserProfile
+                          user={{
+                            id: otherMember.id,
+                            full_name: otherMember.full_name,
+                            avatar_url: otherMember.avatar_url,
+                            profile_photo_url: otherMember.profile_photo_url
+                          }}
+                          size="sm"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold text-lg">
+                          {initial}
+                        </div>
+                      )}
                       {conv.unread_count > 0 && (
                         <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
                           {conv.unread_count}
@@ -433,15 +450,35 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
               >
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
-              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold">
-                {getConversationTitle(selectedConv).charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">{getConversationTitle(selectedConv)}</h3>
-                <p className="text-xs text-gray-500">
-                  {selectedConv.type === 'RIDE_MATCH' ? 'Ride Chat' : selectedConv.type === 'TRIP_MATCH' ? 'Trip Chat' : 'Direct Message'}
-                </p>
-              </div>
+              {(() => {
+                const otherMembers = getOtherMembers(selectedConv);
+                const otherMember = otherMembers[0]?.profiles;
+                return otherMember ? (
+                  <ClickableUserProfile
+                    user={{
+                      id: otherMember.id,
+                      full_name: otherMember.full_name,
+                      avatar_url: otherMember.avatar_url,
+                      profile_photo_url: otherMember.profile_photo_url
+                    }}
+                    size="sm"
+                    showNameRight
+                    additionalInfo={selectedConv.type === 'RIDE_MATCH' ? 'Ride Chat' : selectedConv.type === 'TRIP_MATCH' ? 'Trip Chat' : 'Direct Message'}
+                  />
+                ) : (
+                  <>
+                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold">
+                      {getConversationTitle(selectedConv).charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{getConversationTitle(selectedConv)}</h3>
+                      <p className="text-xs text-gray-500">
+                        {selectedConv.type === 'RIDE_MATCH' ? 'Ride Chat' : selectedConv.type === 'TRIP_MATCH' ? 'Trip Chat' : 'Direct Message'}
+                      </p>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             <div

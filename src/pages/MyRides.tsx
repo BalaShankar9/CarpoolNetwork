@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import RecurringRidesManager from '../components/rides/RecurringRidesManager';
 import RideTracking from '../components/rides/RideTracking';
+import ClickableUserProfile from '../components/shared/ClickableUserProfile';
 
 interface Ride {
   id: string;
@@ -31,8 +32,11 @@ interface Booking {
     destination: string;
     departure_time: string;
     driver: {
+      id: string;
       full_name: string;
       average_rating: number;
+      avatar_url?: string | null;
+      profile_photo_url?: string | null;
     };
   };
 }
@@ -55,6 +59,8 @@ interface BookingRequest {
     reliability_score: number;
     bio: string | null;
     phone?: string | null;
+    avatar_url?: string | null;
+    profile_photo_url?: string | null;
   };
   ride: {
     id: string;
@@ -191,7 +197,13 @@ export default function MyRides() {
               origin,
               destination,
               departure_time,
-              driver:profiles!rides_driver_id_fkey(full_name, average_rating)
+              driver:profiles!rides_driver_id_fkey(
+                id,
+                full_name,
+                average_rating,
+                avatar_url,
+                profile_photo_url
+              )
             )
           `)
           .eq('passenger_id', user.id)
@@ -221,7 +233,9 @@ export default function MyRides() {
                 cancelled_bookings,
                 last_minute_cancellations,
                 reliability_score,
-                bio
+                bio,
+                avatar_url,
+                profile_photo_url
               ),
               ride:rides(
                 id,
@@ -267,7 +281,9 @@ export default function MyRides() {
                 last_minute_cancellations,
                 reliability_score,
                 bio,
-                phone
+                phone,
+                avatar_url,
+                profile_photo_url
               ),
               ride:rides(
                 id,
@@ -805,11 +821,18 @@ export default function MyRides() {
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-start gap-4 flex-1">
-                          <div className="w-14 h-14 bg-blue-200 rounded-full flex items-center justify-center text-2xl font-bold text-blue-700 flex-shrink-0">
-                            {request.passenger.full_name.charAt(0)}
-                          </div>
+                          <ClickableUserProfile
+                            user={{
+                              id: request.passenger.id,
+                              full_name: request.passenger.full_name,
+                              avatar_url: request.passenger.avatar_url,
+                              profile_photo_url: request.passenger.profile_photo_url
+                            }}
+                            size="lg"
+                            rating={request.passenger.average_rating}
+                          />
                           <div className="flex-1">
-                            <h3 className="font-bold text-lg text-gray-900">{request.passenger.full_name}</h3>
+                            <h3 className="font-bold text-lg text-gray-900 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => navigate(`/user/${request.passenger.id}`)}>{request.passenger.full_name}</h3>
                             <div className="flex flex-wrap items-center gap-3 mt-1 text-sm">
                               <span className="flex items-center gap-1">
                                 <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
@@ -920,11 +943,18 @@ export default function MyRides() {
                   return (
                     <div key={passenger.id} className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6 border border-green-200">
                       <div className="flex items-start gap-4 mb-4">
-                        <div className="w-16 h-16 bg-green-200 rounded-full flex items-center justify-center text-2xl font-bold text-green-700 flex-shrink-0">
-                          {passenger.passenger.full_name.charAt(0)}
-                        </div>
+                        <ClickableUserProfile
+                          user={{
+                            id: passenger.passenger.id,
+                            full_name: passenger.passenger.full_name,
+                            avatar_url: passenger.passenger.avatar_url,
+                            profile_photo_url: passenger.passenger.profile_photo_url
+                          }}
+                          size="xl"
+                          rating={passenger.passenger.average_rating}
+                        />
                         <div className="flex-1">
-                          <h3 className="font-bold text-xl text-gray-900">{passenger.passenger.full_name}</h3>
+                          <h3 className="font-bold text-xl text-gray-900 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => navigate(`/user/${passenger.passenger.id}`)}>{passenger.passenger.full_name}</h3>
                           <div className="flex flex-wrap items-center gap-3 mt-1 text-sm">
                             <span className="flex items-center gap-1">
                               <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />

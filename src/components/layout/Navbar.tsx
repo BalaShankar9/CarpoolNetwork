@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useRealtime } from '../../contexts/RealtimeContext';
 import Logo from '../shared/Logo';
 import NotificationCenter from '../shared/NotificationCenter';
+import ClickableUserProfile from '../shared/ClickableUserProfile';
 import { useNavigate } from 'react-router-dom';
 
 export default function Navbar() {
@@ -56,16 +57,21 @@ export default function Navbar() {
                     <Shield className="w-6 h-6" />
                   </button>
                 )}
-                <div className="flex items-center gap-3 pl-3 border-l border-gray-300">
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">{profile?.full_name}</p>
-                    <p className="text-xs text-gray-500">
-                      {profile?.total_rides_offered || 0} rides offered
-                    </p>
-                  </div>
-                  <button className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-lg hover:bg-blue-700 transition-colors">
-                    {profile?.full_name ? profile.full_name.charAt(0).toUpperCase() : <User className="w-5 h-5" />}
-                  </button>
+                <div className="pl-3 border-l border-gray-300">
+                  {profile && (
+                    <ClickableUserProfile
+                      user={{
+                        id: user.id,
+                        full_name: profile.full_name,
+                        avatar_url: profile.avatar_url,
+                        profile_photo_url: profile.profile_photo_url
+                      }}
+                      size="sm"
+                      showNameRight
+                      additionalInfo={`⭐ ${profile.average_rating?.toFixed(1) || '0.0'}`}
+                      rating={profile.average_rating}
+                    />
+                  )}
                 </div>
                 <button
                   onClick={async () => {
