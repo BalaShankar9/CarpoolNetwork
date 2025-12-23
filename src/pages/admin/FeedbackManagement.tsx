@@ -47,7 +47,11 @@ export default function FeedbackManagement() {
       setError('Failed to load feedback');
       console.error(error);
     } else {
-      setReports(data || []);
+      const formattedData = (data || []).map((report: any) => ({
+        ...report,
+        user: Array.isArray(report.user) ? report.user[0] : report.user
+      }));
+      setReports(formattedData);
     }
     setLoading(false);
   };

@@ -251,7 +251,7 @@ export default function Diagnostics() {
       const [profiles, rides, bookings, messages, vehicles, bug_reports] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('rides').select('id', { count: 'exact', head: true }),
-        supabase.from('bookings').select('id', { count: 'exact', head: true }),
+        supabase.from('ride_bookings').select('id', { count: 'exact', head: true }),
         supabase.from('messages').select('id', { count: 'exact', head: true }),
         supabase.from('vehicles').select('id', { count: 'exact', head: true }),
         supabase.from('bug_reports').select('id', { count: 'exact', head: true }),

@@ -175,7 +175,7 @@ class LocationTracker {
     }
   }
 
-  subscribeTo LiveLocations(rideId: string, callback: (locations: any[]) => void) {
+  subscribeToLiveLocations(rideId: string, callback: (locations: any[]) => void) {
     const channel = supabase
       .channel(`ride_locations_${rideId}`)
       .on(

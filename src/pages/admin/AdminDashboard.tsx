@@ -91,8 +91,8 @@ export default function AdminDashboard() {
       ] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('rides').select('id', { count: 'exact', head: true }),
-        supabase.from('bookings').select('id', { count: 'exact', head: true }),
-        supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('ride_bookings').select('id', { count: 'exact', head: true }),
+        supabase.from('ride_bookings').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('bug_reports').select('id', { count: 'exact', head: true }),
         supabase.from('rides').select('id', { count: 'exact', head: true })
           .gte('departure_time', new Date().toISOString()),

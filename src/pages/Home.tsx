@@ -183,7 +183,7 @@ export default function Home() {
               <div className="text-2xl">⭐</div>
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{profile?.average_rating.toFixed(1) || '0.0'}</p>
+          <p className="text-3xl font-bold text-gray-900">{(profile?.average_rating || 0).toFixed(1)}</p>
           <p className="text-sm text-gray-600 mt-1">Your Rating</p>
         </div>
       </div>

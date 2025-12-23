@@ -1161,13 +1161,20 @@ export default function MyRides() {
                         </div>
                         {!expired && !isCancelled && (
                           <button
-                            onClick={() => {
+                            onClick={async () => {
                               if (confirm('Are you sure you want to cancel this ride request?')) {
-                                supabase
-                                  .from('ride_requests')
-                                  .update({ status: 'cancelled' })
-                                  .eq('id', request.id)
-                                  .then(() => loadRides());
+                                try {
+                                  const { error } = await supabase
+                                    .from('ride_requests')
+                                    .update({ status: 'cancelled' })
+                                    .eq('id', request.id);
+
+                                  if (error) throw error;
+                                  await loadRides();
+                                } catch (error) {
+                                  console.error('Failed to cancel request:', error);
+                                  alert('Failed to cancel request. Please try again.');
+                                }
                               }
                             }}
                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"

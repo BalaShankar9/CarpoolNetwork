@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Calendar, Users, Star, Eye, Cloud, CheckCircle, AlertCircle, TrendingUp, Filter, X } from 'lucide-react';
+import { Search, MapPin, Calendar, Users, Star, Eye, Cloud, CheckCircle, AlertCircle, TrendingUp, Filter, X, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from '../components/shared/LocationAutocomplete';
@@ -302,18 +302,24 @@ export default function FindRides() {
   const requestRide = async (rideId: string) => {
     if (!user) return;
 
+    const ride = rides.find(r => r.id === rideId);
+    if (!ride) {
+      alert('Ride not found');
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('ride_bookings')
         .insert([{
           ride_id: rideId,
           passenger_id: user.id,
-          pickup_location: origin || 'To be confirmed',
-          pickup_lat: 0,
-          pickup_lng: 0,
-          dropoff_location: destination || 'To be confirmed',
-          dropoff_lat: 0,
-          dropoff_lng: 0,
+          pickup_location: origin || ride.origin,
+          pickup_lat: ride.origin_lat,
+          pickup_lng: ride.origin_lng,
+          dropoff_location: destination || ride.destination,
+          dropoff_lat: ride.destination_lat,
+          dropoff_lng: ride.destination_lng,
           seats_requested: seats,
         }]);
 

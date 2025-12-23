@@ -65,7 +65,7 @@ export default function UserManagement() {
       (profiles || []).map(async (profile) => {
         const [ridesResult, bookingsResult] = await Promise.all([
           supabase.from('rides').select('id', { count: 'exact', head: true }).eq('driver_id', profile.id),
-          supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('passenger_id', profile.id),
+          supabase.from('ride_bookings').select('id', { count: 'exact', head: true }).eq('passenger_id', profile.id),
         ]);
 
         return {

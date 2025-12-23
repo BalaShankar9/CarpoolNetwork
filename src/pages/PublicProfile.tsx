@@ -107,7 +107,7 @@ export default function PublicProfile() {
         .eq('driver_id', userId);
 
       const { data: passengerBookings } = await supabase
-        .from('bookings')
+        .from('ride_bookings')
         .select('id', { count: 'exact', head: true })
         .eq('passenger_id', userId)
         .eq('status', 'confirmed');

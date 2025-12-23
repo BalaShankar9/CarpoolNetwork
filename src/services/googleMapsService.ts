@@ -303,7 +303,7 @@ export class GoogleMapsService {
         };
       },
       600000,
-      () => this.getMockWeatherData(targetDate)
+      () => this.getMockWeatherData(targetDate) as any
     );
   }
 

@@ -323,7 +323,7 @@ export default function SafetyReports() {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-start gap-4 flex-1">
                   <div className={`p-3 rounded-full ${getSeverityColor(report.severity)}`}>
-                    {getCategoryIcon(report.category || report.incident_type)}
+                    {getCategoryIcon(report.category)}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">

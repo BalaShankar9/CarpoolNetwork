@@ -26,6 +26,13 @@ export type Database = {
           average_rating: number;
           created_at: string;
           updated_at: string;
+          trust_score: number;
+          profile_photo_url: string | null;
+          profile_verified: boolean;
+          reliability_score: number;
+          is_admin: boolean;
+          whatsapp_number: string | null;
+          onboarding_completed: boolean;
         };
         Insert: {
           id: string;
@@ -43,6 +50,13 @@ export type Database = {
           average_rating?: number;
           created_at?: string;
           updated_at?: string;
+          trust_score?: number;
+          profile_photo_url?: string | null;
+          profile_verified?: boolean;
+          reliability_score?: number;
+          is_admin?: boolean;
+          whatsapp_number?: string | null;
+          onboarding_completed?: boolean;
         };
         Update: {
           id?: string;
@@ -60,6 +74,13 @@ export type Database = {
           average_rating?: number;
           created_at?: string;
           updated_at?: string;
+          trust_score?: number;
+          profile_photo_url?: string | null;
+          profile_verified?: boolean;
+          reliability_score?: number;
+          is_admin?: boolean;
+          whatsapp_number?: string | null;
+          onboarding_completed?: boolean;
         };
       };
       user_preferences: {
