@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { checkRateLimit, recordRateLimitAction } from '../../lib/rateLimiting';
 import { Send, Search, MoreVertical, Check, CheckCheck, Phone, MessageSquare, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { getUserProfilePath } from '../../utils/profileNavigation';
 
 interface Profile {
   id: string;
@@ -339,7 +340,7 @@ export default function MessageList({ initialUserId, initialUserName }: MessageL
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/profile/${userId}`);
+                          navigate(getUserProfilePath(userId, user?.id));
                         }}
                         className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold text-lg flex-shrink-0 hover:bg-green-200 transition-colors"
                         title="View profile"
@@ -396,7 +397,7 @@ export default function MessageList({ initialUserId, initialUserName }: MessageL
                   <ArrowLeft className="w-5 h-5 text-gray-600" />
                 </button>
                 <button
-                  onClick={() => navigate(`/profile/${selectedUserId}`)}
+                  onClick={() => selectedUserId && navigate(getUserProfilePath(selectedUserId, user?.id))}
                   className="flex items-center gap-3 hover:opacity-75 transition-opacity flex-1 min-w-0"
                 >
                   <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold flex-shrink-0">

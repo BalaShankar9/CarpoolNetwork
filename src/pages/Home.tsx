@@ -259,7 +259,16 @@ export default function Home() {
               recentRides.filter(ride => ride.available_seats > 0).map((ride) => (
                 <div
                   key={ride.id}
-                  className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/rides/${ride.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      navigate(`/rides/${ride.id}`);
+                    }
+                  }}
+                  className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-colors cursor-pointer"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">

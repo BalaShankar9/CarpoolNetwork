@@ -14,6 +14,7 @@ export default function Messages() {
   }) || {};
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
     const initializeConversation = async () => {
@@ -22,11 +23,15 @@ export default function Messages() {
         return;
       }
 
+      setInitError(null);
+
       // If userId provided, create/get DM conversation
       if (userId) {
         const convId = await getOrCreateFriendsDM(user.id, userId);
         if (convId) {
           setConversationId(convId);
+        } else {
+          setInitError('Unable to start this conversation. Please try again.');
         }
       }
       // If rideId and driverId provided, create/get ride conversation
@@ -34,6 +39,8 @@ export default function Messages() {
         const convId = await getOrCreateRideConversation(rideId, driverId, user.id);
         if (convId) {
           setConversationId(convId);
+        } else {
+          setInitError('Unable to start this ride chat. Please try again.');
         }
       }
 
@@ -52,7 +59,14 @@ export default function Messages() {
   }
 
   return (
-    <div>
+    <div className="min-h-[calc(100vh-64px)]">
+      {initError && (
+        <div className="mx-auto max-w-3xl px-4 pt-4">
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {initError}
+          </div>
+        </div>
+      )}
       <NewChatSystem initialConversationId={conversationId} />
     </div>
   );

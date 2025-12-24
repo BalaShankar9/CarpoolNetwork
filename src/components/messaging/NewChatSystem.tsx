@@ -138,6 +138,12 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!initialConversationId) return;
+    setSelectedConversation(initialConversationId);
+    loadConversations();
+  }, [initialConversationId, loadConversations]);
+
   // Load messages for selected conversation
   const loadMessages = useCallback(async (conversationId: string) => {
     try {
