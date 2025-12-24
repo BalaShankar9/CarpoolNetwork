@@ -28,8 +28,8 @@
     <div id="root"></div>
     <script>
       (function() {
-        var apiKey = 'AIzaSyA1FUEgMfdu8AhcEFhseNJAYzjpNHdukm4';
-        if (apiKey) {
+        var apiKey = '__GOOGLE_MAPS_API_KEY__';
+        if (apiKey && apiKey !== '__GOOGLE_MAPS_API_KEY__') {
           var script = document.createElement('script');
           script.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&libraries=places';
           script.async = true;

@@ -82,7 +82,7 @@ You can use the Supabase dashboard or deploy via CLI.
 1. In Supabase staging dashboard, go to **Settings** > **API**
 2. Copy:
    - **Project URL** (e.g., `https://xxxxx.supabase.co`)
-   - **anon/public key** (starts with `eyJ...`)
+   - **anon/public key** (e.g., `your-supabase-anon-key`)
 
 ---
 
@@ -100,8 +100,8 @@ Add these variables with scope: **Production only**
 | Variable Name | Value | Scope |
 |---------------|-------|-------|
 | `VITE_SUPABASE_URL` | `https://uqofmsreosfjflmgurzb.supabase.co` | Production |
-| `VITE_SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` | Production |
-| `VITE_GOOGLE_MAPS_API_KEY` | `AIzaSyDiqv8H6yGfUM5itzjpL1pU19I_veBIwHE` | Production |
+| `VITE_SUPABASE_ANON_KEY` | `your-supabase-anon-key` | Production |
+| `VITE_GOOGLE_MAPS_API_KEY` | `your-google-maps-api-key` | Production |
 
 **Steps:**
 1. Click **Add a variable**
@@ -119,7 +119,7 @@ Add these variables with scope: **Deploy previews** and **Branch deploys**
 |---------------|-------|-------|
 | `VITE_SUPABASE_URL` | `https://[your-staging-ref].supabase.co` | Deploy Previews, Branch Deploys |
 | `VITE_SUPABASE_ANON_KEY` | `[your-staging-anon-key]` | Deploy Previews, Branch Deploys |
-| `VITE_GOOGLE_MAPS_API_KEY` | `AIzaSyDiqv8H6yGfUM5itzjpL1pU19I_veBIwHE` | Deploy Previews, Branch Deploys |
+| `VITE_GOOGLE_MAPS_API_KEY` | `your-google-maps-api-key` | Deploy Previews, Branch Deploys |
 
 **Steps:**
 1. Click **Add a variable**
@@ -140,12 +140,12 @@ VITE_SUPABASE_URL
   Branch Deploys: https://[staging-ref].supabase.co
 
 VITE_SUPABASE_ANON_KEY
-  Production: eyJ... (production key)
-  Deploy Previews: eyJ... (staging key)
-  Branch Deploys: eyJ... (staging key)
+  Production: your-supabase-anon-key
+  Deploy Previews: your-staging-anon-key
+  Branch Deploys: your-staging-anon-key
 
 VITE_GOOGLE_MAPS_API_KEY
-  All contexts: AIzaSyDiqv8H6yGfUM5itzjpL1pU19I_veBIwHE
+  All contexts: your-google-maps-api-key
 ```
 
 ---
@@ -237,8 +237,8 @@ VITE_GOOGLE_MAPS_API_KEY
 **Local Development** (`.env`):
 ```bash
 VITE_SUPABASE_URL=https://uqofmsreosfjflmgurzb.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...
-VITE_GOOGLE_MAPS_API_KEY=AIzaSy...
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
 VITE_APP_ENV=development
 ```
 

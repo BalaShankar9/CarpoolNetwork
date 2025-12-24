@@ -12,8 +12,8 @@
 2. Drag and drop the **`dist`** folder
 3. Add environment variables in Netlify dashboard:
    - `VITE_SUPABASE_URL` = `https://uqofmsreosfjflmgurzb.supabase.co`
-   - `VITE_SUPABASE_ANON_KEY` = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxb2Ztc3Jlb3NmamZsbWd1cnpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3Njc3NDgsImV4cCI6MjA3NjM0Mzc0OH0.CYJ0Vq3xe1jpvjb7zHiCvL8KPZKQJ65XJaYNDrGgOzM`
-   - `VITE_GOOGLE_MAPS_API_KEY` = `AIzaSyA1FUEgMfdu8AhcEFhseNJAYzjpNHdukm4`
+   - `VITE_SUPABASE_ANON_KEY` = `your-supabase-anon-key`
+   - `VITE_GOOGLE_MAPS_API_KEY` = `your-google-maps-api-key`
    - `VITE_APP_ENV` = `production`
    - `VITE_ADMIN_EMAIL` = `balashankarbollineni4@gmail.com`
 4. Done! Your site is live

@@ -294,7 +294,7 @@ const gasStations = await googleMapsService.searchNearbyPlaces(
 
 Your API key is already configured in `.env`:
 ```
-VITE_GOOGLE_MAPS_API_KEY=AIzaSyA1FUEgMfdu8AhcEFhseNJAYzjpNHdukm4
+VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
 ```
 
 ### APIs Enabled (from your screenshots):
