@@ -10,6 +10,8 @@ publish = "dist"
 command = "npm run build"
 
 [build.environment]
+  # Google Maps API keys are public; disable smart secret scanning to prevent false positives.
+  SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
 
 [build.processing]
 
