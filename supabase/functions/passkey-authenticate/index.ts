@@ -6,9 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
-interface AuthenticationStartRequest {
-  // Empty for now - challenge will work for any credential
-}
+type AuthenticationStartRequest = Record<string, never>;
 
 interface AuthenticationCompleteRequest {
   challenge: string;

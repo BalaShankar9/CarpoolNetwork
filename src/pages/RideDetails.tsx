@@ -21,6 +21,7 @@ interface RideDetails {
   departure_time: string;
   available_seats: number;
   total_seats: number;
+  status: string;
   notes: string | null;
   estimated_distance: number | null;
   estimated_duration: number | null;

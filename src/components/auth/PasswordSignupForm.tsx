@@ -161,6 +161,9 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
             {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
           </button>
         </div>
+        {password && !passwordLongEnough && (
+          <p className="mt-1 text-xs text-red-600">Password must be at least 6 characters</p>
+        )}
       </div>
 
       <div>

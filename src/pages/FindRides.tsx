@@ -12,6 +12,8 @@ interface Ride {
   id: string;
   origin: string;
   destination: string;
+  destination_lat: number;
+  destination_lng: number;
   departure_time: string;
   available_seats: number;
   total_seats: number;
@@ -24,6 +26,8 @@ interface Ride {
     avatar_url: string | null;
     average_rating: number;
     total_rides_offered: number;
+    email_verified?: boolean | null;
+    phone_verified?: boolean | null;
   };
   vehicle: {
     make: string;

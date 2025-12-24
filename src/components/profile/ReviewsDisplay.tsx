@@ -4,18 +4,20 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import ClickableUserProfile from '../shared/ClickableUserProfile';
 
+interface Reviewer {
+  id: string;
+  full_name: string;
+  avatar_url: string | null;
+  profile_photo_url: string | null;
+}
+
 interface Review {
   id: string;
   rating: number;
   comment: string;
   review_type: 'driver' | 'passenger';
   created_at: string;
-  reviewer: {
-    id: string;
-    full_name: string;
-    avatar_url: string;
-    profile_photo_url: string;
-  };
+  reviewer: Reviewer | Reviewer[];
 }
 
 export default function ReviewsDisplay() {
@@ -192,50 +194,58 @@ export default function ReviewsDisplay() {
           </div>
 
           <div className="space-y-4">
-            {filteredReviews.map((review) => (
-              <div
-                key={review.id}
-                className="p-5 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-4 mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <ClickableUserProfile
-                        user={{
-                          id: review.reviewer.id,
-                          full_name: review.reviewer.full_name,
-                          avatar_url: review.reviewer.avatar_url,
-                          profile_photo_url: review.reviewer.profile_photo_url
-                        }}
-                        size="md"
-                        showNameRight={true}
-                        additionalInfo={
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <Calendar className="w-3 h-3" />
-                            {new Date(review.created_at).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
-                            <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded capitalize">
-                              {review.review_type}
-                            </span>
-                          </div>
-                        }
-                      />
+            {filteredReviews.map((review) => {
+              const reviewer = Array.isArray(review.reviewer) ? review.reviewer[0] : review.reviewer;
+
+              if (!reviewer) {
+                return null;
+              }
+
+              return (
+                <div
+                  key={review.id}
+                  className="p-5 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-4 mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <ClickableUserProfile
+                          user={{
+                            id: reviewer.id,
+                            full_name: reviewer.full_name,
+                            avatar_url: reviewer.avatar_url,
+                            profile_photo_url: reviewer.profile_photo_url
+                          }}
+                          size="md"
+                          showNameRight={true}
+                          additionalInfo={
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                              <Calendar className="w-3 h-3" />
+                              {new Date(review.created_at).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                              <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded capitalize">
+                                {review.review_type}
+                              </span>
+                            </div>
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {renderStars(review.rating)}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    {renderStars(review.rating)}
-                  </div>
+                  {review.comment && (
+                    <p className="text-gray-700 text-sm leading-relaxed pl-15">
+                      {review.comment}
+                    </p>
+                  )}
                 </div>
-                {review.comment && (
-                  <p className="text-gray-700 text-sm leading-relaxed pl-15">
-                    {review.comment}
-                  </p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}

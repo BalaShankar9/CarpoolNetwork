@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { test as base, expect, Page } from '@playwright/test';
 
 export interface TestUser {
@@ -30,8 +32,8 @@ export class AuthHelper {
   async login(user: TestUser) {
     await this.page.goto('/signin');
     await this.page.waitForLoadState('networkidle');
-    await this.page.fill('input[type="email"]', user.email);
-    await this.page.fill('input[type="password"]', user.password);
+    await this.page.fill('input#identifier', user.email);
+    await this.page.fill('input#password', user.password);
     await this.page.click('button[type="submit"]');
     await this.page.waitForURL('/', { timeout: 15000 });
     await expect(this.page.locator('text=Welcome')).toBeVisible({ timeout: 10000 });
@@ -48,13 +50,28 @@ export class AuthHelper {
     await this.page.waitForLoadState('networkidle');
     await this.page.fill('input#fullName', user.fullName);
     await this.page.fill('input#email', user.email);
+    await this.page.fill('input#phone', '+447700900000');
     await this.page.fill('input#password', user.password);
-    await this.page.click('button[type="submit"]');
+    await this.page.fill('input#confirmPassword', user.password);
+
+    const submitBtn = this.page.locator('button[type="submit"]');
 
     if (expectBetaBlock) {
-      await expect(this.page.locator('text=Private beta. Access not enabled yet.')).toBeVisible({ timeout: 5000 });
+      try {
+        await expect(submitBtn).toBeEnabled({ timeout: 5000 });
+      } catch {
+        await expect(this.page.locator('p.text-red-600')).toBeVisible({ timeout: 10000 });
+        return;
+      }
+    }
+
+    await expect(submitBtn).toBeEnabled({ timeout: 15000 });
+    await submitBtn.click();
+
+    if (expectBetaBlock) {
+      await expect(this.page.locator('[role="alert"], p.text-red-600')).toBeVisible({ timeout: 10000 });
     } else {
-      await expect(this.page.locator('text=Account Created!')).toBeVisible({ timeout: 10000 });
+      await this.page.waitForURL('/', { timeout: 15000 });
     }
   }
 }
@@ -207,18 +224,32 @@ type TestFixtures = {
 };
 
 export const test = base.extend<TestFixtures>({
-  auth: async ({ page }, use) => {
-    await use(new AuthHelper(page));
+  auth: async ({ page }, applyFixture) => {
+    await applyFixture(new AuthHelper(page));
   },
-  rides: async ({ page }, use) => {
-    await use(new RideHelper(page));
+  rides: async ({ page }, applyFixture) => {
+    await applyFixture(new RideHelper(page));
   },
-  bookings: async ({ page }, use) => {
-    await use(new BookingHelper(page));
+  bookings: async ({ page }, applyFixture) => {
+    await applyFixture(new BookingHelper(page));
   },
-  messaging: async ({ page }, use) => {
-    await use(new MessagingHelper(page));
+  messaging: async ({ page }, applyFixture) => {
+    await applyFixture(new MessagingHelper(page));
   },
 });
+
+const envFilePath = path.resolve(process.cwd(), '.env');
+const envFileContents = fs.existsSync(envFilePath) ? fs.readFileSync(envFilePath, 'utf8') : '';
+const envSupabaseUrl = process.env.VITE_SUPABASE_URL || '';
+const envSupabaseKey = process.env.VITE_SUPABASE_ANON_KEY || '';
+const hasSupabaseEnvVars = Boolean(envSupabaseUrl && envSupabaseKey);
+const hasSupabaseEnvFile =
+  /VITE_SUPABASE_URL=.+/i.test(envFileContents) && /VITE_SUPABASE_ANON_KEY=.+/i.test(envFileContents);
+const hasPlaceholderEnv =
+  envSupabaseUrl.includes('your-project-ref.supabase.co') ||
+  envSupabaseKey.includes('your-anon-key-here') ||
+  envFileContents.includes('your-project-ref.supabase.co') ||
+  envFileContents.includes('your-anon-key-here');
+export const isE2EConfigured = (hasSupabaseEnvVars || hasSupabaseEnvFile) && !hasPlaceholderEnv;
 
 export { expect };

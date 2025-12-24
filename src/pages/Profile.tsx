@@ -428,7 +428,10 @@ export default function Profile() {
       await loadVehicles();
       setTimeout(() => {
         setSuccess('');
-        setUploadProgress(prev => ({ ...prev, [vehicleId]: undefined }));
+        setUploadProgress(prev => {
+          const { [vehicleId]: _removed, ...rest } = prev;
+          return rest;
+        });
       }, 3000);
     } catch (err: any) {
       const errorMsg = err.message || 'Failed to upload vehicle photo';

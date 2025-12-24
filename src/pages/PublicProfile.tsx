@@ -223,10 +223,12 @@ export default function PublicProfile() {
               </div>
 
               <VerificationBadges
+                profileId={profile.id}
                 photoVerified={profile.photo_verified}
                 idVerified={profile.id_verified}
                 phoneVerified={profile.phone_verified}
                 emailVerified={profile.email_verified}
+                includeDocuments={false}
               />
 
               {stats && stats.averageRating > 0 && (

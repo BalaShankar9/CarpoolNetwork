@@ -13,31 +13,58 @@ interface VerificationStatus {
   actionLink?: string;
 }
 
-export default function VerificationBadges() {
+interface VerificationBadgesProps {
+  profileId?: string;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  photoVerified?: boolean;
+  idVerified?: boolean;
+  includeDocuments?: boolean;
+}
+
+export default function VerificationBadges({
+  profileId,
+  emailVerified,
+  phoneVerified,
+  photoVerified,
+  idVerified,
+  includeDocuments = true
+}: VerificationBadgesProps) {
   const { profile } = useAuth();
   const [hasDriverLicense, setHasDriverLicense] = useState(false);
   const [hasInsurance, setHasInsurance] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(includeDocuments);
+  const effectiveProfileId = profileId ?? profile?.id;
+  const hasExternalStatus =
+    emailVerified !== undefined ||
+    phoneVerified !== undefined ||
+    photoVerified !== undefined ||
+    idVerified !== undefined;
 
   useEffect(() => {
-    if (profile?.id) {
-      checkDocuments();
+    if (!includeDocuments) {
+      setLoading(false);
+      return;
     }
-  }, [profile?.id]);
 
-  const checkDocuments = async () => {
+    if (effectiveProfileId) {
+      checkDocuments(effectiveProfileId);
+    }
+  }, [effectiveProfileId, includeDocuments]);
+
+  const checkDocuments = async (targetProfileId: string) => {
     try {
       const [licenseResult, insuranceResult] = await Promise.all([
         supabase
           .from('driver_licenses')
           .select('id, status')
-          .eq('user_id', profile?.id)
+          .eq('user_id', targetProfileId)
           .eq('status', 'verified')
           .maybeSingle(),
         supabase
           .from('vehicle_insurance')
           .select('id, status')
-          .eq('user_id', profile?.id)
+          .eq('user_id', targetProfileId)
           .eq('status', 'active')
           .maybeSingle()
       ]);
@@ -51,14 +78,19 @@ export default function VerificationBadges() {
     }
   };
 
-  if (!profile) return null;
+  if (!profile && !hasExternalStatus) return null;
 
-  const verifications: VerificationStatus[] = [
+  const resolvedEmailVerified = emailVerified ?? profile?.email_verified ?? profile?.is_verified ?? false;
+  const resolvedPhoneVerified = phoneVerified ?? profile?.phone_verified ?? !!profile?.phone;
+  const resolvedPhotoVerified = photoVerified ?? profile?.photo_verified ?? profile?.profile_verified ?? false;
+  const resolvedIdVerified = idVerified ?? profile?.id_verified ?? false;
+
+  const baseVerifications: VerificationStatus[] = [
     {
       id: 'email',
       label: 'Email Verified',
       icon: Mail,
-      verified: profile.is_verified || false,
+      verified: resolvedEmailVerified,
       description: 'Email address confirmed',
       actionLabel: 'Verify Email',
       actionLink: '/verify-email'
@@ -67,20 +99,34 @@ export default function VerificationBadges() {
       id: 'phone',
       label: 'Phone Verified',
       icon: Phone,
-      verified: !!profile.phone,
+      verified: resolvedPhoneVerified,
       description: 'Phone number added',
       actionLabel: 'Add Phone',
       actionLink: '#edit-profile'
     },
     {
-      id: 'face',
-      label: 'Face Verified',
+      id: 'photo',
+      label: 'Photo Verified',
       icon: Camera,
-      verified: !!(profile as any).profile_verified,
+      verified: resolvedPhotoVerified,
       description: 'Identity verified with face photo',
       actionLabel: 'Upload Photo',
       actionLink: '#profile-photo'
     },
+    {
+      id: 'id',
+      label: 'ID Verified',
+      icon: FileText,
+      verified: resolvedIdVerified,
+      description: 'Government ID verified',
+      actionLabel: 'Verify ID',
+      actionLink: '#documents'
+    }
+  ];
+
+  const verifications: VerificationStatus[] = [
+    ...baseVerifications,
+    ...(includeDocuments ? [
     {
       id: 'license',
       label: 'Driver License',
@@ -99,6 +145,7 @@ export default function VerificationBadges() {
       actionLabel: 'Upload Insurance',
       actionLink: '#documents'
     }
+    ] : [])
   ];
 
   const verifiedCount = verifications.filter(v => v.verified).length;

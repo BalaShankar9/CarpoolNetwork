@@ -78,6 +78,7 @@ export default function UserAvatar({
 
   const bgColor = stringToColor(user.id);
   const isClickable = !!onClick;
+  const avatarUrl = user.avatar_url ?? undefined;
 
   const containerClasses = `
     ${sizeClasses[size]}
@@ -100,7 +101,7 @@ export default function UserAvatar({
     setImageLoading(false);
   };
 
-  const showImage = user.avatar_url && !imageError;
+  const showImage = !!avatarUrl && !imageError;
 
   return (
     <div className={containerClasses} onClick={onClick} role={isClickable ? 'button' : undefined}>
@@ -110,7 +111,7 @@ export default function UserAvatar({
             <div className={`absolute inset-0 ${bgColor} animate-pulse`}></div>
           )}
           <img
-            src={user.avatar_url}
+            src={avatarUrl}
             alt={user.full_name}
             className="w-full h-full object-cover"
             onLoad={handleImageLoad}

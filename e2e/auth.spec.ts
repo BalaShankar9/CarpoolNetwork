@@ -1,21 +1,23 @@
-import { test, expect, TEST_USERS } from './fixtures';
+import { test, expect, TEST_USERS, isE2EConfigured } from './fixtures';
+
+test.skip(!isE2EConfigured, 'E2E env not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
 
 test.describe('Authentication', () => {
   test.describe('Login', () => {
     test('should display login form', async ({ page }) => {
       await page.goto('/signin');
-      await expect(page.locator('h2:has-text("Welcome Back")')).toBeVisible();
-      await expect(page.locator('input[type="email"]')).toBeVisible();
-      await expect(page.locator('input[type="password"]')).toBeVisible();
+      await expect(page.locator('h1:has-text("Welcome Back")')).toBeVisible();
+      await expect(page.locator('input#identifier')).toBeVisible();
+      await expect(page.locator('input#password')).toBeVisible();
       await expect(page.locator('button[type="submit"]')).toBeVisible();
     });
 
     test('should show error for invalid credentials', async ({ page }) => {
       await page.goto('/signin');
-      await page.fill('input[type="email"]', 'invalid@example.com');
-      await page.fill('input[type="password"]', 'wrongpassword');
+      await page.fill('input#identifier', 'invalid@example.com');
+      await page.fill('input#password', 'wrongpassword');
       await page.click('button[type="submit"]');
-      await expect(page.locator('.bg-red-50, [role="alert"]')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('[role="alert"]')).toBeVisible({ timeout: 10000 });
     });
 
     test('should login with valid credentials', async ({ page, auth }) => {
@@ -34,13 +36,13 @@ test.describe('Authentication', () => {
   test.describe('Signup', () => {
     test('should display signup form with beta badge when beta mode is enabled', async ({ page }) => {
       await page.goto('/signup');
-      await expect(page.locator('h2:has-text("Create Account")')).toBeVisible();
+      await expect(page.locator('h1:has-text("Create Account")')).toBeVisible();
       await expect(page.locator('input#fullName')).toBeVisible();
       await expect(page.locator('input#email')).toBeVisible();
       await expect(page.locator('input#password')).toBeVisible();
     });
 
-    test('should block non-allowlisted email in beta mode', async ({ page, auth }) => {
+    test('should block non-allowlisted email in beta mode', async ({ auth }) => {
       const randomEmail = `test-${Date.now()}@notallowed.com`;
       await auth.signup(
         {

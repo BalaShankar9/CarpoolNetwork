@@ -105,7 +105,10 @@ export default function SignIn() {
         impactFactsRoute="/signin"
       >
         {error && (
-          <div className="mb-6 bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl flex items-start gap-3 animate-shake shadow-lg shadow-red-100">
+          <div
+            role="alert"
+            className="mb-6 bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl flex items-start gap-3 animate-shake shadow-lg shadow-red-100"
+          >
             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 animate-pulse" />
             <div className="flex-1 text-sm font-medium">{error}</div>
           </div>

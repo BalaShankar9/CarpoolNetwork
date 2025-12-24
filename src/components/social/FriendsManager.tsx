@@ -14,7 +14,8 @@ interface Friend {
   friend: {
     id: string;
     full_name: string;
-    avatar_url?: string;
+    avatar_url?: string | null;
+    profile_photo_url?: string | null;
     bio?: string;
     average_rating?: number;
     total_rides_offered?: number;
@@ -27,7 +28,8 @@ interface Friend {
 interface UserSearchResult {
   id: string;
   full_name: string;
-  avatar_url?: string;
+  avatar_url?: string | null;
+  profile_photo_url?: string | null;
   bio?: string;
   average_rating?: number;
   trust_score?: number;

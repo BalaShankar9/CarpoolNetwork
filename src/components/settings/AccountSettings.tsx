@@ -14,7 +14,7 @@ export default function AccountSettings() {
     full_name: '',
     bio: '',
     phone: '',
-    whatsapp: '',
+    whatsapp_number: '',
     date_of_birth: '',
     gender: '',
     city: '',
@@ -29,7 +29,7 @@ export default function AccountSettings() {
         full_name: profile.full_name || '',
         bio: profile.bio || '',
         phone: profile.phone || '',
-        whatsapp: profile.whatsapp || '',
+        whatsapp_number: profile.whatsapp_number || '',
         date_of_birth: profile.date_of_birth || '',
         gender: profile.gender || '',
         city: profile.city || '',
@@ -101,7 +101,7 @@ export default function AccountSettings() {
                       full_name: profile.full_name || '',
                       bio: profile.bio || '',
                       phone: profile.phone || '',
-                      whatsapp: profile.whatsapp || '',
+                      whatsapp_number: profile.whatsapp_number || '',
                       date_of_birth: profile.date_of_birth || '',
                       gender: profile.gender || '',
                       city: profile.city || '',
@@ -181,13 +181,13 @@ export default function AccountSettings() {
             {isEditing ? (
               <input
                 type="tel"
-                value={formData.whatsapp}
-                onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                value={formData.whatsapp_number}
+                onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value })}
                 placeholder="+44 7XXX XXXXXX"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             ) : (
-              <p className="text-gray-900">{formData.whatsapp || 'Not set'}</p>
+              <p className="text-gray-900">{formData.whatsapp_number || 'Not set'}</p>
             )}
           </div>
 

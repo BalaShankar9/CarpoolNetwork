@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Filter, Save, X, Star, DollarSign, Users, Wifi, Wind, Zap, Package, Baby, Wheelchair, Sparkles } from 'lucide-react';
+import { Filter, Save, X, Star, DollarSign, Users, Wifi, Wind, Zap, Package, Baby, Accessibility, Sparkles } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 
@@ -440,7 +440,7 @@ export default function AdvancedSearchFilters({ onFiltersChange, onClose }: Adva
                 onChange={(e) => updateFilter({ accessibility: { ...filters.accessibility, wheelchair: e.target.checked } })}
                 className="w-5 h-5 text-blue-600 rounded"
               />
-              <Wheelchair className="w-5 h-5 text-gray-600" />
+              <Accessibility className="w-5 h-5 text-gray-600" />
               <span className="text-sm font-medium text-gray-900">Wheelchair</span>
             </label>
 

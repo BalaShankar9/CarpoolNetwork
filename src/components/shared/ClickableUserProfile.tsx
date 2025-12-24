@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import UserAvatar from './UserAvatar';
@@ -19,7 +20,7 @@ interface ClickableUserProfileProps {
   className?: string;
   showName?: boolean;
   showNameRight?: boolean;
-  additionalInfo?: string;
+  additionalInfo?: ReactNode;
   disabled?: boolean;
 }
 
@@ -82,9 +83,9 @@ export default function ClickableUserProfile({
             {user.full_name}
           </p>
           {additionalInfo && (
-            <p className="text-xs text-gray-500 truncate">
+            <div className="text-xs text-gray-500 truncate">
               {additionalInfo}
-            </p>
+            </div>
           )}
         </div>
       </div>
@@ -108,9 +109,9 @@ export default function ClickableUserProfile({
           {user.full_name}
         </p>
         {additionalInfo && (
-          <p className="text-xs text-gray-500">
+          <div className="text-xs text-gray-500">
             {additionalInfo}
-          </p>
+          </div>
         )}
       </div>
     </div>

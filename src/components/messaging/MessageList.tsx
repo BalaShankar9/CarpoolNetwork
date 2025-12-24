@@ -364,7 +364,7 @@ export default function MessageList({ initialUserId, initialUserName }: MessageL
                       <div className="flex items-center gap-1">
                         {lastMessage?.sender_id === user?.id && (
                           <span className="flex-shrink-0">
-                            {lastMessage.read ? (
+                            {lastMessage?.read ? (
                               <CheckCheck className="w-4 h-4 text-blue-500" />
                             ) : (
                               <Check className="w-4 h-4 text-gray-400" />

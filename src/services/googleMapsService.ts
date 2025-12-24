@@ -89,6 +89,42 @@ export class GoogleMapsService {
     return this.getWeatherForecast(lat, lng);
   }
 
+  async geocodeAddress(address: string): Promise<{ data: { lat: number; lng: number } | null; error?: string }> {
+    if (!address.trim()) {
+      return { data: null, error: 'Address is required' };
+    }
+
+    if (!GOOGLE_MAPS_API_KEY) {
+      return { data: null, error: 'Missing Google Maps API key' };
+    }
+
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_API_KEY}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        return { data: null, error: `Geocoding API returned ${response.status}` };
+      }
+
+      const data: any = await response.json();
+      const result = data.results?.[0];
+      const location = result?.geometry?.location;
+
+      if (!location) {
+        return { data: null, error: 'No geocoding results' };
+      }
+
+      return {
+        data: {
+          lat: location.lat,
+          lng: location.lng
+        }
+      };
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      return { data: null, error: 'Failed to geocode address' };
+    }
+  }
+
   async getMultipleRouteOptions(
     origin: { lat: number; lng: number },
     destination: { lat: number; lng: number },

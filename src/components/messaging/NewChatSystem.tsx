@@ -173,12 +173,13 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
         for (const msg of messagesToMark) {
           await supabase
             .from('message_reads')
-            .insert({
-              message_id: msg.id,
-              user_id: user.id,
-            })
-            .onConflict('message_id,user_id')
-            .ignore();
+            .upsert(
+              {
+                message_id: msg.id,
+                user_id: user.id,
+              },
+              { onConflict: 'message_id,user_id', ignoreDuplicates: true }
+            );
         }
 
         // Reload conversations to update unread counts
@@ -215,12 +216,13 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
               setTimeout(() => {
                 supabase
                   .from('message_reads')
-                  .insert({
-                    message_id: newMsg.id,
-                    user_id: user.id,
-                  })
-                  .onConflict('message_id,user_id')
-                  .ignore();
+                  .upsert(
+                    {
+                      message_id: newMsg.id,
+                      user_id: user.id,
+                    },
+                    { onConflict: 'message_id,user_id', ignoreDuplicates: true }
+                  );
               }, 500);
             }
           }

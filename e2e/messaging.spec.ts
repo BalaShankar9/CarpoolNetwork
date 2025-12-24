@@ -1,4 +1,6 @@
-import { test, expect, TEST_USERS } from './fixtures';
+import { test, expect, TEST_USERS, isE2EConfigured } from './fixtures';
+
+test.skip(!isE2EConfigured, 'E2E env not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
 
 test.describe('Messaging', () => {
   test.describe('Messages Page', () => {
