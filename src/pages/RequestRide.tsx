@@ -79,7 +79,6 @@ export default function RequestRide() {
           flexible_time: flexibleTime,
           seats_needed: seatsNeeded,
           notes: notes.trim(),
-          status: 'pending'
         });
 
       if (insertError) throw insertError;

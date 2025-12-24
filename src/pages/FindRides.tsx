@@ -374,7 +374,6 @@ export default function FindRides() {
         time_window_start: new Date(departureTime.getTime() - 2 * 60 * 60 * 1000).toISOString(),
         time_window_end: new Date(departureTime.getTime() + 2 * 60 * 60 * 1000).toISOString(),
         seats_needed: seats,
-        status: 'active'
       });
 
       if (error) throw error;
