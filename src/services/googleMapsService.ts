@@ -80,9 +80,14 @@ export class GoogleMapsService {
   private directionsService: google.maps.DirectionsService | null = null;
 
   constructor() {
-    if (typeof google !== 'undefined' && google.maps) {
+    this.ensureDirectionsService();
+  }
+
+  private ensureDirectionsService(): boolean {
+    if (!this.directionsService && typeof google !== 'undefined' && google.maps) {
       this.directionsService = new google.maps.DirectionsService();
     }
+    return !!this.directionsService;
   }
 
   async getWeather(lat: number, lng: number): Promise<WeatherData> {
@@ -130,6 +135,9 @@ export class GoogleMapsService {
     destination: { lat: number; lng: number },
     departureTime?: Date
   ): Promise<RouteOption[]> {
+    if (!GOOGLE_MAPS_API_KEY) {
+      return this.getFallbackRoute(origin, destination);
+    }
     const cacheKey = `routes:${origin.lat},${origin.lng}:${destination.lat},${destination.lng}:${departureTime?.toISOString() || 'now'}`;
 
     return cache.get(cacheKey, async () => {
@@ -242,7 +250,7 @@ export class GoogleMapsService {
     origin: { lat: number; lng: number },
     destination: { lat: number; lng: number }
   ): Promise<RouteOption[]> {
-    if (!this.directionsService) {
+    if (!this.ensureDirectionsService()) {
       return [];
     }
 
@@ -270,7 +278,7 @@ export class GoogleMapsService {
     destination: { lat: number; lng: number },
     waypoints?: google.maps.DirectionsWaypoint[]
   ): Promise<RouteInfo> {
-    if (!this.directionsService) {
+    if (!this.ensureDirectionsService()) {
       throw new Error('Google Maps not loaded');
     }
 
@@ -306,6 +314,9 @@ export class GoogleMapsService {
   }
 
   async getWeatherForecast(lat: number, lng: number, targetDate?: Date): Promise<WeatherData> {
+    if (!GOOGLE_MAPS_API_KEY) {
+      return this.getMockWeatherData(targetDate);
+    }
     const timeBucket = targetDate
       ? Math.floor(targetDate.getTime() / (3600000 * 3))
       : Math.floor(Date.now() / (3600000 * 3));
@@ -378,6 +389,15 @@ export class GoogleMapsService {
   }
 
   async getAirQuality(lat: number, lng: number): Promise<AirQualityData> {
+    if (!GOOGLE_MAPS_API_KEY) {
+      return {
+        aqi: 50,
+        category: 'Good',
+        dominantPollutant: 'pm25',
+        healthRecommendations: 'Air quality data unavailable',
+        color: '#92D050',
+      };
+    }
     const timeBucket = Math.floor(Date.now() / (3600000 * 6));
     const cacheKey = `airquality:${lat.toFixed(2)},${lng.toFixed(2)}:${timeBucket}`;
 
@@ -436,6 +456,9 @@ export class GoogleMapsService {
   }
 
   async getPollenData(lat: number, lng: number): Promise<PollenData[]> {
+    if (!GOOGLE_MAPS_API_KEY) {
+      return this.getMockPollenData();
+    }
     const url = `https://pollen.googleapis.com/v1/forecast:lookup?key=${GOOGLE_MAPS_API_KEY}&location.latitude=${lat}&location.longitude=${lng}&days=1`;
 
     try {
@@ -487,6 +510,9 @@ export class GoogleMapsService {
     type: string,
     radius: number = 5000
   ): Promise<PlaceDetails[]> {
+    if (!GOOGLE_MAPS_API_KEY) {
+      return [];
+    }
     const cacheKey = `places:${type}:${lat.toFixed(2)},${lng.toFixed(2)}:${radius}`;
 
     return cache.get(cacheKey, async () => {
@@ -548,6 +574,9 @@ export class GoogleMapsService {
     height: number = 400,
     markers?: Array<{ lat: number; lng: number; label?: string }>
   ): string {
+    if (!GOOGLE_MAPS_API_KEY) {
+      return '';
+    }
     let url = `https://maps.googleapis.com/maps/api/staticmap?center=${center.lat},${center.lng}&zoom=${zoom}&size=${width}x${height}&key=${GOOGLE_MAPS_API_KEY}`;
 
     if (markers && markers.length > 0) {

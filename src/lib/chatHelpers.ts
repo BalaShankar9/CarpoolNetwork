@@ -10,6 +10,54 @@ export interface CreateConversationParams {
   }[];
 }
 
+const normalizeConversationId = (data: unknown): string | null => {
+  if (!data) return null;
+  if (typeof data === 'string') return data;
+
+  if (Array.isArray(data)) {
+    if (data.length === 0) return null;
+    return normalizeConversationId(data[0]);
+  }
+
+  if (typeof data === 'object') {
+    const record = data as Record<string, unknown>;
+    const candidates = [
+      'id',
+      'conversation_id',
+      'get_or_create_ride_conversation',
+      'get_or_create_trip_conversation',
+      'get_or_create_friends_conversation',
+    ];
+
+    for (const key of candidates) {
+      const value = record[key];
+      if (typeof value === 'string') return value;
+    }
+  }
+
+  return null;
+};
+
+const fetchRideDriverId = async (rideId: string): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('rides')
+      .select('driver_id')
+      .eq('id', rideId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching ride driver:', error);
+      return null;
+    }
+
+    return data?.driver_id ?? null;
+  } catch (error) {
+    console.error('Error fetching ride driver:', error);
+    return null;
+  }
+};
+
 /**
  * Get or create a conversation
  * Returns the conversation ID
@@ -29,7 +77,10 @@ export async function getOrCreateConversation(
       query = query.eq('type', 'FRIENDS_DM');
     }
 
-    const { data: existingConvs } = await query;
+    const { data: existingConvs, error: existingError } = await query;
+    if (existingError) {
+      throw existingError;
+    }
 
     // For FRIENDS_DM, check if conversation exists between these two users
     if (params.type === 'FRIENDS_DM' && existingConvs) {
@@ -110,11 +161,46 @@ export async function getOrCreateRideConversation(
   driverId: string,
   riderId: string
 ): Promise<string | null> {
+  const attemptRpc = async (driverIdToUse: string) => {
+    try {
+      const { data, error } = await supabase.rpc('get_or_create_ride_conversation', {
+        p_ride_id: rideId,
+        p_driver_id: driverIdToUse,
+        p_rider_id: riderId,
+      });
+
+      if (error) {
+        console.error('Error using get_or_create_ride_conversation:', error);
+        return null;
+      }
+
+      return normalizeConversationId(data);
+    } catch (error) {
+      console.error('Error using get_or_create_ride_conversation:', error);
+      return null;
+    }
+  };
+
+  let resolvedDriverId = driverId;
+  let conversationId = await attemptRpc(resolvedDriverId);
+
+  if (!conversationId) {
+    const rideDriverId = await fetchRideDriverId(rideId);
+    if (rideDriverId) {
+      resolvedDriverId = rideDriverId;
+      conversationId = await attemptRpc(resolvedDriverId);
+    }
+  }
+
+  if (conversationId) {
+    return conversationId;
+  }
+
   return getOrCreateConversation({
     type: 'RIDE_MATCH',
     rideId,
     members: [
-      { userId: driverId, role: 'DRIVER' },
+      { userId: resolvedDriverId, role: 'DRIVER' },
       { userId: riderId, role: 'RIDER' },
     ],
   });
@@ -128,6 +214,25 @@ export async function getOrCreateTripConversation(
   riderId: string,
   driverId: string
 ): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_or_create_trip_conversation', {
+      p_trip_request_id: tripRequestId,
+      p_rider_id: riderId,
+      p_driver_id: driverId,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    const conversationId = normalizeConversationId(data);
+    if (conversationId) {
+      return conversationId;
+    }
+  } catch (error) {
+    console.error('Error using get_or_create_trip_conversation:', error);
+  }
+
   return getOrCreateConversation({
     type: 'TRIP_MATCH',
     tripRequestId,
@@ -145,6 +250,28 @@ export async function getOrCreateFriendsDM(
   userId1: string,
   userId2: string
 ): Promise<string | null> {
+  if (userId1 === userId2) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase.rpc('get_or_create_friends_conversation', {
+      p_user_id_1: userId1,
+      p_user_id_2: userId2,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    const conversationId = normalizeConversationId(data);
+    if (conversationId) {
+      return conversationId;
+    }
+  } catch (error) {
+    console.error('Error using get_or_create_friends_conversation:', error);
+  }
+
   return getOrCreateConversation({
     type: 'FRIENDS_DM',
     members: [

@@ -1,8 +1,6 @@
-import { useState } from 'react';
-import { Shield, Eye, EyeOff, Lock, Key, Smartphone, History, LogOut, AlertCircle } from 'lucide-react';
+import { Shield, Lock, Smartphone, History, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PrivacyControls from '../profile/PrivacyControls';
-import PasskeyManagement from '../shared/PasskeyManagement';
 import TwoFactorAuth from '../security/TwoFactorAuth';
 
 export default function PrivacySettings() {
@@ -33,8 +31,6 @@ export default function PrivacySettings() {
       </div>
 
       <TwoFactorAuth />
-
-      <PasskeyManagement />
 
       <PrivacyControls />
 
@@ -68,7 +64,7 @@ export default function PrivacySettings() {
           <div>
             <h3 className="font-semibold text-red-900 mb-1">Security Recommendation</h3>
             <p className="text-sm text-red-800">
-              Enable two-factor authentication and use passkeys for the strongest account security.
+              Enable two-factor authentication and keep your recovery options up to date.
             </p>
           </div>
         </div>

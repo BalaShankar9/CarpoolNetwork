@@ -55,7 +55,7 @@ interface VehicleInsurance {
   vehicles: {
     make: string;
     model: string;
-    registration: string;
+    license_plate: string;
   } | null;
 }
 
@@ -116,7 +116,7 @@ export default function VerificationQueue() {
             vehicles!vehicle_insurance_vehicle_id_fkey (
               make,
               model,
-              registration
+              license_plate
             )
           `)
           .eq('status', 'pending')
@@ -424,7 +424,7 @@ export default function VerificationQueue() {
                             <div className="flex items-center space-x-2">
                               <Car className="w-4 h-4" />
                               <span>
-                                {insurance.vehicles.make} {insurance.vehicles.model} - {insurance.vehicles.registration}
+                                {insurance.vehicles.make} {insurance.vehicles.model} - {insurance.vehicles.license_plate}
                               </span>
                             </div>
                           )}
@@ -544,7 +544,7 @@ export default function VerificationQueue() {
                         <p className="text-gray-900">
                           {selectedItem.vehicles.make} {selectedItem.vehicles.model}
                         </p>
-                        <p className="text-sm text-gray-600">{selectedItem.vehicles.registration}</p>
+                        <p className="text-sm text-gray-600">{selectedItem.vehicles.license_plate}</p>
                       </div>
                     )}
                     <div className="grid grid-cols-2 gap-4">

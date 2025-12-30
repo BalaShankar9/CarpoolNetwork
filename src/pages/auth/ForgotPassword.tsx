@@ -32,7 +32,7 @@ export default function ForgotPassword() {
       } else {
         setError('Phone recovery is coming soon. Please use email recovery for now.');
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred');
     } finally {
       setLoading(false);

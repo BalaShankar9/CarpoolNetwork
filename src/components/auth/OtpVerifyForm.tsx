@@ -22,6 +22,8 @@ export default function OtpVerifyForm({
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  const RESEND_COOLDOWN_SECONDS = 60;
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -81,7 +83,7 @@ export default function OtpVerifyForm({
     setResendLoading(true);
     try {
       await onResend();
-      setResendCooldown(30);
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
     } finally {
       setResendLoading(false);
     }

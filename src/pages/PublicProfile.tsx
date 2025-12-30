@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, Star, Calendar, MapPin, Share2, Flag, Phone, Mail } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Star, Calendar, Share2, Flag, Phone, UserPlus, UserCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { notify } from '../lib/toast';
 import { supabase } from '../lib/supabase';
 import UserAvatar from '../components/shared/UserAvatar';
 import VerificationBadges from '../components/profile/VerificationBadges';
+import ReportUserModal from '../components/shared/ReportUserModal';
 
 interface Profile {
   id: string;
@@ -17,6 +19,9 @@ interface Profile {
   phone_verified: boolean;
   email_verified: boolean;
   preferred_contact_method?: string;
+  allow_inhouse_chat?: boolean;
+  allow_whatsapp_chat?: boolean;
+  whatsapp_number?: string | null;
 }
 
 interface Review {
@@ -41,6 +46,8 @@ interface Stats {
   reliabilityScore: number;
 }
 
+type FriendStatus = 'none' | 'sent' | 'received' | 'friends';
+
 export default function PublicProfile() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
@@ -51,6 +58,10 @@ export default function PublicProfile() {
   const [loading, setLoading] = useState(true);
   const [reviewFilter, setReviewFilter] = useState<'all' | 'driver' | 'passenger'>('all');
   const [error, setError] = useState<string | null>(null);
+  const [friendStatus, setFriendStatus] = useState<FriendStatus>('none');
+  const [friendRequestId, setFriendRequestId] = useState<string | null>(null);
+  const [friendActionLoading, setFriendActionLoading] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -63,6 +74,12 @@ export default function PublicProfile() {
     loadProfileData();
   }, [userId, user]);
 
+  useEffect(() => {
+    if (!userId || !user?.id) return;
+    if (userId === user.id) return;
+    loadFriendStatus();
+  }, [userId, user?.id]);
+
   const loadProfileData = async () => {
     if (!userId) return;
 
@@ -72,7 +89,7 @@ export default function PublicProfile() {
 
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, bio, created_at, photo_verified, id_verified, phone_verified, email_verified, preferred_contact_method')
+        .select('id, full_name, avatar_url, bio, created_at, photo_verified, id_verified, phone_verified, email_verified, preferred_contact_method, allow_inhouse_chat, allow_whatsapp_chat, whatsapp_number')
         .eq('id', userId)
         .maybeSingle();
 
@@ -101,12 +118,12 @@ export default function PublicProfile() {
 
       setReviews((reviewsData || []) as any);
 
-      const { data: driverRides } = await supabase
+      const { count: driverRideCount } = await supabase
         .from('rides')
         .select('id', { count: 'exact', head: true })
         .eq('driver_id', userId);
 
-      const { data: passengerBookings } = await supabase
+      const { count: passengerBookingCount } = await supabase
         .from('ride_bookings')
         .select('id', { count: 'exact', head: true })
         .eq('passenger_id', userId)
@@ -124,8 +141,8 @@ export default function PublicProfile() {
         .maybeSingle();
 
       setStats({
-        ridesOffered: driverRides?.length || 0,
-        ridesTaken: passengerBookings?.length || 0,
+        ridesOffered: driverRideCount ?? 0,
+        ridesTaken: passengerBookingCount ?? 0,
         averageRating: avgRating,
         totalReviews: reviewsData?.length || 0,
         responseRate: 95,
@@ -140,8 +157,138 @@ export default function PublicProfile() {
     }
   };
 
+  const loadFriendStatus = async () => {
+    if (!userId || !user?.id) return;
+
+    try {
+      const { data: friendsData, error: friendsError } = await supabase
+        .rpc('are_friends', { p_user_id_1: user.id, p_user_id_2: userId });
+
+      if (friendsError) throw friendsError;
+
+      if (friendsData) {
+        setFriendStatus('friends');
+        setFriendRequestId(null);
+        return;
+      }
+
+      const { data: pendingRequests, error: pendingError } = await supabase
+        .from('friend_requests')
+        .select('id, from_user_id, to_user_id, status')
+        .or(`and(from_user_id.eq.${user.id},to_user_id.eq.${userId},status.eq.PENDING),and(from_user_id.eq.${userId},to_user_id.eq.${user.id},status.eq.PENDING)`);
+
+      if (pendingError) throw pendingError;
+
+      const pending = (pendingRequests || [])[0];
+      if (!pending) {
+        setFriendStatus('none');
+        setFriendRequestId(null);
+        return;
+      }
+
+      if (pending.from_user_id === user.id) {
+        setFriendStatus('sent');
+      } else {
+        setFriendStatus('received');
+      }
+      setFriendRequestId(pending.id);
+    } catch (err) {
+      console.error('Error loading friend status:', err);
+    }
+  };
+
+  const sendFriendRequest = async () => {
+    if (!userId) return;
+    try {
+      setFriendActionLoading(true);
+      const { error } = await supabase
+        .rpc('send_friend_request', { p_to_user_id: userId });
+
+      if (error) throw error;
+      await loadFriendStatus();
+    } catch (err) {
+      console.error('Error sending friend request:', err);
+      alert('Unable to send friend request. Please try again.');
+    } finally {
+      setFriendActionLoading(false);
+    }
+  };
+
+  const acceptFriendRequest = async () => {
+    if (!friendRequestId) return;
+    try {
+      setFriendActionLoading(true);
+      const { error } = await supabase
+        .rpc('accept_friend_request', { p_request_id: friendRequestId });
+
+      if (error) throw error;
+      await loadFriendStatus();
+    } catch (err) {
+      console.error('Error accepting friend request:', err);
+      alert('Unable to accept friend request. Please try again.');
+    } finally {
+      setFriendActionLoading(false);
+    }
+  };
+
+  const declineFriendRequest = async () => {
+    if (!friendRequestId) return;
+    try {
+      setFriendActionLoading(true);
+      const { error } = await supabase
+        .rpc('decline_friend_request', { p_request_id: friendRequestId });
+
+      if (error) throw error;
+      await loadFriendStatus();
+    } catch (err) {
+      console.error('Error declining friend request:', err);
+      alert('Unable to decline friend request. Please try again.');
+    } finally {
+      setFriendActionLoading(false);
+    }
+  };
+
+  const cancelFriendRequest = async () => {
+    if (!friendRequestId) return;
+    try {
+      setFriendActionLoading(true);
+      const { error } = await supabase
+        .from('friend_requests')
+        .update({ status: 'CANCELLED' })
+        .eq('id', friendRequestId);
+
+      if (error) throw error;
+      await loadFriendStatus();
+    } catch (err) {
+      console.error('Error canceling friend request:', err);
+      alert('Unable to cancel friend request. Please try again.');
+    } finally {
+      setFriendActionLoading(false);
+    }
+  };
+
   const handleMessageUser = () => {
+    if (!profile) return;
+
+    const canMessageInApp = profile.allow_inhouse_chat !== false
+      && (
+        profile.preferred_contact_method === 'in_app'
+        || profile.preferred_contact_method === 'both'
+        || !profile.preferred_contact_method
+      );
+
+    if (!canMessageInApp) {
+      alert('This user is not accepting in-app messages.');
+      return;
+    }
+
     navigate('/messages', { state: { userId } });
+  };
+
+  const handleWhatsApp = () => {
+    if (!profile?.whatsapp_number) return;
+    const cleanNumber = profile.whatsapp_number.replace(/[^0-9]/g, '');
+    window.open(`https://wa.me/${cleanNumber}`, '_blank');
   };
 
   const handleShare = async () => {
@@ -155,7 +302,11 @@ export default function PublicProfile() {
   };
 
   const handleReport = () => {
-    alert('Report functionality coming soon');
+    if (!user) {
+      notify('Please sign in to report a user.', 'warning');
+      return;
+    }
+    setIsReportOpen(true);
   };
 
   if (loading) {
@@ -189,6 +340,77 @@ export default function PublicProfile() {
   const filteredReviews = reviewFilter === 'all'
     ? reviews
     : reviews.filter(r => r.ride_type === reviewFilter);
+
+  const canMessageInApp = profile.allow_inhouse_chat !== false
+    && (
+      profile.preferred_contact_method === 'in_app'
+      || profile.preferred_contact_method === 'both'
+      || !profile.preferred_contact_method
+    );
+
+  const canWhatsApp = profile.allow_whatsapp_chat !== false
+    && !!profile.whatsapp_number
+    && (
+      profile.preferred_contact_method === 'whatsapp'
+      || profile.preferred_contact_method === 'both'
+    );
+
+  const renderFriendActions = () => {
+    if (!user || user.id === profile.id) return null;
+
+    if (friendStatus === 'friends') {
+      return (
+        <div className="flex items-center gap-2 px-4 py-3 bg-green-50 text-green-700 rounded-lg border border-green-200">
+          <UserCheck className="w-5 h-5" />
+          Friends
+        </div>
+      );
+    }
+
+    if (friendStatus === 'sent') {
+      return (
+        <button
+          onClick={cancelFriendRequest}
+          disabled={friendActionLoading}
+          className="px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+        >
+          Cancel Request
+        </button>
+      );
+    }
+
+    if (friendStatus === 'received') {
+      return (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={acceptFriendRequest}
+            disabled={friendActionLoading}
+            className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+          >
+            Accept
+          </button>
+          <button
+            onClick={declineFriendRequest}
+            disabled={friendActionLoading}
+            className="px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+          >
+            Decline
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <button
+        onClick={sendFriendRequest}
+        disabled={friendActionLoading}
+        className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+      >
+        <UserPlus className="w-5 h-5" />
+        Add Friend
+      </button>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -229,6 +451,7 @@ export default function PublicProfile() {
                 phoneVerified={profile.phone_verified}
                 emailVerified={profile.email_verified}
                 includeDocuments={false}
+                readOnly
               />
 
               {stats && stats.averageRating > 0 && (
@@ -256,14 +479,25 @@ export default function PublicProfile() {
             </div>
           </div>
 
-          <div className="mt-6 flex gap-3">
+          <div className="mt-6 flex flex-wrap gap-3">
             <button
               onClick={handleMessageUser}
-              className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-semibold"
+              disabled={!canMessageInApp}
+              className="flex-1 min-w-[180px] bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <MessageCircle className="w-5 h-5" />
               Message
             </button>
+            {canWhatsApp && (
+              <button
+                onClick={handleWhatsApp}
+                className="px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 font-semibold"
+              >
+                <Phone className="w-5 h-5" />
+                WhatsApp
+              </button>
+            )}
+            {renderFriendActions()}
             <button
               onClick={handleShare}
               className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -273,7 +507,8 @@ export default function PublicProfile() {
             </button>
             <button
               onClick={handleReport}
-              className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={!user}
+              className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Report user"
             >
               <Flag className="w-5 h-5 text-gray-600" />
@@ -384,6 +619,13 @@ export default function PublicProfile() {
           )}
         </div>
       </div>
+
+      <ReportUserModal
+        isOpen={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
+        reportedUser={{ id: profile.id, full_name: profile.full_name }}
+      />
     </div>
   );
 }
+

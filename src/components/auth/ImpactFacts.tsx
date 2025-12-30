@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Lightbulb, RefreshCw } from 'lucide-react';
-import { getFactsForRoute, type ImpactFact } from '../../data/impactFacts';
+import { getFactsForRoute } from '../../data/impactFacts';
 
 interface ImpactFactsProps {
   route: string;

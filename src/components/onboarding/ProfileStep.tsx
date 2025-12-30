@@ -25,7 +25,7 @@ export default function ProfileStep({ onNext }: ProfileStepProps) {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('profiles')
         .select('full_name, phone_number, city, bio')
         .eq('id', user.id)

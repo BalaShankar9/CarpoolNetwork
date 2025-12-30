@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Mail, Loader2, Phone as PhoneIcon } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 interface EmailOtpFormProps {
   onSendOTP: (email: string) => Promise<void>;

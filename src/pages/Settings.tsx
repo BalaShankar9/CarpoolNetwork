@@ -52,7 +52,7 @@ export default function Settings() {
       id: 'privacy',
       icon: Shield,
       title: 'Security & Privacy',
-      description: 'Password, 2FA, passkeys, sessions, and privacy controls',
+      description: 'Password, 2FA, sessions, and privacy controls',
       badge: 'Important',
       color: 'bg-red-50 text-red-600'
     },

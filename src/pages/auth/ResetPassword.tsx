@@ -74,7 +74,7 @@ export default function ResetPassword() {
           navigate('/signin');
         }, 2500);
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred');
     } finally {
       setLoading(false);

@@ -1,28 +1,39 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, UserCheck, Users, X, Search, MessageCircle, Star, Car, Shield } from 'lucide-react';
+import { UserPlus, UserCheck, Users, X, Search, MessageCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import ClickableUserProfile from '../shared/ClickableUserProfile';
 
-interface Friend {
+interface FriendProfile {
   id: string;
-  user_id: string;
+  full_name: string;
+  avatar_url?: string | null;
+  profile_photo_url?: string | null;
+  bio?: string;
+  average_rating?: number;
+  total_rides_offered?: number;
+  total_rides_taken?: number;
+  trust_score?: number;
+  profile_verified?: boolean;
+}
+
+interface Friendship {
+  id: string;
+  user_a: string;
+  user_b: string;
+  created_at: string;
   friend_id: string;
+  friend: FriendProfile;
+}
+
+interface FriendRequest {
+  id: string;
+  from_user_id: string;
+  to_user_id: string;
   status: string;
   created_at: string;
-  friend: {
-    id: string;
-    full_name: string;
-    avatar_url?: string | null;
-    profile_photo_url?: string | null;
-    bio?: string;
-    average_rating?: number;
-    total_rides_offered?: number;
-    total_rides_taken?: number;
-    trust_score?: number;
-    profile_verified?: boolean;
-  };
+  friend: FriendProfile;
 }
 
 interface UserSearchResult {
@@ -39,9 +50,9 @@ interface UserSearchResult {
 export default function FriendsManager() {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const [friends, setFriends] = useState<Friend[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<Friend[]>([]);
-  const [sentRequests, setSentRequests] = useState<Friend[]>([]);
+  const [friends, setFriends] = useState<Friendship[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
+  const [sentRequests, setSentRequests] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
@@ -51,11 +62,12 @@ export default function FriendsManager() {
   useEffect(() => {
     if (profile?.id) {
       loadFriends();
-      setupRealtimeSubscription();
+      return setupRealtimeSubscription(profile.id);
     }
+    return undefined;
   }, [profile?.id]);
 
-  const setupRealtimeSubscription = () => {
+  const setupRealtimeSubscription = (userId: string) => {
     const channel = supabase
       .channel('friends')
       .on(
@@ -63,8 +75,8 @@ export default function FriendsManager() {
         {
           event: '*',
           schema: 'public',
-          table: 'friends',
-          filter: `user_id=eq.${profile?.id}`
+          table: 'friendships',
+          filter: `user_a=eq.${userId}`
         },
         () => {
           loadFriends();
@@ -75,8 +87,32 @@ export default function FriendsManager() {
         {
           event: '*',
           schema: 'public',
-          table: 'friends',
-          filter: `friend_id=eq.${profile?.id}`
+          table: 'friendships',
+          filter: `user_b=eq.${userId}`
+        },
+        () => {
+          loadFriends();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'friend_requests',
+          filter: `from_user_id=eq.${userId}`
+        },
+        () => {
+          loadFriends();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'friend_requests',
+          filter: `to_user_id=eq.${userId}`
         },
         () => {
           loadFriends();
@@ -90,45 +126,117 @@ export default function FriendsManager() {
   };
 
   const loadFriends = async () => {
+    if (!profile?.id) {
+      return;
+    }
+
     try {
       setLoading(true);
 
-      const { data: myFriends, error: friendsError } = await supabase
-        .from('friends')
-        .select(`
-          *,
-          friend:profiles!friends_friend_id_fkey(id, full_name, avatar_url, profile_photo_url, bio, average_rating, trust_score, profile_verified, total_rides_offered, total_rides_taken)
-        `)
-        .eq('user_id', profile?.id)
-        .eq('status', 'accepted');
+      const profileSelect = 'id, full_name, avatar_url, profile_photo_url, bio, average_rating, trust_score, profile_verified, total_rides_offered, total_rides_taken';
+      const userId = profile.id;
+
+      const { data: friendships, error: friendsError } = await supabase
+        .from('friendships')
+        .select('id, user_a, user_b, created_at')
+        .or(`user_a.eq.${userId},user_b.eq.${userId}`);
 
       if (friendsError) throw friendsError;
 
+      const friendIds = (friendships || []).map((row) =>
+        row.user_a === userId ? row.user_b : row.user_a
+      );
+
+      const { data: friendProfiles, error: friendProfilesError } = friendIds.length
+        ? await supabase
+            .from('profiles')
+            .select(profileSelect)
+            .in('id', friendIds)
+        : { data: [], error: null };
+
+      if (friendProfilesError) throw friendProfilesError;
+
+      const friendProfileMap = new Map<string, FriendProfile>(
+        (friendProfiles || []).map((friend) => [friend.id, friend as FriendProfile])
+      );
+
+      const formattedFriends: Friendship[] = [];
+      (friendships || []).forEach((row) => {
+        const friendId = row.user_a === userId ? row.user_b : row.user_a;
+        const friend = friendProfileMap.get(friendId);
+        if (!friend) {
+          return;
+        }
+        formattedFriends.push({
+          id: row.id,
+          user_a: row.user_a,
+          user_b: row.user_b,
+          created_at: row.created_at,
+          friend_id: friendId,
+          friend
+        });
+      });
+
       const { data: receivedRequests, error: requestsError } = await supabase
-        .from('friends')
-        .select(`
-          *,
-          friend:profiles!friends_user_id_fkey(id, full_name, avatar_url, profile_photo_url, bio, average_rating, trust_score, profile_verified)
-        `)
-        .eq('friend_id', profile?.id)
-        .eq('status', 'pending');
+        .from('friend_requests')
+        .select('id, from_user_id, to_user_id, status, created_at')
+        .eq('to_user_id', userId)
+        .eq('status', 'PENDING');
 
       if (requestsError) throw requestsError;
 
       const { data: sentRequests, error: sentError } = await supabase
-        .from('friends')
-        .select(`
-          *,
-          friend:profiles!friends_friend_id_fkey(id, full_name, avatar_url, profile_photo_url, bio, average_rating, trust_score, profile_verified)
-        `)
-        .eq('user_id', profile?.id)
-        .eq('status', 'pending');
+        .from('friend_requests')
+        .select('id, from_user_id, to_user_id, status, created_at')
+        .eq('from_user_id', userId)
+        .eq('status', 'PENDING');
 
       if (sentError) throw sentError;
 
-      setFriends(myFriends || []);
-      setPendingRequests(receivedRequests || []);
-      setSentRequests(sentRequests || []);
+      const requestProfileIds = new Set<string>();
+      (receivedRequests || []).forEach((request) => requestProfileIds.add(request.from_user_id));
+      (sentRequests || []).forEach((request) => requestProfileIds.add(request.to_user_id));
+
+      const { data: requestProfiles, error: requestProfilesError } = requestProfileIds.size
+        ? await supabase
+            .from('profiles')
+            .select(profileSelect)
+            .in('id', Array.from(requestProfileIds))
+        : { data: [], error: null };
+
+      if (requestProfilesError) throw requestProfilesError;
+
+      const requestProfileMap = new Map<string, FriendProfile>(
+        (requestProfiles || []).map((requestProfile) => [requestProfile.id, requestProfile as FriendProfile])
+      );
+
+      const formattedPendingRequests: FriendRequest[] = [];
+      (receivedRequests || []).forEach((request) => {
+        const friend = requestProfileMap.get(request.from_user_id);
+        if (!friend) {
+          return;
+        }
+        formattedPendingRequests.push({
+          ...request,
+          friend
+        });
+      });
+
+      const formattedSentRequests: FriendRequest[] = [];
+      (sentRequests || []).forEach((request) => {
+        const friend = requestProfileMap.get(request.to_user_id);
+        if (!friend) {
+          return;
+        }
+        formattedSentRequests.push({
+          ...request,
+          friend
+        });
+      });
+
+      setFriends(formattedFriends);
+      setPendingRequests(formattedPendingRequests);
+      setSentRequests(formattedSentRequests);
     } catch (err) {
       console.error('Error loading friends:', err);
     } finally {
@@ -153,14 +261,14 @@ export default function FriendsManager() {
 
       if (error) throw error;
 
-      const existingFriendIds = [
-        ...friends.map(f => f.friend_id),
-        ...pendingRequests.map(r => r.user_id),
-        ...sentRequests.map(r => r.friend_id)
-      ];
+      const existingFriendIds = new Set([
+        ...friends.map((friendship) => friendship.friend.id),
+        ...pendingRequests.map((request) => request.friend.id),
+        ...sentRequests.map((request) => request.friend.id)
+      ]);
 
       const filteredResults = (data || []).filter(
-        user => !existingFriendIds.includes(user.id)
+        user => !existingFriendIds.has(user.id)
       );
 
       setSearchResults(filteredResults);
@@ -174,12 +282,7 @@ export default function FriendsManager() {
   const sendFriendRequest = async (friendId: string) => {
     try {
       const { error } = await supabase
-        .from('friends')
-        .insert({
-          user_id: profile?.id,
-          friend_id: friendId,
-          status: 'pending'
-        });
+        .rpc('send_friend_request', { p_to_user_id: friendId });
 
       if (error) throw error;
 
@@ -200,34 +303,12 @@ export default function FriendsManager() {
     }
   };
 
-  const acceptFriendRequest = async (requestId: string, friendId: string) => {
+  const acceptFriendRequest = async (requestId: string) => {
     try {
       const { error } = await supabase
-        .from('friends')
-        .update({ status: 'accepted' })
-        .eq('id', requestId);
+        .rpc('accept_friend_request', { p_request_id: requestId });
 
       if (error) throw error;
-
-      const { error: reciprocalError } = await supabase
-        .from('friends')
-        .insert({
-          user_id: profile?.id,
-          friend_id: friendId,
-          status: 'accepted'
-        });
-
-      if (reciprocalError) throw reciprocalError;
-
-      await supabase
-        .from('notifications')
-        .insert({
-          user_id: friendId,
-          type: 'friend-accepted',
-          title: 'Friend Request Accepted',
-          message: `${profile?.full_name} accepted your friend request`,
-          data: { userId: profile?.id }
-        });
 
       await loadFriends();
     } catch (err) {
@@ -235,32 +316,38 @@ export default function FriendsManager() {
     }
   };
 
-  const rejectFriendRequest = async (requestId: string) => {
+  const declineFriendRequest = async (requestId: string) => {
     try {
       const { error } = await supabase
-        .from('friends')
-        .delete()
+        .rpc('decline_friend_request', { p_request_id: requestId });
+
+      if (error) throw error;
+      await loadFriends();
+    } catch (err) {
+      console.error('Error declining friend request:', err);
+    }
+  };
+
+  const cancelFriendRequest = async (requestId: string) => {
+    try {
+      const { error } = await supabase
+        .from('friend_requests')
+        .update({ status: 'CANCELLED' })
         .eq('id', requestId);
 
       if (error) throw error;
       await loadFriends();
     } catch (err) {
-      console.error('Error rejecting friend request:', err);
+      console.error('Error canceling friend request:', err);
     }
   };
 
-  const removeFriend = async (friendshipId: string, friendId: string) => {
+  const removeFriend = async (friendshipId: string) => {
     try {
       await supabase
-        .from('friends')
+        .from('friendships')
         .delete()
         .eq('id', friendshipId);
-
-      await supabase
-        .from('friends')
-        .delete()
-        .eq('user_id', friendId)
-        .eq('friend_id', profile?.id);
 
       await loadFriends();
     } catch (err) {
@@ -366,7 +453,7 @@ export default function FriendsManager() {
                       <MessageCircle className="w-5 h-5" />
                     </button>
                     <button
-                      onClick={() => removeFriend(friendship.id, friendship.friend_id)}
+                      onClick={() => removeFriend(friendship.id)}
                       className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
                       title="Remove friend"
                     >
@@ -414,13 +501,13 @@ export default function FriendsManager() {
 
                           <div className="flex gap-2">
                             <button
-                              onClick={() => acceptFriendRequest(request.id, request.user_id)}
+                              onClick={() => acceptFriendRequest(request.id)}
                               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                             >
                               Accept
                             </button>
                             <button
-                              onClick={() => rejectFriendRequest(request.id)}
+                              onClick={() => declineFriendRequest(request.id)}
                               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
                             >
                               Decline
@@ -455,7 +542,7 @@ export default function FriendsManager() {
                           <div className="flex-1"></div>
 
                           <button
-                            onClick={() => rejectFriendRequest(request.id)}
+                            onClick={() => cancelFriendRequest(request.id)}
                             className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
                           >
                             Cancel

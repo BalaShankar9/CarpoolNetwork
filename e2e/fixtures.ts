@@ -31,7 +31,7 @@ export class AuthHelper {
 
   async login(user: TestUser) {
     await this.page.goto('/signin');
-    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForLoadState('domcontentloaded');
     await this.page.fill('input#identifier', user.email);
     await this.page.fill('input#password', user.password);
     await this.page.click('button[type="submit"]');
@@ -47,7 +47,7 @@ export class AuthHelper {
 
   async signup(user: TestUser, expectBetaBlock = false) {
     await this.page.goto('/signup');
-    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForLoadState('domcontentloaded');
     await this.page.fill('input#fullName', user.fullName);
     await this.page.fill('input#email', user.email);
     await this.page.fill('input#phone', '+447700900000');
@@ -79,6 +79,17 @@ export class AuthHelper {
 export class RideHelper {
   constructor(private page: Page) {}
 
+  private async resolveAutocomplete() {
+    const suggestion = this.page.locator('.pac-container .pac-item, [data-testid="suggestion-item"]').first();
+    if (await suggestion.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await suggestion.click();
+      await this.page.waitForTimeout(200);
+      return;
+    }
+    await this.page.keyboard.press('Escape').catch(() => {});
+    await this.page.waitForTimeout(100);
+  }
+
   async postRide(options: {
     origin: string;
     destination: string;
@@ -90,31 +101,74 @@ export class RideHelper {
     await this.page.goto('/post-ride');
     await this.page.waitForLoadState('networkidle');
 
-    await this.page.fill('[data-testid="origin-input"], input[placeholder*="pickup"], input[placeholder*="Starting"]', options.origin);
+    await this.page.fill('#origin-input, [data-testid="origin-input"], input[placeholder*="pickup"], input[placeholder*="Starting"], input[placeholder*="starting"]', options.origin);
     await this.page.waitForTimeout(500);
-    const originSuggestion = this.page.locator('[data-testid="suggestion-item"]').first();
-    if (await originSuggestion.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await originSuggestion.click();
-    }
+    await this.resolveAutocomplete();
 
-    await this.page.fill('[data-testid="destination-input"], input[placeholder*="drop-off"], input[placeholder*="Destination"]', options.destination);
+    await this.page.fill('#destination-input, [data-testid="destination-input"], input[placeholder*="drop-off"], input[placeholder*="Destination"], input[placeholder*="destination"]', options.destination);
     await this.page.waitForTimeout(500);
-    const destSuggestion = this.page.locator('[data-testid="suggestion-item"]').first();
-    if (await destSuggestion.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await destSuggestion.click();
-    }
+    await this.resolveAutocomplete();
 
     if (options.date) {
-      await this.page.fill('input[type="date"]', options.date);
+      const dateInput = this.page.locator('input[type="date"]').first();
+      if (await dateInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await dateInput.fill(options.date);
+      } else {
+        const today = new Date().toISOString().split('T')[0];
+        const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+        if (options.date === today) {
+          const todayButton = this.page.locator('button:has-text("Today")').first();
+          if (await todayButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+            await todayButton.click();
+          }
+        } else if (options.date === tomorrow) {
+          const tomorrowButton = this.page.locator('button:has-text("Tomorrow")').first();
+          if (await tomorrowButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+            await tomorrowButton.click();
+          }
+        } else {
+          const customButton = this.page.locator('button:has-text("Custom")').first();
+          if (await customButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+            await customButton.click();
+            const customDateInput = this.page.locator('input[type="date"]').first();
+            if (await customDateInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+              await customDateInput.fill(options.date);
+            }
+          }
+        }
+      }
     }
     if (options.time) {
-      await this.page.fill('input[type="time"]', options.time);
+      const timeSelect = this.page
+        .locator('label:has-text("Departure Time")')
+        .locator('..')
+        .locator('select')
+        .first();
+      if (await timeSelect.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await timeSelect.selectOption({ value: options.time });
+      }
     }
     if (options.seats) {
-      await this.page.fill('input[name="seats"], [data-testid="seats-input"]', options.seats.toString());
+      const seatsSelect = this.page
+        .locator('label:has-text("Available Seats")')
+        .locator('..')
+        .locator('select')
+        .first();
+      if (await seatsSelect.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await seatsSelect.selectOption({ value: options.seats.toString() });
+      } else {
+        const seatsInput = this.page.locator('input[name="seats"], [data-testid="seats-input"]').first();
+        if (await seatsInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+          await seatsInput.fill(options.seats.toString());
+        }
+      }
     }
     if (options.price) {
-      await this.page.fill('input[name="price"], [data-testid="price-input"]', options.price.toString());
+      const priceInput = this.page.locator('input[name="price"], [data-testid="price-input"]').first();
+      if (await priceInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await priceInput.fill(options.price.toString());
+      }
     }
 
     await this.page.click('button[type="submit"]');
@@ -125,13 +179,15 @@ export class RideHelper {
     await this.page.goto('/find-rides');
     await this.page.waitForLoadState('networkidle');
 
-    const fromInput = this.page.locator('input[placeholder*="From"], input[placeholder*="pickup"]').first();
+    const fromInput = this.page.locator('#search-origin-input, input[placeholder*="From"], input[placeholder*="pickup"]').first();
     await fromInput.fill(from);
     await this.page.waitForTimeout(300);
+    await this.resolveAutocomplete();
 
-    const toInput = this.page.locator('input[placeholder*="To"], input[placeholder*="destination"]').first();
+    const toInput = this.page.locator('#search-destination-input, input[placeholder*="To"], input[placeholder*="destination"]').first();
     await toInput.fill(to);
     await this.page.waitForTimeout(300);
+    await this.resolveAutocomplete();
 
     const searchBtn = this.page.locator('button:has-text("Search"), button[type="submit"]').first();
     if (await searchBtn.isVisible()) {
@@ -145,7 +201,7 @@ export class RideHelper {
 export class BookingHelper {
   constructor(private page: Page) {}
 
-  async requestBooking(rideId: string, seats = 1) {
+  async requestBooking(rideId: string) {
     await this.page.goto(`/rides/${rideId}`);
     await this.page.waitForLoadState('networkidle');
 

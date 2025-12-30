@@ -4,7 +4,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { AlertCircle } from 'lucide-react';
 import AuthLayout from '../../components/auth/AuthLayout';
 import AuthCard from '../../components/auth/AuthCard';
-import PasskeyButton from '../../components/auth/PasskeyButton';
 import SocialAuthButtons from '../../components/auth/SocialAuthButtons';
 import PasswordLoginForm from '../../components/auth/PasswordLoginForm';
 import OtpRequestForm from '../../components/auth/OtpRequestForm';
@@ -15,18 +14,8 @@ export default function SignIn() {
   const navigate = useNavigate();
   const [authMode, setAuthMode] = useState<AuthMode>('password');
   const [error, setError] = useState('');
-  const { signIn, signInWithGoogle, signInWithFacebook, signInWithOTP } = useAuth();
+  const { signIn, signInWithGoogle, signInWithOTP } = useAuth();
 
-  const handlePasskeyLogin = async () => {
-    setError('');
-    try {
-      const { authenticateWithPasskey } = await import('../../services/passkeyService');
-      await authenticateWithPasskey();
-      navigate('/');
-    } catch (err: any) {
-      setError(err.message || 'Passkey authentication failed. Please try another method.');
-    }
-  };
 
   const handleGoogleSignIn = async () => {
     setError('');
@@ -35,19 +24,7 @@ export default function SignIn() {
       if (error) {
         setError(error.message);
       }
-    } catch (err) {
-      setError('An unexpected error occurred');
-    }
-  };
-
-  const handleFacebookSignIn = async () => {
-    setError('');
-    try {
-      const { error } = await signInWithFacebook();
-      if (error) {
-        setError(error.message);
-      }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred');
     }
   };
@@ -72,7 +49,7 @@ export default function SignIn() {
       } else {
         navigate('/');
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred');
     }
   };
@@ -92,7 +69,7 @@ export default function SignIn() {
           }
         });
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred');
     }
   };
@@ -127,20 +104,8 @@ export default function SignIn() {
         `}</style>
 
         <div className="space-y-4">
-          <PasskeyButton onPasskeyLogin={handlePasskeyLogin} />
-
-          <div className="relative my-8">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-400 font-medium">or</span>
-            </div>
-          </div>
-
           <SocialAuthButtons
             onGoogleSignIn={handleGoogleSignIn}
-            onFacebookSignIn={handleFacebookSignIn}
           />
 
           <div className="relative my-8">
@@ -174,7 +139,7 @@ export default function SignIn() {
           ) : (
             <>
               <div className="mb-4 text-sm text-gray-600 text-center bg-blue-50 border border-blue-100 rounded-xl p-3">
-                <span className="font-medium">📧 We'll send a one-time code to your email or phone.</span>
+                <span className="font-medium">We'll send a one-time code to your email or phone.</span>
               </div>
               <OtpRequestForm onSendOTP={handleSendOTP} />
               <div className="mt-4 text-center text-sm">

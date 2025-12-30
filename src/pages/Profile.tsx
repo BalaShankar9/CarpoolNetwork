@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { uploadProfilePhoto, uploadVehiclePhoto, getPublicUrlSync } from '../services/storageService';
 import { validateProfilePhoto } from '../services/faceDetection';
-import PasskeyManagement from '../components/shared/PasskeyManagement';
 import ProfileCompletionTracker from '../components/profile/ProfileCompletionTracker';
 import EmergencyContactsManager from '../components/profile/EmergencyContactsManager';
 import TrustScoreVisualization from '../components/profile/TrustScoreVisualization';
@@ -730,8 +729,6 @@ export default function Profile() {
       <TrustScoreVisualization />
 
       <DocumentUploadCenter />
-
-      <PasskeyManagement />
 
       <EmergencyContactsManager />
 

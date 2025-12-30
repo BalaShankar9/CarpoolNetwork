@@ -510,7 +510,16 @@ export default function FindRides() {
             {rides.filter(ride => ride.available_seats > 0 && ride.id).map((ride) => (
               <div
                 key={ride.id}
-                className={`bg-white border rounded-xl p-6 hover:shadow-lg transition-all ${
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/rides/${ride.id}`)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    navigate(`/rides/${ride.id}`);
+                  }
+                }}
+                className={`bg-white border rounded-xl p-6 hover:shadow-lg transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                   ride.userBooking && ride.userBooking.status !== 'cancelled'
                     ? 'border-green-300 bg-green-50'
                     : 'border-gray-200'
@@ -526,15 +535,20 @@ export default function FindRides() {
                 )}
                 <div className="flex flex-col lg:flex-row gap-6">
                   <div className="flex items-center gap-4">
-                    <UserAvatar
-                      user={ride.driver}
-                      size="lg"
-                      rating={ride.driver.average_rating}
-                      onClick={() => navigate(getUserProfilePath(ride.driver.id, user?.id))}
-                    />
+                    <div onClick={(event) => event.stopPropagation()}>
+                      <UserAvatar
+                        user={ride.driver}
+                        size="lg"
+                        rating={ride.driver.average_rating}
+                        onClick={() => navigate(getUserProfilePath(ride.driver.id, user?.id))}
+                      />
+                    </div>
                     <div>
                       <p
-                        onClick={() => navigate(getUserProfilePath(ride.driver.id, user?.id))}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate(getUserProfilePath(ride.driver.id, user?.id));
+                        }}
                         className="font-semibold text-gray-900 cursor-pointer hover:text-green-600 transition-colors"
                       >
                         {ride.driver.full_name}
@@ -606,7 +620,11 @@ export default function FindRides() {
 
                   <div className="flex lg:flex-col gap-2 lg:justify-center">
                     <button
-                      onClick={() => navigate(`/rides/${ride.id}`)}
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        navigate(`/rides/${ride.id}`);
+                      }}
                       className="flex-1 lg:flex-none px-6 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-medium whitespace-nowrap flex items-center justify-center gap-2"
                     >
                       <Eye className="w-4 h-4" />
@@ -614,14 +632,22 @@ export default function FindRides() {
                     </button>
                     {ride.userBooking && ride.userBooking.status !== 'cancelled' ? (
                       <button
-                        onClick={() => navigate(`/bookings/${ride.userBooking!.id}`)}
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate(`/bookings/${ride.userBooking!.id}`);
+                        }}
                         className="flex-1 lg:flex-none px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium whitespace-nowrap"
                       >
                         View Booking
                       </button>
                     ) : (
                       <button
-                        onClick={() => requestRide(ride.id)}
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          requestRide(ride.id);
+                        }}
                         className="flex-1 lg:flex-none px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium whitespace-nowrap"
                       >
                         Request Ride

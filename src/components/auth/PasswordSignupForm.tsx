@@ -43,22 +43,48 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
     return () => clearTimeout(timeoutId);
   }, [email]);
 
+  const passwordRequirements = {
+    length: password.length >= 6,
+    lowercase: /[a-z]/.test(password),
+    uppercase: /[A-Z]/.test(password),
+    digit: /\d/.test(password),
+    symbol: /[^A-Za-z0-9]/.test(password),
+  };
+
+  const passwordRequirementList = [
+    { label: 'At least 6 characters', met: passwordRequirements.length },
+    { label: 'One lowercase letter', met: passwordRequirements.lowercase },
+    { label: 'One uppercase letter', met: passwordRequirements.uppercase },
+    { label: 'One number', met: passwordRequirements.digit },
+    { label: 'One symbol', met: passwordRequirements.symbol },
+  ];
+
+  const passwordsMatch = password && confirmPassword && password === confirmPassword;
+  const passwordValid = Object.values(passwordRequirements).every(Boolean);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim() || !fullName.trim() || !phone.trim()) return;
-    if (password !== confirmPassword) return;
-    if (password.length < 6) return;
+    if (!passwordValid || !passwordsMatch) return;
 
     setLoading(true);
     try {
+      if (emailValid !== true) {
+        setEmailValidating(true);
+        const result = await validateEmail(email);
+        setEmailValid(result.valid);
+        setEmailError(result.error || '');
+        setEmailValidating(false);
+
+        if (!result.valid) {
+          return;
+        }
+      }
       await onSubmit(email, password, fullName, phone);
     } finally {
       setLoading(false);
     }
   };
-
-  const passwordsMatch = password && confirmPassword && password === confirmPassword;
-  const passwordLongEnough = password.length >= 6;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -112,7 +138,7 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
         )}
         {emailValid === true && (
           <p className="mt-1 text-xs text-green-600">
-            ✓ Email is valid
+            Email is valid
           </p>
         )}
       </div>
@@ -161,8 +187,21 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
             {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
           </button>
         </div>
-        {password && !passwordLongEnough && (
-          <p className="mt-1 text-xs text-red-600">Password must be at least 6 characters</p>
+        {password && (
+          <div className="mt-2 space-y-1 text-xs text-gray-600">
+            {passwordRequirementList.map((requirement) => (
+              <div key={requirement.label} className="flex items-center gap-2">
+                {requirement.met ? (
+                  <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+                ) : (
+                  <XCircle className="w-3.5 h-3.5 text-red-600" />
+                )}
+                <span className={requirement.met ? 'text-green-700' : 'text-red-700'}>
+                  {requirement.label}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
@@ -193,14 +232,14 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
         </div>
         {confirmPassword && (
           <p className={`mt-1 text-xs ${passwordsMatch ? 'text-green-600' : 'text-red-600'}`}>
-            {passwordsMatch ? '✓ Passwords match' : '✗ Passwords do not match'}
+            {passwordsMatch ? 'Passwords match' : 'Passwords do not match'}
           </p>
         )}
       </div>
 
       <button
         type="submit"
-        disabled={disabled || loading || !passwordLongEnough || !passwordsMatch || !fullName.trim() || !email.trim() || !phone.trim() || emailValidating || emailValid !== true}
+        disabled={disabled || loading || !passwordValid || !passwordsMatch}
         className="w-full bg-gradient-to-r from-red-600 to-orange-500 text-white py-3 rounded-xl font-semibold hover:from-red-700 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-red-500/30"
       >
         {loading ? (

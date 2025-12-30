@@ -43,11 +43,12 @@ export default function AchievementsBadges() {
         .eq('passenger_id', profile?.id)
         .eq('status', 'completed');
 
-      const { data: friends } = await supabase
-        .from('friends')
-        .select('id')
-        .eq('user_id', profile?.id)
-        .eq('status', 'accepted');
+      const { count: friendsCount, error: friendsError } = await supabase
+        .from('friendships')
+        .select('id', { count: 'exact', head: true })
+        .or(`user_a.eq.${profile?.id},user_b.eq.${profile?.id}`);
+
+      if (friendsError) throw friendsError;
 
       const { data: reviews } = await supabase
         .from('reviews')
@@ -56,7 +57,7 @@ export default function AchievementsBadges() {
 
       const totalRidesOffered = ridesAsDriver?.length || 0;
       const totalRidesTaken = bookingsAsPassenger?.length || 0;
-      const totalFriends = friends?.length || 0;
+      const totalFriends = friendsCount || 0;
       const fiveStarReviews = reviews?.filter(r => r.rating === 5).length || 0;
       const averageRating = profile?.average_rating || 0;
       const trustScore = profile?.trust_score || 0;

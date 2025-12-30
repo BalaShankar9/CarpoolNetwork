@@ -37,15 +37,14 @@ export default function FriendLeaderboard({ category, period }: FriendLeaderboar
     setLoading(true);
     try {
       const { data: friends, error: friendsError } = await supabase
-        .from('friends')
-        .select('user_id, friend_id')
-        .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
-        .eq('status', 'accepted');
+        .from('friendships')
+        .select('user_a, user_b')
+        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`);
 
       if (friendsError) throw friendsError;
 
-      const friendIds = friends?.map(f =>
-        f.user_id === user.id ? f.friend_id : f.user_id
+      const friendIds = friends?.map(friendship =>
+        friendship.user_a === user.id ? friendship.user_b : friendship.user_a
       ) || [];
 
       friendIds.push(user.id);

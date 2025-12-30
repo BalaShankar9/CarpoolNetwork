@@ -24,17 +24,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <script>
-      (function() {
-        var apiKey = '%VITE_GOOGLE_MAPS_API_KEY%';
-        if (apiKey && apiKey !== '%VITE_GOOGLE_MAPS_API_KEY%') {
-          var script = document.createElement('script');
-          script.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&libraries=places';
-          script.async = true;
-          document.head.appendChild(script);
-        }
-      })();
-    </script>
     <script type="module" src="/src/main.tsx"></script>
     <script>
       if ('serviceWorker' in navigator) {

@@ -20,6 +20,7 @@ interface VerificationBadgesProps {
   photoVerified?: boolean;
   idVerified?: boolean;
   includeDocuments?: boolean;
+  readOnly?: boolean;
 }
 
 export default function VerificationBadges({
@@ -28,7 +29,8 @@ export default function VerificationBadges({
   phoneVerified,
   photoVerified,
   idVerified,
-  includeDocuments = true
+  includeDocuments = true,
+  readOnly = false
 }: VerificationBadgesProps) {
   const { profile } = useAuth();
   const [hasDriverLicense, setHasDriverLicense] = useState(false);
@@ -92,8 +94,8 @@ export default function VerificationBadges({
       icon: Mail,
       verified: resolvedEmailVerified,
       description: 'Email address confirmed',
-      actionLabel: 'Verify Email',
-      actionLink: '/verify-email'
+      actionLabel: readOnly ? undefined : 'Verify Email',
+      actionLink: readOnly ? undefined : '/verify-email'
     },
     {
       id: 'phone',
@@ -101,8 +103,8 @@ export default function VerificationBadges({
       icon: Phone,
       verified: resolvedPhoneVerified,
       description: 'Phone number added',
-      actionLabel: 'Add Phone',
-      actionLink: '#edit-profile'
+      actionLabel: readOnly ? undefined : 'Add Phone',
+      actionLink: readOnly ? undefined : '#edit-profile'
     },
     {
       id: 'photo',
@@ -110,8 +112,8 @@ export default function VerificationBadges({
       icon: Camera,
       verified: resolvedPhotoVerified,
       description: 'Identity verified with face photo',
-      actionLabel: 'Upload Photo',
-      actionLink: '#profile-photo'
+      actionLabel: readOnly ? undefined : 'Upload Photo',
+      actionLink: readOnly ? undefined : '#profile-photo'
     },
     {
       id: 'id',
@@ -119,8 +121,8 @@ export default function VerificationBadges({
       icon: FileText,
       verified: resolvedIdVerified,
       description: 'Government ID verified',
-      actionLabel: 'Verify ID',
-      actionLink: '#documents'
+      actionLabel: readOnly ? undefined : 'Verify ID',
+      actionLink: readOnly ? undefined : '#documents'
     }
   ];
 
@@ -133,8 +135,8 @@ export default function VerificationBadges({
       icon: FileText,
       verified: hasDriverLicense,
       description: 'Driver license verified',
-      actionLabel: 'Upload License',
-      actionLink: '#documents'
+      actionLabel: readOnly ? undefined : 'Upload License',
+      actionLink: readOnly ? undefined : '#documents'
     },
     {
       id: 'insurance',
@@ -142,8 +144,8 @@ export default function VerificationBadges({
       icon: Shield,
       verified: hasInsurance,
       description: 'Vehicle insurance on file',
-      actionLabel: 'Upload Insurance',
-      actionLink: '#documents'
+      actionLabel: readOnly ? undefined : 'Upload Insurance',
+      actionLink: readOnly ? undefined : '#documents'
     }
     ] : [])
   ];
@@ -163,16 +165,23 @@ export default function VerificationBadges({
     );
   }
 
+  const summaryTitle = readOnly
+    ? 'Verification Summary'
+    : 'Verification Status';
+  const summaryDescription = readOnly
+    ? 'Verification details for this member.'
+    : 'Increase trust by verifying your identity';
+
   return (
     <div className="bg-white rounded-xl p-6 md:p-8 border border-gray-200 shadow-sm">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Shield className="w-6 h-6" />
-            Verification Status
+            {summaryTitle}
           </h3>
           <p className="text-sm text-gray-600 mt-1">
-            Increase trust by verifying your identity
+            {summaryDescription}
           </p>
         </div>
         <div className="text-right">
@@ -228,7 +237,7 @@ export default function VerificationBadges({
                 href={item.actionLink}
                 className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"
               >
-                {item.actionLabel} →
+                {item.actionLabel} -&gt;
               </a>
             )}
           </div>
@@ -247,22 +256,35 @@ export default function VerificationBadges({
             'text-red-600'
           }`} />
           <div>
-            <p className={`text-sm font-medium ${
-              trustScore >= 80 ? 'text-green-900' :
-              trustScore >= 50 ? 'text-yellow-900' :
-              'text-red-900'
-            }`}>
-              {trustScore >= 80 && 'Excellent! Your profile is highly trusted.'}
-              {trustScore >= 50 && trustScore < 80 && 'Good progress! Complete more verifications to increase trust.'}
-              {trustScore < 50 && 'Start verifying your profile to build trust with other users.'}
-            </p>
-            <p className={`text-xs mt-1 ${
-              trustScore >= 80 ? 'text-green-700' :
-              trustScore >= 50 ? 'text-yellow-700' :
-              'text-red-700'
-            }`}>
-              {verifiedCount} of {totalCount} verifications complete
-            </p>
+            {readOnly ? (
+              <>
+                <p className="text-sm font-medium text-gray-900">
+                  {verifiedCount} of {totalCount} verifications complete
+                </p>
+                <p className="text-xs mt-1 text-gray-600">
+                  Verification status is shown for transparency.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className={`text-sm font-medium ${
+                  trustScore >= 80 ? 'text-green-900' :
+                  trustScore >= 50 ? 'text-yellow-900' :
+                  'text-red-900'
+                }`}>
+                  {trustScore >= 80 && 'Excellent! Your profile is highly trusted.'}
+                  {trustScore >= 50 && trustScore < 80 && 'Good progress! Complete more verifications to increase trust.'}
+                  {trustScore < 50 && 'Start verifying your profile to build trust with other users.'}
+                </p>
+                <p className={`text-xs mt-1 ${
+                  trustScore >= 80 ? 'text-green-700' :
+                  trustScore >= 50 ? 'text-yellow-700' :
+                  'text-red-700'
+                }`}>
+                  {verifiedCount} of {totalCount} verifications complete
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>

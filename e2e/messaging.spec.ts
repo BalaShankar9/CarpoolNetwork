@@ -104,14 +104,9 @@ test.describe('Messaging', () => {
       await page.goto('/messages');
       await page.waitForTimeout(5000);
 
-      const conversationsBefore = page.locator('[data-testid="conversation-item"], [class*="conversation"]');
-      const countBefore = await conversationsBefore.count();
-
-      await page.waitForTimeout(3000);
-
       const conversationsAfter = page.locator('[data-testid="conversation-item"], [class*="conversation"]');
+      await page.waitForTimeout(3000);
       const countAfter = await conversationsAfter.count();
-
       expect(countAfter).toBeGreaterThanOrEqual(0);
     });
   });

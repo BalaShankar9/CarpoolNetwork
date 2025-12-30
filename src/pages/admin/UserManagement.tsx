@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -210,9 +210,8 @@ export default function UserManagement() {
                   </tr>
                 ) : (
                   filteredUsers.map((u) => (
-                    <>
+                    <Fragment key={u.id}>
                       <tr
-                        key={u.id}
                         className="hover:bg-gray-50 cursor-pointer"
                         onClick={() => setExpandedUser(expandedUser === u.id ? null : u.id)}
                       >
@@ -273,7 +272,7 @@ export default function UserManagement() {
                         </td>
                       </tr>
                       {expandedUser === u.id && (
-                        <tr key={`${u.id}-expanded`} className="bg-gray-50">
+                        <tr className="bg-gray-50">
                           <td colSpan={5} className="px-6 py-4">
                             <div className="grid md:grid-cols-2 gap-6">
                               <div>
@@ -295,7 +294,7 @@ export default function UserManagement() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   ))
                 )}
               </tbody>

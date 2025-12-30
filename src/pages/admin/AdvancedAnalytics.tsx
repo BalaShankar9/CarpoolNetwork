@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -25,6 +26,7 @@ interface MetricCard {
   change?: number;
   icon: React.ReactNode;
   color: string;
+  targetId?: string;
 }
 
 interface ChartData {
@@ -142,6 +144,20 @@ export default function AdvancedAnalytics() {
     }
   };
 
+  const scrollToSection = (id: string) => {
+    const target = document.getElementById(id);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleCardKeyDown = (event: KeyboardEvent<HTMLDivElement>, id: string) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      scrollToSection(id);
+    }
+  };
+
   const exportToCSV = (data: any[], filename: string) => {
     if (!data || data.length === 0) return;
 
@@ -166,6 +182,7 @@ export default function AdvancedAnalytics() {
       change: 5.2,
       icon: <CheckCircle className="w-6 h-6" />,
       color: 'bg-green-100 text-green-600',
+      targetId: 'analytics-ride-stats',
     },
     {
       label: 'Booking Confirmation Rate',
@@ -173,6 +190,7 @@ export default function AdvancedAnalytics() {
       change: 3.1,
       icon: <Activity className="w-6 h-6" />,
       color: 'bg-blue-100 text-blue-600',
+      targetId: 'analytics-booking-funnel',
     },
     {
       label: 'Total Rides',
@@ -180,6 +198,7 @@ export default function AdvancedAnalytics() {
       change: -2.4,
       icon: <Car className="w-6 h-6" />,
       color: 'bg-orange-100 text-orange-600',
+      targetId: 'analytics-popular-routes',
     },
     {
       label: 'User Growth',
@@ -187,6 +206,7 @@ export default function AdvancedAnalytics() {
       change: 8.7,
       icon: <Users className="w-6 h-6" />,
       color: 'bg-purple-100 text-purple-600',
+      targetId: 'analytics-user-growth',
     },
   ];
 
@@ -200,7 +220,7 @@ export default function AdvancedAnalytics() {
 
   return (
     <div className="space-y-6 pb-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/admin')}
@@ -213,7 +233,7 @@ export default function AdvancedAnalytics() {
             <p className="text-gray-600 mt-1">Comprehensive platform insights and metrics</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={loadAnalytics}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -233,11 +253,11 @@ export default function AdvancedAnalytics() {
 
       {/* Time Range Selector */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
             <Calendar className="w-5 h-5 text-gray-600" />
             <span className="font-medium text-gray-900">Time Range:</span>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {(['7d', '30d', '90d'] as const).map((range) => (
                 <button
                   key={range}
@@ -253,7 +273,7 @@ export default function AdvancedAnalytics() {
               ))}
             </div>
           </div>
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label className="flex items-center gap-2 cursor-pointer self-start sm:self-auto">
             <input
               type="checkbox"
               checked={comparisonEnabled}
@@ -272,31 +292,43 @@ export default function AdvancedAnalytics() {
 
       {/* Key Metrics */}
       <div className="grid md:grid-cols-4 gap-4">
-        {metrics.map((metric, idx) => (
-          <div key={idx} className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-start justify-between mb-3">
-              <div className={`p-3 rounded-lg ${metric.color}`}>
-                {metric.icon}
-              </div>
-              {metric.change !== undefined && (
-                <div className={`flex items-center gap-1 text-sm font-medium ${
-                  metric.change >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {metric.change >= 0 ? (
-                    <TrendingUp className="w-4 h-4" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4" />
-                  )}
-                  {Math.abs(metric.change)}%
-                </div>
-              )}
-            </div>
-            <p className="text-sm text-gray-600 mb-1">{metric.label}</p>
-            <p className="text-3xl font-bold text-gray-900">{metric.value}</p>
-          </div>
-        ))}
-      </div>
+        {metrics.map((metric, idx) => {
+          const isClickable = Boolean(metric.targetId);
 
+          return (
+            <div
+              key={idx}
+              role={isClickable ? 'button' : undefined}
+              tabIndex={isClickable ? 0 : undefined}
+              onClick={isClickable ? () => scrollToSection(metric.targetId!) : undefined}
+              onKeyDown={isClickable ? (event) => handleCardKeyDown(event, metric.targetId!) : undefined}
+              className={`bg-white rounded-xl border border-gray-200 p-6 ${
+                isClickable ? 'cursor-pointer hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300' : ''
+              }`}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className={`p-3 rounded-lg ${metric.color}`}>
+                  {metric.icon}
+                </div>
+                {metric.change !== undefined && (
+                  <div className={`flex items-center gap-1 text-sm font-medium ${
+                    metric.change >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {metric.change >= 0 ? (
+                      <TrendingUp className="w-4 h-4" />
+                    ) : (
+                      <TrendingDown className="w-4 h-4" />
+                    )}
+                    {Math.abs(metric.change)}%
+                  </div>
+                )}
+              </div>
+              <p className="text-sm text-gray-600 mb-1">{metric.label}</p>
+              <p className="text-3xl font-bold text-gray-900">{metric.value}</p>
+            </div>
+          );
+        })}
+      </div>
       {/* Comparison Data */}
       {comparisonEnabled && comparisonData.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -336,7 +368,7 @@ export default function AdvancedAnalytics() {
         {/* User Growth Chart */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+            <h3 id="analytics-user-growth" className="font-semibold text-gray-900 flex items-center gap-2">
               <Users className="w-5 h-5" />
               User Growth Trend
             </h3>
@@ -375,7 +407,7 @@ export default function AdvancedAnalytics() {
         {/* Peak Times Chart */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+            <h3 id="analytics-peak-times" className="font-semibold text-gray-900 flex items-center gap-2">
               <Clock className="w-5 h-5" />
               Peak Ride Times
             </h3>
@@ -413,7 +445,7 @@ export default function AdvancedAnalytics() {
       {/* Booking Conversion Funnel */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+          <h3 id="analytics-booking-funnel" className="font-semibold text-gray-900 flex items-center gap-2">
             <Activity className="w-5 h-5" />
             Booking Conversion Funnel
           </h3>
@@ -452,7 +484,7 @@ export default function AdvancedAnalytics() {
         {/* Popular Routes */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+            <h3 id="analytics-popular-routes" className="font-semibold text-gray-900 flex items-center gap-2">
               <MapPin className="w-5 h-5" />
               Popular Routes
             </h3>
@@ -468,10 +500,10 @@ export default function AdvancedAnalytics() {
               <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex-1">
                   <p className="font-medium text-gray-900 text-sm">
-                    {route.origin} → {route.destination}
+                    {route.origin} {'->'} {route.destination}
                   </p>
                   <p className="text-xs text-gray-600 mt-1">
-                    {route.unique_drivers} drivers · Avg {route.avg_seats} seats
+                    {route.unique_drivers} drivers - Avg {route.avg_seats} seats
                   </p>
                 </div>
                 <div className="text-right">
@@ -486,7 +518,7 @@ export default function AdvancedAnalytics() {
         {/* Geographic Distribution */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+            <h3 id="analytics-geo-distribution" className="font-semibold text-gray-900 flex items-center gap-2">
               <MapPin className="w-5 h-5" />
               Geographic Distribution
             </h3>
@@ -523,7 +555,7 @@ export default function AdvancedAnalytics() {
       {/* Ride and Booking Stats Summary */}
       <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-6">
-          <h3 className="font-semibold text-green-900 mb-4 flex items-center gap-2">
+          <h3 id="analytics-ride-stats" className="font-semibold text-green-900 mb-4 flex items-center gap-2">
             <Car className="w-5 h-5" />
             Ride Statistics (Last 30 Days)
           </h3>
@@ -548,7 +580,7 @@ export default function AdvancedAnalytics() {
         </div>
 
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6">
-          <h3 className="font-semibold text-blue-900 mb-4 flex items-center gap-2">
+          <h3 id="analytics-booking-stats" className="font-semibold text-blue-900 mb-4 flex items-center gap-2">
             <CheckCircle className="w-5 h-5" />
             Booking Statistics (Last 30 Days)
           </h3>

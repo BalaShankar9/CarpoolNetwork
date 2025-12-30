@@ -4,14 +4,22 @@ import { Car, Calendar, MapPin, Users, Edit2, Trash2, Eye, AlertCircle, XCircle,
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import RecurringRidesManager from '../components/rides/RecurringRidesManager';
+import EditRideModal from '../components/rides/EditRideModal';
 import RideTracking from '../components/rides/RideTracking';
 import ClickableUserProfile from '../components/shared/ClickableUserProfile';
 
 interface Ride {
   id: string;
+  driver_id?: string;
+  vehicle_id?: string | null;
   origin: string;
+  origin_lat?: number | null;
+  origin_lng?: number | null;
   destination: string;
+  destination_lat?: number | null;
+  destination_lng?: number | null;
   departure_time: string;
+  time_type?: string | null;
   available_seats: number;
   total_seats: number;
   status: string;
@@ -128,6 +136,7 @@ export default function MyRides() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
   const [expandedTrackingRideId, setExpandedTrackingRideId] = useState<string | null>(null);
+  const [editingRide, setEditingRide] = useState<Ride | null>(null);
 
   useEffect(() => {
     loadRides();
@@ -460,6 +469,12 @@ export default function MyRides() {
     } finally {
       setProcessingRequestId(null);
     }
+  };
+
+  const handleRideSaved = (updatedRide: Ride) => {
+    setOfferedRides((prev) =>
+      prev.map((ride) => (ride.id === updatedRide.id ? { ...ride, ...updatedRide } : ride))
+    );
   };
 
   const cancelBooking = async (bookingId: string, departureTime: string) => {
@@ -1370,6 +1385,13 @@ export default function MyRides() {
           ) : null}
         </div>
       </div>
+
+      <EditRideModal
+        ride={editingRide}
+        isOpen={Boolean(editingRide)}
+        onClose={() => setEditingRide(null)}
+        onSaved={handleRideSaved}
+      />
 
       <RecurringRidesManager />
     </div>

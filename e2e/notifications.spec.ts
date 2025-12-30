@@ -21,12 +21,13 @@ test.describe('Notifications', () => {
       await page.waitForTimeout(3000);
 
       const unreadBadge = page.locator('[data-testid="unread-count"], [class*="badge"]:has-text(/\\d+/)');
-      const initialCount = await unreadBadge.first().textContent().catch(() => '0');
+      const initialCountText = await unreadBadge.first().textContent().catch(() => '0');
 
       await page.waitForTimeout(5000);
 
-      const newCount = await unreadBadge.first().textContent().catch(() => '0');
-      expect(typeof newCount === 'string' || newCount === null).toBeTruthy();
+      const newCountText = await unreadBadge.first().textContent().catch(() => '0');
+      expect(typeof initialCountText === 'string' || initialCountText === null).toBeTruthy();
+      expect(typeof newCountText === 'string' || newCountText === null).toBeTruthy();
     });
   });
 
@@ -42,7 +43,9 @@ test.describe('Notifications', () => {
         await page.waitForTimeout(2000);
       }
 
-      const pendingBookings = page.locator('text=/pending/i, [data-status="pending"], [class*="pending"]');
+      const pendingBookings = page
+        .locator('[data-status="pending"], [class*="pending"]')
+        .or(page.locator('text=/pending/i'));
       const count = await pendingBookings.count();
       expect(count).toBeGreaterThanOrEqual(0);
     });
@@ -77,7 +80,9 @@ test.describe('Notifications', () => {
         await page.waitForTimeout(2000);
       }
 
-      const confirmedBookings = page.locator('text=/confirmed/i, [data-status="confirmed"], [class*="confirmed"]');
+      const confirmedBookings = page
+        .locator('[data-status="confirmed"], [class*="confirmed"]')
+        .or(page.locator('text=/confirmed/i'));
       const count = await confirmedBookings.count();
       expect(count).toBeGreaterThanOrEqual(0);
     });
@@ -105,16 +110,24 @@ test.describe('Notifications', () => {
 
   test.describe('Real-time Notification Updates', () => {
     test('should receive notifications in real-time', async ({ page, auth }) => {
+      test.setTimeout(120000);
       await auth.login(TEST_USERS.driver);
       await page.waitForTimeout(2000);
 
       const notificationCount = page.locator('[data-testid="notification-count"], [class*="badge"]');
-      const initialCount = await notificationCount.first().textContent().catch(() => null);
+      const initialCount = await notificationCount.count().then((count) => {
+        if (count === 0) return null;
+        return notificationCount.first().textContent().catch(() => null);
+      });
 
-      await page.waitForTimeout(10000);
+      await page.waitForTimeout(1000);
 
-      const newCount = await notificationCount.first().textContent().catch(() => null);
-      expect(initialCount !== undefined || newCount !== undefined || true).toBeTruthy();
+      const newCount = await notificationCount.count().then((count) => {
+        if (count === 0) return null;
+        return notificationCount.first().textContent().catch(() => null);
+      });
+      const isValidCount = (value: string | null) => value === null || typeof value === 'string';
+      expect(isValidCount(initialCount) && isValidCount(newCount)).toBeTruthy();
     });
   });
 

@@ -1,4 +1,4 @@
-import { User, Menu, X, MessageSquare, Settings, Shield } from 'lucide-react';
+import { Menu, X, MessageSquare, Settings, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRealtime } from '../../contexts/RealtimeContext';
@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, profile, signOut, isAdmin } = useAuth();
-  const { unreadNotifications } = useRealtime();
+  useRealtime();
   const navigate = useNavigate();
 
   return (

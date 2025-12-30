@@ -1,15 +1,18 @@
-import { NavLink } from 'react-router-dom';
-import { Home, Search, PlusCircle, Calendar, MessageSquare, User, LogOut, Users, MessageCircle, LayoutDashboard, UserCheck, Activity, Bug, MapPin, Settings } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Home, Search, PlusCircle, Calendar, MessageSquare, User, LogOut, MessageCircle, LayoutDashboard, UserCheck, Activity, Bug, MapPin, Settings, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import Logo from '../shared/Logo';
 import AIChatbot from '../shared/AIChatbot';
 import EnvironmentBanner from '../shared/EnvironmentBanner';
+import OfflineBanner from '../shared/OfflineBanner';
 import FeedbackButton from '../shared/FeedbackButton';
 import ProfilePictureBanner from '../shared/ProfilePictureBanner';
 import ProfileCompletionBanner from '../shared/ProfileCompletionBanner';
+import ToastContainer from '../shared/ToastContainer';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { user, profile, signOut, isAdmin } = useAuth();
+  const { profile, signOut, isAdmin } = useAuth();
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
     try {
@@ -29,6 +32,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: '/request-ride', icon: MapPin, label: 'Request Ride' },
     { to: '/my-rides', icon: Calendar, label: 'My Rides' },
     { to: '/messages', icon: MessageSquare, label: 'Messages' },
+    { to: '/community', icon: Users, label: 'Community' },
     { to: '/profile', icon: User, label: 'Profile' },
     { to: '/settings', icon: Settings, label: 'Settings' },
   ];
@@ -44,8 +48,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <EnvironmentBanner />
+      <OfflineBanner />
       <ProfilePictureBanner />
       <ProfileCompletionBanner />
+      <ToastContainer />
       <header className="bg-white border-b border-gray-200 sticky z-50 top-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -54,10 +60,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium text-gray-900">{profile?.full_name}</p>
-                <p className="text-xs text-gray-500">⭐ {profile?.average_rating?.toFixed(1) || '0.0'}</p>
+                <p className="text-xs text-gray-500">Rating {profile?.average_rating?.toFixed(1) || '0.0'}</p>
               </div>
               <button
+                onClick={() => navigate('/community')}
+                aria-label="Community"
+                title="Community"
+                className="p-2 text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                <Users className="w-5 h-5" />
+              </button>
+              <button
                 onClick={handleSignOut}
+                aria-label="Sign Out"
+                data-testid="sign-out-button"
                 className="p-2 text-gray-600 hover:text-red-600 transition-colors"
                 title="Sign Out"
               >
@@ -221,3 +237,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+
+
+
+

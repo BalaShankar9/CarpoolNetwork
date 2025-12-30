@@ -351,7 +351,7 @@ export default function BulkOperations() {
 
   return (
     <div className="space-y-6 pb-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/admin')}
@@ -368,7 +368,7 @@ export default function BulkOperations() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={handleExport}
             className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
@@ -472,7 +472,7 @@ export default function BulkOperations() {
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
               <h2 className="text-xl font-semibold text-gray-900">Configure Operation</h2>
               <span className="text-sm text-gray-600">
                 {selectedItems.length} of {previewData.length} selected
@@ -606,7 +606,7 @@ export default function BulkOperations() {
                         {operationType === 'rides' && (
                           <>
                             <p className="font-medium text-gray-900">
-                              {item.origin} → {item.destination}
+                              {item.origin} {'->'} {item.destination}
                             </p>
                             <p className="text-sm text-gray-600">
                               {new Date(item.departure_time).toLocaleString()}

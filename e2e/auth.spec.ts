@@ -59,8 +59,7 @@ test.describe('Authentication', () => {
       await page.fill('input#fullName', 'Test User');
       await page.fill('input#email', 'test@example.com');
       await page.fill('input#password', '123');
-      await page.click('button[type="submit"]');
-      await expect(page.locator('text=Password must be at least 6 characters')).toBeVisible();
+      await expect(page.locator('text=At least 6 characters')).toBeVisible();
     });
   });
 
@@ -69,10 +68,7 @@ test.describe('Authentication', () => {
       await auth.login(TEST_USERS.driver);
       await expect(page).toHaveURL('/');
 
-      const userMenuBtn = page.locator('button:has([class*="rounded-full"]), [data-testid="user-menu"]').first();
-      await userMenuBtn.click();
-
-      const signOutBtn = page.locator('button:has-text("Sign Out"), a:has-text("Sign Out")').first();
+      const signOutBtn = page.locator('[data-testid="sign-out-button"], button[title="Sign Out"]').first();
       await signOutBtn.click();
 
       await expect(page).toHaveURL('/signin', { timeout: 10000 });

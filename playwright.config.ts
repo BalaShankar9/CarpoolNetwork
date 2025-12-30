@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const usePreview = process.env.E2E_USE_PREVIEW === 'true';
+const webServerCommand = usePreview ? 'npm run preview -- --port 5173 --strictPort' : 'npm run dev';
+const reuseExistingServer = !process.env.CI && !usePreview;
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -24,9 +28,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
+    command: webServerCommand,
     url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer,
     timeout: 120000,
   },
 });

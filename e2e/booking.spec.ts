@@ -100,12 +100,8 @@ test.describe('Booking Flow', () => {
 
       const bookingLink = page.locator('a[href*="/bookings/"]').first();
       if (await bookingLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-        const href = await bookingLink.getAttribute('href');
         await bookingLink.click();
         await page.waitForTimeout(2000);
-
-        const seatsBefore = page.locator('[data-testid="available-seats"], text=/\\d+ seat/');
-        const initialSeats = await seatsBefore.textContent().catch(() => '');
 
         const cancelBtn = page.locator('button:has-text("Cancel")').first();
         if (await cancelBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
@@ -144,7 +140,9 @@ test.describe('Booking Flow', () => {
       await page.goto('/my-rides');
       await page.waitForTimeout(3000);
 
-      const confirmedBadge = page.locator('text=/confirmed/i, [data-status="confirmed"]');
+      const confirmedBadge = page
+        .locator('[data-status="confirmed"]')
+        .or(page.locator('text=/confirmed/i'));
       const count = await confirmedBadge.count();
       expect(count).toBeGreaterThanOrEqual(0);
     });
@@ -154,7 +152,9 @@ test.describe('Booking Flow', () => {
       await page.goto('/my-rides');
       await page.waitForTimeout(3000);
 
-      const cancelledBadge = page.locator('text=/cancelled/i, [data-status="cancelled"]');
+      const cancelledBadge = page
+        .locator('[data-status="cancelled"]')
+        .or(page.locator('text=/cancelled/i'));
       const count = await cancelledBadge.count();
       expect(count).toBeGreaterThanOrEqual(0);
     });

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { KeyboardEvent } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -56,7 +57,7 @@ export default function AdvancedAnalyticsDashboard() {
       const { data: bookings, error: bookingsError } = await supabase
         .from('ride_bookings')
         .select('*, rides(*)')
-        .eq('rider_id', user?.id)
+        .eq('passenger_id', user?.id)
         .gte('created_at', startDate.toISOString());
 
       if (bookingsError) throw bookingsError;
@@ -211,6 +212,20 @@ export default function AdvancedAnalyticsDashboard() {
     return `${kg.toFixed(2)} kg`;
   };
 
+  const scrollToSection = (id: string) => {
+    const target = document.getElementById(id);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleCardKeyDown = (event: KeyboardEvent<HTMLDivElement>, id: string) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      scrollToSection(id);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -245,25 +260,43 @@ export default function AdvancedAnalyticsDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-6 text-white">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => scrollToSection('analytics-impact')}
+          onKeyDown={(event) => handleCardKeyDown(event, 'analytics-impact')}
+          className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-6 text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-300"
+        >
           <div className="flex items-center justify-between mb-2">
             <Leaf className="w-8 h-8 opacity-80" />
             <TrendingDown className="w-5 h-5" />
           </div>
-          <p className="text-green-100 text-sm mb-1">CO₂ Saved</p>
+          <p className="text-green-100 text-sm mb-1">CO2 Saved</p>
           <p className="text-3xl font-bold">{formatCO2(analytics.totalCO2Saved)}</p>
         </div>
 
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-6 text-white">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => scrollToSection('analytics-impact')}
+          onKeyDown={(event) => handleCardKeyDown(event, 'analytics-impact')}
+          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-6 text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300"
+        >
           <div className="flex items-center justify-between mb-2">
             <DollarSign className="w-8 h-8 opacity-80" />
             <TrendingUp className="w-5 h-5" />
           </div>
           <p className="text-blue-100 text-sm mb-1">Money Saved</p>
-          <p className="text-3xl font-bold">£{analytics.totalMoneySaved.toFixed(2)}</p>
+          <p className="text-3xl font-bold">GBP {analytics.totalMoneySaved.toFixed(2)}</p>
         </div>
 
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-6 text-white">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => scrollToSection('analytics-monthly-trends')}
+          onKeyDown={(event) => handleCardKeyDown(event, 'analytics-monthly-trends')}
+          className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-6 text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-300"
+        >
           <div className="flex items-center justify-between mb-2">
             <MapPin className="w-8 h-8 opacity-80" />
             <Activity className="w-5 h-5" />
@@ -272,7 +305,13 @@ export default function AdvancedAnalyticsDashboard() {
           <p className="text-3xl font-bold">{analytics.totalDistance.toFixed(0)} km</p>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-6 text-white">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => scrollToSection('analytics-rides-by-day')}
+          onKeyDown={(event) => handleCardKeyDown(event, 'analytics-rides-by-day')}
+          className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-6 text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-300"
+        >
           <div className="flex items-center justify-between mb-2">
             <Car className="w-8 h-8 opacity-80" />
             <Users className="w-5 h-5" />
@@ -286,7 +325,7 @@ export default function AdvancedAnalyticsDashboard() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center space-x-2 mb-4">
             <Clock className="w-5 h-5 text-gray-700" />
-            <h3 className="text-lg font-semibold text-gray-900">Peak Travel Hours</h3>
+            <h3 id="analytics-peak-hours" className="text-lg font-semibold text-gray-900">Peak Travel Hours</h3>
           </div>
           {analytics.peakHours.length > 0 ? (
             <div className="space-y-3">
@@ -315,7 +354,7 @@ export default function AdvancedAnalyticsDashboard() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center space-x-2 mb-4">
             <MapPin className="w-5 h-5 text-gray-700" />
-            <h3 className="text-lg font-semibold text-gray-900">Most Common Route</h3>
+            <h3 id="analytics-common-route" className="text-lg font-semibold text-gray-900">Most Common Route</h3>
           </div>
           {analytics.mostCommonRoute ? (
             <div className="space-y-3">
@@ -351,7 +390,7 @@ export default function AdvancedAnalyticsDashboard() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center space-x-2 mb-4">
           <Calendar className="w-5 h-5 text-gray-700" />
-          <h3 className="text-lg font-semibold text-gray-900">Rides by Day of Week</h3>
+          <h3 id="analytics-rides-by-day" className="text-lg font-semibold text-gray-900">Rides by Day of Week</h3>
         </div>
         <div className="grid grid-cols-7 gap-2">
           {analytics.ridesByDayOfWeek.map(({ day, count }) => {
@@ -377,7 +416,7 @@ export default function AdvancedAnalyticsDashboard() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center space-x-2 mb-4">
             <BarChart3 className="w-5 h-5 text-gray-700" />
-            <h3 className="text-lg font-semibold text-gray-900">Monthly Trends</h3>
+            <h3 id="analytics-monthly-trends" className="text-lg font-semibold text-gray-900">Monthly Trends</h3>
           </div>
           <div className="space-y-3">
             {analytics.monthlyTrends.map(({ month, rides, distance }) => (
@@ -411,9 +450,9 @@ export default function AdvancedAnalyticsDashboard() {
             <Leaf className="w-6 h-6 text-white" />
           </div>
           <div className="flex-1">
-            <h4 className="text-lg font-semibold text-gray-900 mb-2">Environmental Impact</h4>
+            <h4 id="analytics-impact" className="text-lg font-semibold text-gray-900 mb-2">Environmental Impact</h4>
             <p className="text-gray-700 mb-4">
-              By carpooling, you've saved <strong>{formatCO2(analytics.totalCO2Saved)}</strong> of CO₂ emissions.
+              By carpooling, you've saved <strong>{formatCO2(analytics.totalCO2Saved)}</strong> of CO2 emissions.
               That's equivalent to planting approximately{' '}
               <strong>{Math.round(analytics.totalCO2Saved / 20)}</strong> trees!
             </p>
@@ -424,7 +463,7 @@ export default function AdvancedAnalyticsDashboard() {
               </div>
               <div className="bg-white rounded-lg p-3">
                 <p className="text-sm text-gray-600">Total Savings</p>
-                <p className="text-xl font-bold text-green-600">£{analytics.totalMoneySaved.toFixed(2)}</p>
+                <p className="text-xl font-bold text-green-600">GBP {analytics.totalMoneySaved.toFixed(2)}</p>
               </div>
             </div>
           </div>

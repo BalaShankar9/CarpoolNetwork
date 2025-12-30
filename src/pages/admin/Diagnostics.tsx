@@ -625,7 +625,7 @@ export default function Diagnostics() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 py-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <button
             onClick={() => navigate('/admin')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
@@ -644,8 +644,8 @@ export default function Diagnostics() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
               <Activity className="w-6 h-6 text-orange-600" />
             </div>
@@ -655,7 +655,7 @@ export default function Diagnostics() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             {results.length > 0 && (
               <button
                 onClick={copyReport}
@@ -705,9 +705,9 @@ export default function Diagnostics() {
         )}
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="px-6 py-4 border-b border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Test Results</h2>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
               <span className="w-3 h-3 rounded-full bg-blue-500"></span> Auth
               <span className="w-3 h-3 rounded-full bg-green-500 ml-2"></span> Database
               <span className="w-3 h-3 rounded-full bg-orange-500 ml-2"></span> Storage
@@ -747,7 +747,7 @@ export default function Diagnostics() {
                         <p className="text-sm text-gray-600 mt-1">{result.details}</p>
                       )}
                       {result.error && (
-                        <p className="text-sm text-red-600 mt-1 font-mono bg-red-100 px-2 py-1 rounded">
+                        <p className="text-sm text-red-600 mt-1 font-mono bg-red-100 px-2 py-1 rounded break-words">
                           {result.error}
                         </p>
                       )}

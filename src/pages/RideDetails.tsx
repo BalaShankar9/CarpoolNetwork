@@ -31,9 +31,10 @@ interface RideDetails {
     avatar_url: string | null;
     average_rating: number;
     total_rides_offered: number;
-    bio: string | null;
-    whatsapp_number?: string;
+    bio: string | null;    whatsapp_number?: string;
     preferred_contact_method?: string;
+    allow_inhouse_chat?: boolean;
+    allow_whatsapp_chat?: boolean;
   };
   vehicle: {
     make: string;
@@ -291,7 +292,23 @@ export default function RideDetails() {
     );
   }
 
+
+
+
   const dateTime = formatDateTime(ride.departure_time);
+
+  const canInAppChat =
+    ride.driver.allow_inhouse_chat !== false &&
+    (ride.driver.preferred_contact_method === 'in_app' ||
+      ride.driver.preferred_contact_method === 'both' ||
+      !ride.driver.preferred_contact_method);
+
+  const canWhatsApp =
+    ride.driver.allow_whatsapp_chat !== false &&
+    !!ride.driver.whatsapp_number &&
+    (ride.driver.preferred_contact_method === 'whatsapp' ||
+      ride.driver.preferred_contact_method === 'both' ||
+      !ride.driver.preferred_contact_method);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -357,7 +374,7 @@ export default function RideDetails() {
             </div>
             {ride.driver.id !== user?.id && (
               <div className="flex gap-2">
-                {(ride.driver.preferred_contact_method === 'in_app' || ride.driver.preferred_contact_method === 'both' || !ride.driver.preferred_contact_method) && (
+                {canInAppChat ? (
                   <button
                     onClick={sendMessage}
                     className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2"
@@ -365,8 +382,17 @@ export default function RideDetails() {
                     <MessageCircle className="w-4 h-4" />
                     Message
                   </button>
+                ) : (
+                  <button
+                    disabled
+                    title="In-app messaging is disabled for this driver."
+                    className="px-4 py-2 border border-gray-300 text-gray-400 rounded-lg flex items-center gap-2 cursor-not-allowed"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    Message
+                  </button>
                 )}
-                {ride.driver.whatsapp_number && (ride.driver.preferred_contact_method === 'whatsapp' || ride.driver.preferred_contact_method === 'both' || !ride.driver.preferred_contact_method) && (
+                {canWhatsApp && (
                   <button
                     onClick={() => {
                       const cleanNumber = ride.driver.whatsapp_number!.replace(/[^0-9]/g, '');
@@ -672,3 +698,5 @@ export default function RideDetails() {
     </div>
   );
 }
+
+

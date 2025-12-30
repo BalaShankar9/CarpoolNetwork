@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 interface OfflineAction {
@@ -7,13 +8,19 @@ interface OfflineAction {
 }
 
 class OfflineManager {
-  private isOnline = navigator.onLine;
+  private isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
   private queue: OfflineAction[] = [];
   private processing = false;
 
   constructor() {
     this.setupListeners();
     this.loadQueue();
+  }
+
+  private syncOnlineState() {
+    if (typeof navigator !== 'undefined') {
+      this.isOnline = navigator.onLine;
+    }
   }
 
   private setupListeners() {
@@ -41,6 +48,7 @@ class OfflineManager {
   }
 
   async queueAction(action: OfflineAction) {
+    this.syncOnlineState();
     if (this.isOnline) {
       return this.executeAction(action);
     }
@@ -100,7 +108,8 @@ class OfflineManager {
   }
 
   private async processQueue() {
-    if (this.processing || this.queue.length === 0) {
+    this.syncOnlineState();
+    if (this.processing || this.queue.length === 0 || !this.isOnline) {
       return;
     }
 
@@ -182,6 +191,7 @@ class OfflineManager {
   }
 
   isAppOnline() {
+    this.syncOnlineState();
     return this.isOnline;
   }
 
@@ -211,8 +221,9 @@ export function useOfflineStatus() {
     window.addEventListener('offline', handleOffline);
 
     const interval = setInterval(() => {
+      setIsOnline(offlineManager.isAppOnline());
       setQueueLength(offlineManager.getQueueLength());
-    }, 5000);
+    }, 3000);
 
     return () => {
       window.removeEventListener('online', handleOnline);
@@ -223,5 +234,3 @@ export function useOfflineStatus() {
 
   return { isOnline, queueLength };
 }
-
-import { useState, useEffect } from 'react';

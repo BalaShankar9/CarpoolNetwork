@@ -27,14 +27,6 @@ export default function PhoneOtpForm({
     }
   };
 
-  const formatPhoneNumber = (value: string) => {
-    const cleaned = value.replace(/\D/g, '');
-    if (!cleaned.startsWith('44') && cleaned.length > 0) {
-      return '+44' + cleaned;
-    }
-    return '+' + cleaned;
-  };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <p className="text-sm text-gray-600">

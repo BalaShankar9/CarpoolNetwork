@@ -1,14 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import React, { useState } from 'react';
 import {
-  Settings,
   Shield,
   Bell,
-  Mail,
-  Database,
   Zap,
-  Globe,
-  Lock,
   Save,
   AlertCircle
 } from 'lucide-react';

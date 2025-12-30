@@ -27,10 +27,9 @@ interface Message {
 
 interface MessageListProps {
   initialUserId?: string;
-  initialUserName?: string;
 }
 
-export default function MessageList({ initialUserId, initialUserName }: MessageListProps) {
+export default function MessageList({ initialUserId }: MessageListProps) {
   const { user, isEmailVerified } = useAuth();
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<Map<string, Message[]>>(new Map());
@@ -38,9 +37,7 @@ export default function MessageList({ initialUserId, initialUserName }: MessageL
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -201,7 +198,6 @@ export default function MessageList({ initialUserId, initialUserName }: MessageL
 
       await recordRateLimitAction(user.id, user.id, 'message');
       setNewMessage('');
-      setIsTyping(false);
       scrollToBottom();
     } catch (error) {
       console.error('Error sending message:', error);
@@ -210,15 +206,6 @@ export default function MessageList({ initialUserId, initialUserName }: MessageL
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value);
-    setIsTyping(true);
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
-    typingTimeoutRef.current = setTimeout(() => {
-      setIsTyping(false);
-    }, 1000);
   };
 
   const openWhatsApp = (whatsappNumber: string) => {

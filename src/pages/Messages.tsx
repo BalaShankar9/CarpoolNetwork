@@ -1,20 +1,44 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import NewChatSystem from '../components/messaging/NewChatSystem';
 import { getOrCreateFriendsDM, getOrCreateRideConversation } from '../lib/chatHelpers';
 
 export default function Messages() {
   const location = useLocation();
   const { user } = useAuth();
-  const { userId, rideId, driverId } = (location.state as {
+  const { conversationId, userId, rideId, driverId } = (location.state as {
+    conversationId?: string;
     userId?: string;
     rideId?: string;
     driverId?: string;
   }) || {};
-  const [conversationId, setConversationId] = useState<string | undefined>();
+  const [activeConversationId, setActiveConversationId] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
+  const [retryToken, setRetryToken] = useState(0);
   const [initError, setInitError] = useState<string | null>(null);
+
+  const resolveRideDriverId = async () => {
+    if (!rideId) return null;
+    try {
+      const { data, error } = await supabase
+        .from('rides')
+        .select('driver_id')
+        .eq('id', rideId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Unable to load ride driver:', error);
+        return null;
+      }
+
+      return data?.driver_id ?? null;
+    } catch (error) {
+      console.error('Unable to load ride driver:', error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     const initializeConversation = async () => {
@@ -23,32 +47,55 @@ export default function Messages() {
         return;
       }
 
+      setLoading(true);
       setInitError(null);
 
-      // If userId provided, create/get DM conversation
+      if (conversationId) {
+        setActiveConversationId(conversationId);
+        setLoading(false);
+        return;
+      }
+
       if (userId) {
         const convId = await getOrCreateFriendsDM(user.id, userId);
         if (convId) {
-          setConversationId(convId);
+          setActiveConversationId(convId);
         } else {
           setInitError('Unable to start this conversation. Please try again.');
         }
+
+        setLoading(false);
+        return;
       }
-      // If rideId and driverId provided, create/get ride conversation
-      else if (rideId && driverId) {
-        const convId = await getOrCreateRideConversation(rideId, driverId, user.id);
+
+      if (rideId) {
+        let resolvedDriverId = driverId;
+        if (!resolvedDriverId) {
+          resolvedDriverId = await resolveRideDriverId();
+        }
+
+        if (!resolvedDriverId) {
+          setInitError('Unable to locate the driver for this ride.');
+          setLoading(false);
+          return;
+        }
+
+        const convId = await getOrCreateRideConversation(rideId, resolvedDriverId, user.id);
         if (convId) {
-          setConversationId(convId);
+          setActiveConversationId(convId);
         } else {
           setInitError('Unable to start this ride chat. Please try again.');
         }
+
+        setLoading(false);
+        return;
       }
 
       setLoading(false);
     };
 
     initializeConversation();
-  }, [user, userId, rideId, driverId]);
+  }, [user, userId, rideId, driverId, conversationId, retryToken]);
 
   if (loading) {
     return (
@@ -65,9 +112,25 @@ export default function Messages() {
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {initError}
           </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              onClick={() => setRetryToken((prev) => prev + 1)}
+              className="px-3 py-2 text-sm font-medium bg-white border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
+            >
+              Retry
+            </button>
+            {rideId && (
+              <button
+                onClick={() => window.location.assign(`/rides/${rideId}`)}
+                className="px-3 py-2 text-sm font-medium bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Back to Ride
+              </button>
+            )}
+          </div>
         </div>
       )}
-      <NewChatSystem initialConversationId={conversationId} />
+      <NewChatSystem initialConversationId={activeConversationId} />
     </div>
   );
 }

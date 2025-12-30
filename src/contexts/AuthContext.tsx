@@ -12,7 +12,7 @@ interface AuthContextType {
   loading: boolean;
   isEmailVerified: boolean;
   isAdmin: boolean;
-  signUp: (email: string, password: string, fullName: string, phone: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string, fullName: string, phone: string) => Promise<{ error: AuthError | null; requiresEmailConfirmation?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signInWithFacebook: () => Promise<{ error: AuthError | null }>;
@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        loadProfile(session.user.id);
+        loadProfile(session.user);
       } else {
         setLoading(false);
       }
@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        loadProfile(session.user.id);
+        loadProfile(session.user);
       } else {
         setProfile(null);
         setLoading(false);
@@ -56,33 +56,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
-
-  const loadProfile = async (userId: string) => {
+  const loadProfile = async (user: User) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('id', user.id)
         .maybeSingle();
 
       if (error) throw error;
-      setProfile(data);
+
+      if (!data) {
+        const fallbackEmail = user.email || `phone-${(user.phone || user.id).replace(/[^0-9A-Za-z]/g, '')}@carpoolnetwork.co.uk`;
+        const fallbackName =
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          'New User';
+
+        const { data: createdProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert([{
+            id: user.id,
+            email: fallbackEmail,
+            full_name: fallbackName,
+            phone: user.phone || null,
+          }])
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        setProfile(createdProfile);
+      } else {
+        setProfile(data);
+      }
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
       setLoading(false);
     }
   };
-
   const signUp = async (email: string, password: string, fullName: string, phone: string) => {
     try {
+      if (import.meta.env.VITE_BETA_MODE === 'true') {
+        const { data: isAllowlisted, error: allowlistError } = await supabase.rpc(
+          'check_beta_allowlist',
+          { check_email: email }
+        );
+
+        if (allowlistError) {
+          return { error: new AuthError('Unable to verify beta access. Please try again.'), requiresEmailConfirmation: false };
+        }
+
+        if (!isAllowlisted) {
+          return { error: new AuthError('This email is not on the beta allowlist.'), requiresEmailConfirmation: false };
+        }
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
 
-      if (error) return { error };
-      if (!data.user) return { error: new AuthError('User creation failed') };
+      if (error) return { error, requiresEmailConfirmation: false };
+      if (!data.user) return { error: new AuthError('User creation failed'), requiresEmailConfirmation: false };
+
+      const requiresEmailConfirmation = !data.session;
 
       const { error: profileError } = await supabase
         .from('profiles')
@@ -97,9 +135,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Error creating profile:', profileError);
       }
 
-      return { error: null };
+      return { error: null, requiresEmailConfirmation };
     } catch (error) {
-      return { error: error as AuthError };
+      return { error: error as AuthError, requiresEmailConfirmation: false };
     }
   };
 

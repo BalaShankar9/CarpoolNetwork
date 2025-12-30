@@ -8,7 +8,7 @@ export default function SignUp({ onToggle }: { onToggle: () => void }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const { signUp } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,22 +29,26 @@ export default function SignUp({ onToggle }: { onToggle: () => void }) {
       return;
     }
 
-    const { error } = await signUp(email, password, fullName, '');
+    const { error, requiresEmailConfirmation } = await signUp(email, password, fullName, '');
     if (error) {
       setError(error.message);
     } else {
       await recordRateLimitAction(null, email.toLowerCase(), 'signup');
-      setSuccess(true);
+      setSuccessMessage(
+        requiresEmailConfirmation
+          ? 'Check your email to confirm your account before signing in.'
+          : 'Account created. You can now sign in with your credentials.'
+      );
     }
     setLoading(false);
   };
 
-  if (success) {
+  if (successMessage) {
     return (
       <div className="w-full max-w-md space-y-6 text-center">
         <div className="bg-green-50 border border-green-200 text-green-700 px-6 py-8 rounded-lg">
-          <h3 className="text-xl font-semibold mb-2">Account Created!</h3>
-          <p>You can now sign in with your credentials.</p>
+          <h3 className="text-xl font-semibold mb-2">Account Created</h3>
+          <p>{successMessage}</p>
         </div>
         <button
           onClick={onToggle}

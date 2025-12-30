@@ -318,7 +318,7 @@ export default function LiveActivityMonitor() {
     <div className="space-y-6 pb-8">
       <audio ref={audioRef} src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS56+OdTgwOUKXh8bllHgU2jdXyzn0vBSh+zPDckjwKElyx6OyrWBQLRp3e8r1nIQYsgc/y2Ik2CBZgsunlm08MDlGl4fG5ZiAFNo/W8tCAMAUrfsrv3I4+ChFbs+jtrVoVDEae3vK8aCAFLIDP8tiKNQcVYbHo5JxPDA5RpuHxuWYgBTaO1vLOf2YgBS6Az/LYizcHE19Z6+SbTgwPUajh8bdnFApGnNzzwW0hBSyA0O+dTwxQvr+" />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/admin')}
@@ -335,7 +335,7 @@ export default function LiveActivityMonitor() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`p-2 rounded-lg transition-colors ${
@@ -455,7 +455,7 @@ export default function LiveActivityMonitor() {
                         {alert.severity.toUpperCase()}
                       </span>
                       <span className="text-sm text-gray-500">{alert.alert_type}</span>
-                      <span className="text-sm text-gray-500">•</span>
+                      <span className="text-sm text-gray-500">|</span>
                       <span className="text-sm text-gray-500">{formatTimeAgo(alert.created_at)}</span>
                     </div>
                     <h3 className="font-bold text-gray-900 mb-1">{alert.title}</h3>
@@ -517,7 +517,7 @@ export default function LiveActivityMonitor() {
             <option value="critical">Critical</option>
           </select>
 
-          <div className="flex-1 min-w-[300px]">
+          <div className="w-full lg:flex-1 lg:min-w-[300px]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -574,7 +574,7 @@ export default function LiveActivityMonitor() {
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getSeverityColor(activity.severity)}`}>
                         {activity.severity}
                       </span>
-                      <span className="text-sm text-gray-500">•</span>
+                      <span className="text-sm text-gray-500">|</span>
                       <span className="text-sm text-gray-500">{activity.activity_type}</span>
                     </div>
                     <p className="text-gray-700 text-sm mb-2">{activity.description}</p>

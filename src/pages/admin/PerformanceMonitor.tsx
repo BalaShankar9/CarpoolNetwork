@@ -151,7 +151,7 @@ export default function PerformanceMonitor() {
 
   return (
     <div className="space-y-6 pb-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/admin')}
@@ -168,11 +168,11 @@ export default function PerformanceMonitor() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value as any)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="1h">Last Hour</option>
             <option value="6h">Last 6 Hours</option>
@@ -192,7 +192,7 @@ export default function PerformanceMonitor() {
 
       {systemHealth && (
         <div className="grid md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-6 min-w-0">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900">Overall Status</h3>
               {getStatusIcon(systemHealth.overall_status)}
@@ -202,7 +202,7 @@ export default function PerformanceMonitor() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-6 min-w-0">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900">Database Status</h3>
               <Database className="w-5 h-5 text-blue-600" />
@@ -212,7 +212,7 @@ export default function PerformanceMonitor() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-6 min-w-0">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900">Recent Errors</h3>
               <AlertCircle className={`w-5 h-5 ${systemHealth.recent_errors > 10 ? 'text-red-600' : 'text-gray-400'}`} />
@@ -224,7 +224,7 @@ export default function PerformanceMonitor() {
       )}
 
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6 min-w-0">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-900">Avg Response Time</h3>
             <Clock className="w-5 h-5 text-blue-600" />
@@ -246,7 +246,7 @@ export default function PerformanceMonitor() {
           )}
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6 min-w-0">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-900">Cache Hit Rate</h3>
             <Zap className="w-5 h-5 text-green-600" />
@@ -258,7 +258,7 @@ export default function PerformanceMonitor() {
           <p className="text-sm text-gray-600 mt-2">Cache efficiency</p>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6 min-w-0">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-900">Active Users</h3>
             <Activity className="w-5 h-5 text-purple-600" />
@@ -267,7 +267,7 @@ export default function PerformanceMonitor() {
           <p className="text-sm text-gray-600 mt-2">in the last hour</p>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6 min-w-0">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-900">API Calls</h3>
             <Server className="w-5 h-5 text-orange-600" />
@@ -278,7 +278,7 @@ export default function PerformanceMonitor() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6 min-w-0">
           <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <Clock className="w-5 h-5 text-blue-600" />
             Performance Metrics
@@ -286,7 +286,7 @@ export default function PerformanceMonitor() {
 
           <div className="space-y-4">
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                 <span className="text-sm text-gray-600">Page Load Time</span>
                 <span className="font-semibold text-gray-900">{avgPageLoad.toFixed(0)}ms</span>
               </div>
@@ -299,7 +299,7 @@ export default function PerformanceMonitor() {
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                 <span className="text-sm text-gray-600">API Response Time</span>
                 <span className="font-semibold text-gray-900">{avgApiCall.toFixed(0)}ms</span>
               </div>
@@ -312,7 +312,7 @@ export default function PerformanceMonitor() {
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                 <span className="text-sm text-gray-600">Database Query Time</span>
                 <span className="font-semibold text-gray-900">{avgDbQuery.toFixed(0)}ms</span>
               </div>
@@ -325,7 +325,7 @@ export default function PerformanceMonitor() {
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                 <span className="text-sm text-gray-600">Component Render Time</span>
                 <span className="font-semibold text-gray-900">{avgRenderTime.toFixed(0)}ms</span>
               </div>
@@ -339,12 +339,12 @@ export default function PerformanceMonitor() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6 min-w-0">
           <h3 className="font-semibold text-gray-900 mb-4">Recent Metrics</h3>
 
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {metrics.slice(0, 20).map((metric, idx) => (
-              <div key={idx} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+              <div key={idx} className="flex flex-wrap items-start justify-between gap-2 p-2 hover:bg-gray-50 rounded">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{metric.metric_name}</p>
                   <p className="text-xs text-gray-600 truncate">{metric.endpoint || metric.metric_type}</p>

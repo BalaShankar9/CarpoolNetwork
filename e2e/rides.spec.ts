@@ -28,11 +28,11 @@ test.describe('Rides', () => {
       tomorrow.setDate(tomorrow.getDate() + 1);
       const dateStr = tomorrow.toISOString().split('T')[0];
 
-      const originInput = page.locator('input[placeholder*="Start"], input[placeholder*="From"], input[placeholder*="pickup"]').first();
+      const originInput = page.locator('#origin-input, input[placeholder*="start"], input[placeholder*="Start"], input[placeholder*="pickup"], input[placeholder*="Pickup"]').first();
       await originInput.fill('London');
       await page.waitForTimeout(1000);
 
-      const destInput = page.locator('input[placeholder*="Destination"], input[placeholder*="To"], input[placeholder*="drop"]').first();
+      const destInput = page.locator('#destination-input, input[placeholder*="destination"], input[placeholder*="Destination"], input[placeholder*="drop"], input[placeholder*="Drop"]').first();
       await destInput.fill('Manchester');
       await page.waitForTimeout(1000);
 
@@ -66,8 +66,8 @@ test.describe('Rides', () => {
   test.describe('Find Rides', () => {
     test('should display search form', async ({ page }) => {
       await page.goto('/find-rides');
-      await expect(page.locator('input[placeholder*="From"], input[placeholder*="pickup"]').first()).toBeVisible();
-      await expect(page.locator('input[placeholder*="To"], input[placeholder*="destination"]').first()).toBeVisible();
+      await expect(page.locator('#search-origin-input, input[placeholder*="From"], input[placeholder*="pickup"]').first()).toBeVisible();
+      await expect(page.locator('#search-destination-input, input[placeholder*="To"], input[placeholder*="destination"]').first()).toBeVisible();
     });
 
     test('should search for rides', async ({ page, rides }) => {

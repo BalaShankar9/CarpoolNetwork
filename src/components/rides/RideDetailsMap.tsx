@@ -33,6 +33,7 @@ export default function RideDetailsMap({
     duration: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showTraffic, setShowTraffic] = useState(true);
 
   useEffect(() => {
@@ -43,9 +44,15 @@ export default function RideDetailsMap({
     if (!mapRef.current) return;
 
     try {
+      setError(null);
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      if (!apiKey) {
+        throw new Error('Google Maps API key is not configured');
+      }
+
       if (typeof google === 'undefined' || !google.maps) {
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places,geometry`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`;
         script.async = true;
         script.defer = true;
         document.head.appendChild(script);
@@ -153,6 +160,7 @@ export default function RideDetailsMap({
       setLoading(false);
     } catch (error) {
       console.error('Error initializing map:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load map');
       setLoading(false);
     }
   };
@@ -182,6 +190,15 @@ export default function RideDetailsMap({
   const toggleTraffic = () => {
     setShowTraffic(!showTraffic);
   };
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <AlertTriangle className="w-10 h-10 text-red-500 mx-auto mb-3" />
+        <p className="text-red-700 font-medium">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

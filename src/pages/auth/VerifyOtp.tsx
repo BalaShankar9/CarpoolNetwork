@@ -29,7 +29,7 @@ export default function VerifyOtp() {
       } else {
         navigate('/');
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred');
     }
   };
@@ -41,7 +41,7 @@ export default function VerifyOtp() {
       if (error) {
         setError(error.message);
       }
-    } catch (err) {
+    } catch {
       setError('Failed to resend code');
     }
   };

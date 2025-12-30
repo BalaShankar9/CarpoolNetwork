@@ -198,7 +198,7 @@ export default function AdminDashboard() {
     { label: 'Active Rides', value: stats?.activeRides || 0, icon: Car, color: 'green', subtext: `${stats?.totalRides || 0} total` },
     { label: 'Verifications', value: stats?.pendingVerifications || 0, icon: CheckCircle, color: 'orange', link: '/admin/verifications', highlight: (stats?.pendingVerifications || 0) > 0 },
     { label: 'Feedback', value: stats?.feedbackCount || 0, icon: MessageSquare, color: 'teal', link: '/admin/feedback' },
-    { label: 'New This Week', value: stats?.recentSignups || 0, icon: TrendingUp, color: 'green' },
+    { label: 'New This Week', value: stats?.recentSignups || 0, icon: TrendingUp, color: 'green', link: '/admin/users' },
   ];
 
   const colorClasses = {
@@ -235,8 +235,8 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4 min-w-0">
               <button
                 onClick={() => navigate('/')}
                 className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
@@ -246,15 +246,15 @@ export default function AdminDashboard() {
               <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
                 <LayoutDashboard className="w-7 h-7 text-white" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-                <p className="text-gray-500">Welcome back, {user?.email?.split('@')[0]}</p>
+                <p className="text-gray-500 truncate">Welcome back, {user?.email?.split('@')[0]}</p>
               </div>
             </div>
             <button
               onClick={fetchDashboardData}
               disabled={refreshing}
-              className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
+              className="self-start px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2 sm:self-auto"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
@@ -265,18 +265,18 @@ export default function AdminDashboard() {
 
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex gap-1 overflow-x-auto">
+          <div className="flex flex-wrap gap-1 sm:flex-nowrap sm:overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
+                className={`flex items-center gap-2 px-3 sm:px-4 py-3 border-b-2 transition-colors min-w-0 text-left whitespace-normal sm:whitespace-nowrap ${
                   activeTab === tab.id
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
                 }`}
               >
-                <tab.icon className="w-4 h-4" />
+                <tab.icon className="w-4 h-4 shrink-0" />
                 <span className="text-sm font-medium">{tab.label}</span>
               </button>
             ))}
@@ -318,10 +318,10 @@ export default function AdminDashboard() {
             </div>
 
             <div className="grid lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200">
-                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
-                  <Clock className="w-5 h-5 text-gray-400" />
+              <div className="lg:col-span-2 min-w-0 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-2 min-w-0">
+                  <h2 className="text-lg font-semibold text-gray-900 truncate min-w-0">Recent Activity</h2>
+                  <Clock className="w-5 h-5 text-gray-400 shrink-0" />
                 </div>
                 <div className="divide-y divide-gray-100">
                   {recentActivity.length === 0 ? (
@@ -465,3 +465,5 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+
