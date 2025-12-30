@@ -7,9 +7,10 @@ headers = []
 
 [build]
 publish = "dist"
-command = "npm run build"
+command = "npm ci && npm run build"
 
 [build.environment]
+  NODE_VERSION = "20"
   # Google Maps API keys are public; disable smart secret scanning to prevent false positives.
   SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
 
@@ -25,6 +26,7 @@ command = "npm run build"
 
 [build.services]
 
+# SPA routing support (React Router): all routes go to index.html
 [[redirects]]
 from = "/*"
 to = "/index.html"
@@ -36,6 +38,20 @@ force = false
 [redirects.conditions]
 
 [redirects.headers]
+
+# Cache built assets aggressively (Vite outputs hashed files)
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Basic security headers (safe defaults)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
 
 # ============================================================
 # PRODUCTION CONTEXT (main/master branch deploys)
