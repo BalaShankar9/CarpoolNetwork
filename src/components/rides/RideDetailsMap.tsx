@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Cloud, Wind, Droplets, AlertTriangle, Navigation } from 'lucide-react';
 import { googleMapsService, WeatherData, AirQualityData } from '../../services/googleMapsService';
+import { getRuntimeConfig } from '../../lib/runtimeConfig';
 
 declare global {
   interface Window {
@@ -45,14 +46,14 @@ export default function RideDetailsMap({
 
     try {
       setError(null);
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      if (!apiKey) {
+      const { mapsApiKey } = await getRuntimeConfig();
+      if (!mapsApiKey) {
         throw new Error('Google Maps API key is not configured');
       }
 
       if (typeof google === 'undefined' || !google.maps) {
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&libraries=places,geometry`;
         script.async = true;
         script.defer = true;
         document.head.appendChild(script);

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapPin } from 'lucide-react';
+import { getRuntimeConfig } from '../../lib/runtimeConfig';
 
 interface LocationDetails {
   address: string;
@@ -30,6 +31,27 @@ export default function LocationAutocomplete({
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const isSelectingRef = useRef(false);
   const [isSelected, setIsSelected] = useState(false);
+  const [mapsApiKey, setMapsApiKey] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    getRuntimeConfig()
+      .then((config) => {
+        if (active) {
+          setMapsApiKey(config.mapsApiKey);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setMapsApiKey('');
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const loadGoogleMaps = async () => {
@@ -38,8 +60,7 @@ export default function LocationAutocomplete({
         return;
       }
 
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      if (!apiKey) {
+      if (!mapsApiKey) {
         console.warn('Google Maps API key not found');
         return;
       }
@@ -56,7 +77,7 @@ export default function LocationAutocomplete({
 
       try {
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&libraries=places`;
         script.async = true;
         script.defer = true;
         script.onload = () => initAutocomplete();
@@ -104,7 +125,7 @@ export default function LocationAutocomplete({
     };
 
     loadGoogleMaps();
-  }, [onChange]);
+  }, [onChange, mapsApiKey]);
 
   useEffect(() => {
     if (inputRef.current && !isSelectingRef.current) {

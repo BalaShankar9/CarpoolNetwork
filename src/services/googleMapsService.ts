@@ -1,6 +1,17 @@
 import { cache } from '../lib/cache';
+import { getRuntimeConfig } from '../lib/runtimeConfig';
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+let cachedMapsApiKey: string | null = null;
+
+const getMapsApiKey = async (): Promise<string> => {
+  if (cachedMapsApiKey !== null) {
+    return cachedMapsApiKey;
+  }
+
+  const { mapsApiKey } = await getRuntimeConfig();
+  cachedMapsApiKey = mapsApiKey || '';
+  return cachedMapsApiKey;
+};
 
 export type DistanceUnit = 'km' | 'mi';
 
@@ -99,12 +110,13 @@ export class GoogleMapsService {
       return { data: null, error: 'Address is required' };
     }
 
-    if (!GOOGLE_MAPS_API_KEY) {
+    const apiKey = await getMapsApiKey();
+    if (!apiKey) {
       return { data: null, error: 'Missing Google Maps API key' };
     }
 
     try {
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_API_KEY}`;
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
       const response = await fetch(url);
       if (!response.ok) {
         return { data: null, error: `Geocoding API returned ${response.status}` };
@@ -135,7 +147,8 @@ export class GoogleMapsService {
     destination: { lat: number; lng: number },
     departureTime?: Date
   ): Promise<RouteOption[]> {
-    if (!GOOGLE_MAPS_API_KEY) {
+    const apiKey = await getMapsApiKey();
+    if (!apiKey) {
       return this.getFallbackRoute(origin, destination);
     }
     const cacheKey = `routes:${origin.lat},${origin.lng}:${destination.lat},${destination.lng}:${departureTime?.toISOString() || 'now'}`;
@@ -185,7 +198,7 @@ export class GoogleMapsService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
+            'X-Goog-Api-Key': apiKey,
             'X-Goog-FieldMask': 'routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline,routes.legs',
           },
           body: JSON.stringify(requestBody),
@@ -314,7 +327,8 @@ export class GoogleMapsService {
   }
 
   async getWeatherForecast(lat: number, lng: number, targetDate?: Date): Promise<WeatherData> {
-    if (!GOOGLE_MAPS_API_KEY) {
+    const apiKey = await getMapsApiKey();
+    if (!apiKey) {
       return this.getMockWeatherData(targetDate);
     }
     const timeBucket = targetDate
@@ -325,7 +339,7 @@ export class GoogleMapsService {
     return cache.get(
       cacheKey,
       async () => {
-        const url = `https://weather.googleapis.com/v1/weather?location=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`;
+        const url = `https://weather.googleapis.com/v1/weather?location=${lat},${lng}&key=${apiKey}`;
 
         const response = await fetch(url, {
           method: 'GET',
@@ -389,7 +403,8 @@ export class GoogleMapsService {
   }
 
   async getAirQuality(lat: number, lng: number): Promise<AirQualityData> {
-    if (!GOOGLE_MAPS_API_KEY) {
+    const apiKey = await getMapsApiKey();
+    if (!apiKey) {
       return {
         aqi: 50,
         category: 'Good',
@@ -404,7 +419,7 @@ export class GoogleMapsService {
     return cache.get(
       cacheKey,
       async () => {
-        const url = `https://airquality.googleapis.com/v1/currentConditions:lookup?key=${GOOGLE_MAPS_API_KEY}`;
+        const url = `https://airquality.googleapis.com/v1/currentConditions:lookup?key=${apiKey}`;
 
         const response = await fetch(url, {
           method: 'POST',
@@ -456,10 +471,11 @@ export class GoogleMapsService {
   }
 
   async getPollenData(lat: number, lng: number): Promise<PollenData[]> {
-    if (!GOOGLE_MAPS_API_KEY) {
+    const apiKey = await getMapsApiKey();
+    if (!apiKey) {
       return this.getMockPollenData();
     }
-    const url = `https://pollen.googleapis.com/v1/forecast:lookup?key=${GOOGLE_MAPS_API_KEY}&location.latitude=${lat}&location.longitude=${lng}&days=1`;
+    const url = `https://pollen.googleapis.com/v1/forecast:lookup?key=${apiKey}&location.latitude=${lat}&location.longitude=${lng}&days=1`;
 
     try {
       const response = await fetch(url);
@@ -510,7 +526,8 @@ export class GoogleMapsService {
     type: string,
     radius: number = 5000
   ): Promise<PlaceDetails[]> {
-    if (!GOOGLE_MAPS_API_KEY) {
+    const apiKey = await getMapsApiKey();
+    if (!apiKey) {
       return [];
     }
     const cacheKey = `places:${type}:${lat.toFixed(2)},${lng.toFixed(2)}:${radius}`;
@@ -523,7 +540,7 @@ export class GoogleMapsService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
+          'X-Goog-Api-Key': apiKey,
           'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.types,places.rating,places.currentOpeningHours',
         },
         body: JSON.stringify({
@@ -574,10 +591,11 @@ export class GoogleMapsService {
     height: number = 400,
     markers?: Array<{ lat: number; lng: number; label?: string }>
   ): string {
-    if (!GOOGLE_MAPS_API_KEY) {
+    const apiKey = cachedMapsApiKey || '';
+    if (!apiKey) {
       return '';
     }
-    let url = `https://maps.googleapis.com/maps/api/staticmap?center=${center.lat},${center.lng}&zoom=${zoom}&size=${width}x${height}&key=${GOOGLE_MAPS_API_KEY}`;
+    let url = `https://maps.googleapis.com/maps/api/staticmap?center=${center.lat},${center.lng}&zoom=${zoom}&size=${width}x${height}&key=${apiKey}`;
 
     if (markers && markers.length > 0) {
       markers.forEach((marker) => {

@@ -32,8 +32,7 @@ interface RideData {
   status: string;
 }
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const GEMINI_PROXY_URL = `${SUPABASE_URL}/functions/v1/gemini-proxy`;
+const GEMINI_PROXY_URL = '/.netlify/functions/gemini';
 
 export class GeminiService {
   private static async fetchUserBookings(userId: string): Promise<BookingData[]> {
@@ -290,45 +289,31 @@ Remember: You can see their data AND real-time conditions, so be specific and re
       const ridesContext = this.formatRideContext(rides);
       const systemPrompt = this.getSystemPrompt(bookingsContext, ridesContext, weatherInfo, trafficInfo);
 
-      const contents = [
-        {
-          role: 'user' as const,
-          parts: [{ text: systemPrompt }]
-        },
-        ...conversationHistory.map(msg => ({
-          role: (msg.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
-          parts: [{ text: msg.content }]
-        })),
-        {
-          role: 'user' as const,
-          parts: [{ text: userMessage }]
-        }
-      ];
+      const historyText = conversationHistory
+        .map(msg => `${msg.role === 'assistant' ? 'Assistant' : 'User'}: ${msg.content}`)
+        .join('\n');
+      const promptSections = [systemPrompt];
+
+      if (historyText) {
+        promptSections.push('', 'CONVERSATION HISTORY:', historyText);
+      }
+
+      promptSections.push('', `User: ${userMessage}`, 'Assistant:');
+      const prompt = promptSections.join('\n');
 
       const response = await fetch(GEMINI_PROXY_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          contents,
-          model: 'gemini-2.0-flash',
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 1024,
-          },
+          prompt,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('Gemini proxy error:', response.status, errorData);
-        if (response.status === 401) {
-          return 'Your session has expired. Please sign in again.';
-        }
         throw new Error(`API request failed: ${response.status}`);
       }
 

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { getRuntimeConfig } from '../../lib/runtimeConfig';
 
 type TestStatus = 'pending' | 'running' | 'pass' | 'fail' | 'warn';
 
@@ -49,6 +50,7 @@ export default function Diagnostics() {
   const [running, setRunning] = useState(false);
   const [copied, setCopied] = useState(false);
   const [dbStats, setDbStats] = useState<DatabaseStats | null>(null);
+  const [mapsApiConfigured, setMapsApiConfigured] = useState<boolean | null>(null);
   const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
@@ -57,6 +59,26 @@ export default function Diagnostics() {
       return;
     }
   }, [isAdmin, navigate]);
+
+  useEffect(() => {
+    let active = true;
+
+    getRuntimeConfig()
+      .then((config) => {
+        if (active) {
+          setMapsApiConfigured(Boolean(config.mapsApiKey));
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setMapsApiConfigured(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const updateResult = (name: string, update: Partial<TestResult>) => {
     setResults(prev => prev.map(r => r.name === name ? { ...r, ...update } : r));
@@ -94,7 +116,7 @@ export default function Diagnostics() {
       { name: 'Database Statistics', status: 'pending', category: 'database' },
       { name: 'Storage Buckets', status: 'pending', category: 'storage' },
       { name: 'Realtime Subscription', status: 'pending', category: 'realtime' },
-      { name: 'Edge Function (gemini-proxy)', status: 'pending', category: 'functions' },
+      { name: 'Netlify Function (gemini)', status: 'pending', category: 'functions' },
       { name: 'Edge Function (vehicle-lookup)', status: 'pending', category: 'functions' },
       { name: 'Google Maps Script', status: 'pending', category: 'maps' },
       { name: 'Places Autocomplete', status: 'pending', category: 'maps' },
@@ -359,28 +381,20 @@ export default function Diagnostics() {
   };
 
   const testGeminiProxy = async () => {
-    const testName = 'Edge Function (gemini-proxy)';
+    const testName = 'Netlify Function (gemini)';
     updateResult(testName, { status: 'running' });
     const start = Date.now();
 
     try {
-      if (!session?.access_token) {
-        throw new Error('No access token available');
-      }
-
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-proxy`,
+        '/.netlify/functions/gemini',
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            contents: [
-              { role: 'user', parts: [{ text: 'Reply with only the word "OK"' }] }
-            ],
-            generationConfig: { maxOutputTokens: 10 },
+            prompt: 'Reply with only the word "OK".',
           }),
         }
       );
@@ -563,7 +577,12 @@ export default function Diagnostics() {
 
     report += `${'='.repeat(50)}\n`;
     report += `Supabase URL: ${import.meta.env.VITE_SUPABASE_URL}\n`;
-    report += `Google Maps API: ${import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? 'Configured' : 'NOT CONFIGURED'}\n`;
+    const mapsStatus = mapsApiConfigured === null
+      ? 'UNKNOWN'
+      : mapsApiConfigured
+        ? 'Configured'
+        : 'NOT CONFIGURED';
+    report += `Google Maps API: ${mapsStatus}\n`;
     report += `Beta Mode: ${import.meta.env.VITE_BETA_MODE}\n`;
 
     return report;
@@ -797,7 +816,11 @@ export default function Diagnostics() {
               <div>
                 <span className="text-gray-500 block mb-1">Google Maps API</span>
                 <p className="font-mono text-gray-900 bg-gray-50 px-3 py-2 rounded">
-                  {import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? 'Configured' : 'NOT CONFIGURED'}
+                  {mapsApiConfigured === null
+                    ? 'UNKNOWN'
+                    : mapsApiConfigured
+                      ? 'Configured'
+                      : 'NOT CONFIGURED'}
                 </p>
               </div>
             </div>

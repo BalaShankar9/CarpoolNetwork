@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Mail, Phone, Loader2 } from 'lucide-react';
+import { getRuntimeConfig } from '../../lib/runtimeConfig';
 
 interface OtpRequestFormProps {
   onSendOTP: (identifier: string, isPhone: boolean) => Promise<void>;
   disabled?: boolean;
 }
-
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 const REGION_TO_COUNTRY_CODE: Record<string, string> = {
   AU: '+61',
@@ -51,10 +50,10 @@ const resolveCountryCodeFromLocale = () => {
   return REGION_TO_COUNTRY_CODE[region] || null;
 };
 
-const lookupCountryCodeFromCoords = async (lat: number, lng: number) => {
-  if (!GOOGLE_MAPS_API_KEY) return null;
+const lookupCountryCodeFromCoords = async (lat: number, lng: number, apiKey: string) => {
+  if (!apiKey) return null;
 
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&result_type=country&key=${GOOGLE_MAPS_API_KEY}`;
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&result_type=country&key=${apiKey}`;
   const response = await fetch(url);
 
   if (!response.ok) return null;
@@ -82,6 +81,7 @@ export default function OtpRequestForm({ onSendOTP, disabled = false }: OtpReque
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState('');
+  const [mapsApiKey, setMapsApiKey] = useState('');
   const manualCountryCodeRef = useRef(manualCountryCode);
 
   const OTP_COOLDOWN_SECONDS = 60;
@@ -89,6 +89,26 @@ export default function OtpRequestForm({ onSendOTP, disabled = false }: OtpReque
   useEffect(() => {
     manualCountryCodeRef.current = manualCountryCode;
   }, [manualCountryCode]);
+
+  useEffect(() => {
+    let active = true;
+
+    getRuntimeConfig()
+      .then((config) => {
+        if (active) {
+          setMapsApiKey(config.mapsApiKey);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setMapsApiKey('');
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const trimmedIdentifier = identifier.trim();
   const digitsOnly = trimmedIdentifier.replace(/\D/g, '');
@@ -112,7 +132,7 @@ export default function OtpRequestForm({ onSendOTP, disabled = false }: OtpReque
     if (manualCountryCode) return;
     if (locationLookupState !== 'idle') return;
     if (typeof navigator === 'undefined' || !navigator.geolocation) return;
-    if (!GOOGLE_MAPS_API_KEY) return;
+    if (!mapsApiKey) return;
 
     let cancelled = false;
 
@@ -125,7 +145,8 @@ export default function OtpRequestForm({ onSendOTP, disabled = false }: OtpReque
     const resolveFromPosition = async (position: GeolocationPosition) => {
       const code = await lookupCountryCodeFromCoords(
         position.coords.latitude,
-        position.coords.longitude
+        position.coords.longitude,
+        mapsApiKey
       );
 
       if (cancelled) return;
@@ -167,7 +188,7 @@ export default function OtpRequestForm({ onSendOTP, disabled = false }: OtpReque
     return () => {
       cancelled = true;
     };
-  }, [isPhone, manualCountryCode, locationLookupState]);
+  }, [isPhone, manualCountryCode, locationLookupState, mapsApiKey]);
 
   const countryOptions = [
     { code: '+44', label: 'UK (+44)' },

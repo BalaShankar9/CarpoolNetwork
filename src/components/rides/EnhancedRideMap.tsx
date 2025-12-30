@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Navigation, Loader2, RefreshCw, AlertCircle, Zap, Route as RouteIcon, TrendingDown, Leaf } from 'lucide-react';
 import { googleMapsService, RouteOption, PlaceDetails, DistanceUnit, formatDistance } from '../../services/googleMapsService';
+import { getRuntimeConfig } from '../../lib/runtimeConfig';
 
 interface EnhancedRideMapProps {
   origin: { lat: number; lng: number; name: string };
@@ -62,15 +63,15 @@ export default function EnhancedRideMap({
     if (!mapRef.current || mapInstanceRef.current) return;
 
     try {
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      const { mapsApiKey } = await getRuntimeConfig();
 
-      if (!apiKey) {
+      if (!mapsApiKey) {
         throw new Error('Google Maps API key is not configured');
       }
 
       if (typeof google === 'undefined' || !google.maps) {
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&libraries=places,geometry`;
         script.async = true;
         script.defer = true;
         document.head.appendChild(script);
