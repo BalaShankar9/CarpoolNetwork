@@ -1,43 +1,15 @@
-plugins = []
-headers = []
-
-[functions]
-
-[functions."*"]
-
 [build]
-publish = "dist"
-command = "npm ci && npm run build"
+  command = "npm ci && npm run build"
+  publish = "dist"
 
 [build.environment]
   NODE_VERSION = "20"
-  # Google Maps API keys are public; disable smart secret scanning to prevent false positives.
-  SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
-
-[build.processing]
-
-[build.processing.css]
-
-[build.processing.html]
-
-[build.processing.images]
-
-[build.processing.js]
-
-[build.services]
 
 # SPA routing support (React Router): all routes go to index.html
 [[redirects]]
-from = "/*"
-to = "/index.html"
-status = 200
-force = false
-
-[redirects.query]
-
-[redirects.conditions]
-
-[redirects.headers]
+  from = "/*"
+  to = "/index.html"
+  status = 200
 
 # Cache built assets aggressively (Vite outputs hashed files)
 [[headers]]
@@ -45,35 +17,10 @@ force = false
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# Basic security headers (safe defaults)
+# Basic security headers
 [[headers]]
   for = "/*"
   [headers.values]
     X-Content-Type-Options = "nosniff"
     X-Frame-Options = "DENY"
     Referrer-Policy = "strict-origin-when-cross-origin"
-
-# ============================================================
-# PRODUCTION CONTEXT (main/master branch deploys)
-# ============================================================
-[context.production]
-  command = "npm run build"
-  [context.production.environment]
-    VITE_APP_ENV = "production"
-    # VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
-    # should be set in Netlify UI for production
-
-# ============================================================
-# STAGING CONTEXT (deploy previews and branch deploys)
-# ============================================================
-[context.deploy-preview]
-  command = "npm run build"
-  [context.deploy-preview.environment]
-    VITE_APP_ENV = "staging"
-    # VITE_SUPABASE_URL_STAGING and VITE_SUPABASE_ANON_KEY_STAGING
-    # should be set in Netlify UI for staging database
-
-[context.branch-deploy]
-  command = "npm run build"
-  [context.branch-deploy.environment]
-    VITE_APP_ENV = "staging"
