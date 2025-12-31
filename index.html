@@ -26,12 +26,14 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
+      // Temporarily disable service worker caching to avoid stale bundles causing crashes.
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('Service Worker registered'))
-            .catch(err => console.log('Service Worker registration failed:', err));
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          regs.forEach(reg => reg.unregister());
         });
+        if (window.caches) {
+          caches.keys().then(keys => keys.forEach(key => caches.delete(key)));
+        }
       }
     </script>
   </body>
