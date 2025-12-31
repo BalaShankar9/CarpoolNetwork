@@ -32,7 +32,7 @@ interface RideData {
   status: string;
 }
 
-const GEMINI_PROXY_URL = '/.netlify/functions/gemini';
+const AI_CHAT_URL = '/.netlify/functions/ai-chat';
 
 export class GeminiService {
   private static async fetchUserBookings(userId: string): Promise<BookingData[]> {
@@ -271,6 +271,7 @@ Remember: You can see their data AND real-time conditions, so be specific and re
     userMessage: string,
     conversationHistory: Message[],
     userId: string,
+    sessionId?: string,
     weatherInfo?: string,
     trafficInfo?: string
   ): Promise<string> {
@@ -301,13 +302,15 @@ Remember: You can see their data AND real-time conditions, so be specific and re
       promptSections.push('', `User: ${userMessage}`, 'Assistant:');
       const prompt = promptSections.join('\n');
 
-      const response = await fetch(GEMINI_PROXY_URL, {
+      const response = await fetch(AI_CHAT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt,
+          message: prompt,
+          userId,
+          sessionId,
         }),
       });
 
@@ -319,14 +322,14 @@ Remember: You can see their data AND real-time conditions, so be specific and re
 
       const data = await response.json();
 
-      if (!data.text) {
-        throw new Error('Invalid response format from Gemini proxy');
+      if (!data.reply) {
+        throw new Error('Invalid response format from AI chat');
       }
 
-      return data.text;
+      return data.reply;
 
     } catch (error) {
-      console.error('Error calling Gemini proxy:', error);
+      console.error('Error calling AI chat:', error);
       return 'Sorry, I encountered an error processing your request. Please try again.';
     }
   }

@@ -18,13 +18,14 @@ export const handler: Handler = async (event) => {
 
   const apiKey = process.env.AI_Access || '';
   if (!apiKey) {
+    console.error('AI_Access env var missing');
     return {
       statusCode: 500,
       headers: {
         'Cache-Control': 'no-store',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ error: 'AI service not configured' }),
+      body: JSON.stringify({ error: 'AI_Access env var missing' }),
     };
   }
 
@@ -32,6 +33,7 @@ export const handler: Handler = async (event) => {
   try {
     payload = event.body ? JSON.parse(event.body) : {};
   } catch {
+    console.error('Invalid JSON body for /gemini');
     return {
       statusCode: 400,
       headers: {
@@ -42,8 +44,14 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  const prompt = typeof payload?.prompt === 'string' ? payload.prompt.trim() : '';
+  const promptSource = typeof payload?.prompt === 'string'
+    ? payload.prompt
+    : typeof payload?.message === 'string'
+      ? payload.message
+      : '';
+  const prompt = promptSource.trim();
   if (!prompt) {
+    console.error('Missing prompt/message for /gemini');
     return {
       statusCode: 400,
       headers: {
@@ -73,13 +81,24 @@ export const handler: Handler = async (event) => {
     });
 
     if (!geminiResponse.ok) {
+      const errorBody = await geminiResponse.text();
+      const snippet = errorBody ? errorBody.slice(0, 500) : '';
+      console.error('Gemini API error', {
+        status: geminiResponse.status,
+        bodySnippet: snippet,
+      });
       return {
         statusCode: geminiResponse.status >= 500 ? 502 : geminiResponse.status,
         headers: {
           'Cache-Control': 'no-store',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ error: 'Gemini request failed' }),
+        body: JSON.stringify({
+          error: 'Gemini request failed',
+          status: geminiResponse.status,
+          reply: 'Sorry, I encountered an error processing your request. Please try again.',
+          text: 'Sorry, I encountered an error processing your request. Please try again.',
+        }),
       };
     }
 
@@ -91,13 +110,19 @@ export const handler: Handler = async (event) => {
       .join('');
 
     if (!text) {
+      console.error('Gemini response missing text');
       return {
         statusCode: 502,
         headers: {
           'Cache-Control': 'no-store',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ error: 'Empty response from Gemini' }),
+        body: JSON.stringify({
+          error: 'Empty response from Gemini',
+          status: 502,
+          reply: 'Sorry, I encountered an error processing your request. Please try again.',
+          text: 'Sorry, I encountered an error processing your request. Please try again.',
+        }),
       };
     }
 
@@ -107,16 +132,22 @@ export const handler: Handler = async (event) => {
         'Cache-Control': 'no-store',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, reply: text }),
     };
-  } catch {
+  } catch (error) {
+    console.error('Unexpected error contacting Gemini', error);
     return {
       statusCode: 500,
       headers: {
         'Cache-Control': 'no-store',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ error: 'Unexpected error contacting AI service' }),
+      body: JSON.stringify({
+        error: 'Unexpected error contacting AI service',
+        status: 500,
+        reply: 'Sorry, I encountered an error processing your request. Please try again.',
+        text: 'Sorry, I encountered an error processing your request. Please try again.',
+      }),
     };
   }
 };

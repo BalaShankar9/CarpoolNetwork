@@ -144,7 +144,7 @@ export default function AIChatbot() {
         content: msg.content
       }));
 
-      let response = await GeminiService.chat(messageText, conversationHistory, user.id);
+      let response = await GeminiService.chat(messageText, conversationHistory, user.id, sessionId);
 
       const { modifiedResponse, actionsExecuted } = await GeminiService.parseAndExecuteActions(response, user.id);
 
