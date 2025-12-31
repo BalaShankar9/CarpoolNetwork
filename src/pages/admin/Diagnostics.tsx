@@ -381,23 +381,29 @@ export default function Diagnostics() {
   };
 
   const testGeminiFunction = async () => {
-    const testName = 'Netlify Function (gemini)';
+    const testName = 'Netlify Function (ai-router)';
     updateResult(testName, { status: 'running' });
     const start = Date.now();
 
     try {
-      const response = await fetch(
-        '/.netlify/functions/gemini',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            message: 'Reply with only the word "OK".',
-          }),
-        }
-      );
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        throw new Error('No access token available for AI function test');
+      }
+
+      const response = await fetch('/.netlify/functions/ai-router', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          message: 'Reply with only the word "OK".',
+          conversationId: 'diagnostics',
+        }),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

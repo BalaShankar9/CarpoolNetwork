@@ -24,7 +24,7 @@ export default function AIChatbot() {
     {
       id: '1',
       role: 'assistant',
-      content: 'Hi! I\'m your AI assistant for Carpool Network. I can help you:\n\n📋 View your bookings and rides\n❌ Cancel bookings or rides\n👤 Update your profile\n⚙️ Change your preferences\n💬 Answer any questions\n\nJust tell me what you\'d like to do!',
+      content: "Hi! I'm your AI assistant for Carpool Network. I can help you:\n\n- View your bookings and rides\n- Cancel bookings or rides\n- Update your profile\n- Change your preferences\n- Answer questions about the app\n\nWhat would you like to do?",
       timestamp: new Date(),
     },
   ]);
@@ -144,13 +144,7 @@ export default function AIChatbot() {
         content: msg.content
       }));
 
-      let response = await GeminiService.chat(messageText, conversationHistory, user.id, sessionId);
-
-      const { modifiedResponse, actionsExecuted } = await GeminiService.parseAndExecuteActions(response, user.id);
-
-      if (actionsExecuted > 0) {
-        response = modifiedResponse;
-      }
+      const response = await GeminiService.chat(messageText, conversationHistory, user.id, sessionId);
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -397,3 +391,4 @@ export default function AIChatbot() {
     </>
   );
 }
+
