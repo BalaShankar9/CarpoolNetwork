@@ -76,10 +76,25 @@ export default function PostRide() {
       return;
     }
 
+    if (!formData.origin.trim() || !formData.destination.trim()) {
+      setError('Please provide both origin and destination.');
+      return;
+    }
+
+    if (!dateTime.date || !dateTime.time) {
+      setError('Please select a valid date and time for your ride.');
+      return;
+    }
+
     setError('');
     setLoading(true);
 
     try {
+      const departure = new Date(`${dateTime.date}T${dateTime.time}`);
+      if (Number.isNaN(departure.getTime())) {
+        throw new Error('Invalid date or time. Please pick a valid departure time.');
+      }
+
       const { data: vehicles } = await supabase
         .from('vehicles')
         .select('*')
@@ -94,9 +109,7 @@ export default function PostRide() {
         return;
       }
 
-      const departureDateTime = new Date(
-        `${dateTime.date}T${dateTime.time}`
-      ).toISOString();
+      const departureDateTime = departure.toISOString();
 
       const passengerSeats = (vehicles.capacity || 5) - 1;
       const seatsToOffer = Math.min(formData.availableSeats, passengerSeats);
@@ -137,9 +150,13 @@ export default function PostRide() {
       setTimeout(() => {
         navigate('/my-rides');
       }, 2000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error posting ride:', error);
-      setError('Failed to post ride. Please try again.');
+      const message =
+        typeof error?.message === 'string'
+          ? error.message
+          : 'Failed to post ride. Please try again.';
+      setError(message);
     } finally {
       setLoading(false);
     }
