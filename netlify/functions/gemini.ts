@@ -92,27 +92,24 @@ export const handler: Handler = async (event) => {
       }),
     });
 
+    const rawText = await geminiResponse.text();
+
     if (!geminiResponse.ok) {
-      const errorBody = await geminiResponse.text();
-      const snippet = errorBody ? errorBody.slice(0, 500) : '';
-      console.error('Gemini API error', {
-        status: geminiResponse.status,
-        bodySnippet: snippet,
-      });
-      return {
-        statusCode: geminiResponse.status >= 500 ? 502 : geminiResponse.status,
-        headers: {
-          'Cache-Control': 'no-store',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reply: 'Sorry, I encountered an error processing your request. Please try again later.',
-          error: `Gemini request failed (status ${geminiResponse.status})`,
+      console.error('Gemini API error', geminiResponse.status, rawText);
+      return new Response(
+        JSON.stringify({
+          error: 'Gemini API error',
+          status: geminiResponse.status,
+          body: rawText,
         }),
-      };
+        {
+          status: geminiResponse.status,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
     }
 
-    const geminiData = await geminiResponse.json();
+    const geminiData = rawText ? JSON.parse(rawText) : {};
     const parts = geminiData?.candidates?.[0]?.content?.parts || [];
     const text = parts
       .map((part: { text?: string }) => part.text)
