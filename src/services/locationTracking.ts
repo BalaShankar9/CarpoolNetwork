@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { errorTracker } from './errorTracking';
+import { logApiError } from './errorTracking';
 
 interface LocationUpdate {
   latitude: number;
@@ -22,7 +22,11 @@ class LocationTracker {
     }
 
     if (!('geolocation' in navigator)) {
-      errorTracker.captureMessage('Geolocation not supported', 'error');
+      await logApiError(
+        'geolocation_not_supported',
+        new Error('Geolocation not supported'),
+        { extra: { rideId: rideId || this.currentRideId } }
+      );
       return;
     }
 
@@ -69,9 +73,8 @@ class LocationTracker {
 
       await this.saveToHistory(locationData);
     } catch (error) {
-      errorTracker.captureException(error as Error, {
-        context: 'location_tracking',
-        rideId: this.currentRideId,
+      await logApiError('location_tracking', error, {
+        extra: { context: 'location_tracking', rideId: this.currentRideId },
       });
     }
   }
@@ -91,9 +94,12 @@ class LocationTracker {
         break;
     }
 
-    errorTracker.captureMessage(message, 'warning', {
-      error_code: error.code,
-      error_message: error.message,
+    void logApiError('geolocation_error', new Error(message), {
+      extra: {
+        error_code: error.code,
+        error_message: error.message,
+        rideId: this.currentRideId,
+      },
     });
   }
 

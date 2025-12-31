@@ -1,10 +1,10 @@
-﻿import { Suspense, lazy } from 'react';
+﻿import { Suspense, lazy, ReactNode } from 'react';
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { RealtimeProvider } from './contexts/RealtimeContext';
 import Layout from './components/layout/Layout';
-import { ProductionErrorBoundary } from './components/shared/ProductionErrorBoundary';
+import { AppErrorBoundary } from './components/shared/ProductionErrorBoundary';
 import { LoadingProvider } from './components/shared/LoadingStateManager';
 
 const Router = Capacitor.isNativePlatform() ? HashRouter : BrowserRouter;
@@ -59,7 +59,7 @@ const LoadingScreen = () => (
   </div>
 );
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -73,7 +73,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function PublicRoute({ children }: { children: React.ReactNode }) {
+function PublicRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -89,9 +89,8 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 function AppContent() {
   return (
-    <Router>
-      <Suspense fallback={<LoadingScreen />}>
-        <Routes>
+    <Suspense fallback={<LoadingScreen />}>
+      <Routes>
           <Route path="/signin" element={
             <PublicRoute>
               <SignIn />
@@ -304,23 +303,24 @@ function AppContent() {
               <PerformanceMonitor />
             </ProtectedRoute>
           } />
-        </Routes>
-      </Suspense>
-    </Router>
+      </Routes>
+    </Suspense>
   );
 }
 
 function App() {
   return (
-    <ProductionErrorBoundary>
-      <LoadingProvider>
-        <AuthProvider>
-          <RealtimeProvider>
-            <AppContent />
-          </RealtimeProvider>
-        </AuthProvider>
-      </LoadingProvider>
-    </ProductionErrorBoundary>
+    <LoadingProvider>
+      <AuthProvider>
+        <RealtimeProvider>
+          <Router>
+            <AppErrorBoundary>
+              <AppContent />
+            </AppErrorBoundary>
+          </Router>
+        </RealtimeProvider>
+      </AuthProvider>
+    </LoadingProvider>
   );
 }
 

@@ -1,168 +1,191 @@
 import { supabase } from '../lib/supabase';
 
-interface ErrorLog {
+export type ErrorContext = {
+  errorId?: string;
+  route?: string;
+  userId?: string | null;
+  role?: 'user' | 'admin' | 'guest';
+  extra?: Record<string, unknown>;
+};
+
+type Severity = 'debug' | 'info' | 'warning' | 'error' | 'critical';
+
+type BufferedEntry = {
   errorType: string;
   errorMessage: string;
-  errorStack?: string;
-  severity?: 'debug' | 'info' | 'warning' | 'error' | 'critical';
-  endpoint?: string;
-  metadata?: Record<string, any>;
+  errorStack?: string | null;
+  severity: Severity;
+  endpoint?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+const buffer: BufferedEntry[] = [];
+const FLUSH_INTERVAL = 10000;
+const MAX_BUFFER = 20;
+
+const currentRoute = () =>
+  typeof window !== 'undefined' ? window.location.pathname : undefined;
+
+const normalizeContext = (context?: ErrorContext) => ({
+  errorId: context?.errorId,
+  route: context?.route || currentRoute(),
+  userId: context?.userId ?? null,
+  role: context?.role || 'guest',
+  extra: context?.extra || {},
+});
+
+const enqueue = async (entry: BufferedEntry) => {
+  buffer.push(entry);
+  if (buffer.length >= MAX_BUFFER || entry.severity === 'critical') {
+    await flush();
+  }
+};
+
+export async function logClientError(
+  error: unknown,
+  info?: { componentStack?: string },
+  context?: ErrorContext
+): Promise<void> {
+  const ctx = normalizeContext(context);
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack : undefined;
+  await enqueue({
+    errorType: 'client_error',
+    errorMessage: message,
+    errorStack: stack || null,
+    severity: 'error',
+    endpoint: ctx.route || null,
+    metadata: {
+      ...ctx.extra,
+      errorId: ctx.errorId,
+      componentStack: info?.componentStack,
+      role: ctx.role,
+      userId: ctx.userId,
+    },
+  });
 }
 
-class ErrorTracker {
-  private errorBuffer: ErrorLog[] = [];
-  private flushInterval = 10000;
-  private maxBufferSize = 20;
+export async function logApiError(
+  label: string,
+  error: unknown,
+  context?: ErrorContext
+): Promise<void> {
+  const ctx = normalizeContext(context);
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack : undefined;
+  await enqueue({
+    errorType: label,
+    errorMessage: message,
+    errorStack: stack || null,
+    severity: 'error',
+    endpoint: ctx.route || null,
+    metadata: { ...ctx.extra, errorId: ctx.errorId, role: ctx.role, userId: ctx.userId },
+  });
+}
 
-  constructor() {
-    this.startAutoFlush();
-    this.setupGlobalErrorHandler();
+export async function reportUserBug(params: {
+  errorId?: string;
+  route?: string;
+  userId?: string | null;
+  role?: 'user' | 'admin' | 'guest';
+  userComment?: string;
+  extra?: Record<string, unknown>;
+}): Promise<{ success: boolean; bugId?: string; message?: string }> {
+  try {
+    const { data, error } = await supabase
+      .from('bug_reports')
+      .insert({
+        error_id: params.errorId || null,
+        route: params.route || currentRoute() || null,
+        user_id: params.userId || null,
+        role: params.role || 'guest',
+        user_comment: params.userComment || null,
+        status: 'open',
+        meta: params.extra || {},
+      })
+      .select('id')
+      .single();
+
+    if (error) throw error;
+    return { success: true, bugId: data?.id, message: 'Bug reported' };
+  } catch (err: any) {
+    console.error('Failed to report user bug:', err);
+    return { success: false, message: err?.message || 'Failed to report bug' };
   }
+}
 
-  async logError(error: ErrorLog) {
-    this.errorBuffer.push(error);
+async function flush() {
+  if (buffer.length === 0) return;
+  const entries = [...buffer];
+  buffer.length = 0;
 
-    console.error('[ErrorTracker]', error.errorType, error.errorMessage);
-
-    if (this.errorBuffer.length >= this.maxBufferSize || error.severity === 'critical') {
-      await this.flush();
-    }
-  }
-
-  async flush() {
-    if (this.errorBuffer.length === 0) return;
-
-    const errors = [...this.errorBuffer];
-    this.errorBuffer = [];
-
-    try {
-      for (const error of errors) {
-        await supabase.rpc('log_error', {
-          p_error_type: error.errorType,
-          p_error_message: error.errorMessage,
-          p_error_stack: error.errorStack || null,
-          p_severity: error.severity || 'error',
-          p_endpoint: error.endpoint || window.location.pathname,
-          p_metadata: error.metadata || {}
-        });
-      }
-    } catch (err) {
-      console.error('Failed to flush error logs:', err);
-    }
-  }
-
-  private startAutoFlush() {
-    setInterval(() => this.flush(), this.flushInterval);
-  }
-
-  private setupGlobalErrorHandler() {
-    if (typeof window === 'undefined') return;
-
-    window.addEventListener('error', (event) => {
-      this.logError({
-        errorType: 'uncaught_error',
-        errorMessage: event.message,
-        errorStack: event.error?.stack,
-        severity: 'error',
-        endpoint: window.location.pathname,
-        metadata: {
-          filename: event.filename,
-          lineno: event.lineno,
-          colno: event.colno
-        }
+  try {
+    for (const entry of entries) {
+      await supabase.rpc('log_error', {
+        p_error_type: entry.errorType,
+        p_error_message: entry.errorMessage,
+        p_error_stack: entry.errorStack || null,
+        p_severity: entry.severity || 'error',
+        p_endpoint: entry.endpoint || currentRoute() || null,
+        p_metadata: entry.metadata || {},
       });
-    });
-
-    window.addEventListener('unhandledrejection', (event) => {
-      this.logError({
-        errorType: 'unhandled_promise_rejection',
-        errorMessage: event.reason?.message || String(event.reason),
-        errorStack: event.reason?.stack,
-        severity: 'error',
-        endpoint: window.location.pathname,
-        metadata: {
-          reason: event.reason
-        }
-      });
-    });
+    }
+  } catch (err) {
+    console.error('Failed to flush error logs:', err);
   }
+}
 
-  captureException(error: Error, context?: Record<string, any>) {
-    this.logError({
-      errorType: error.name || 'Error',
-      errorMessage: error.message,
-      errorStack: error.stack,
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    flush();
+  }, FLUSH_INTERVAL);
+
+  window.addEventListener('error', (event) => {
+    enqueue({
+      errorType: 'uncaught_error',
+      errorMessage: event.message,
+      errorStack: event.error?.stack || null,
       severity: 'error',
-      endpoint: window.location.pathname,
-      metadata: context
+      endpoint: currentRoute() || null,
+      metadata: {
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+      },
     });
-  }
+  });
 
-  async captureMessage(message: string, level: ErrorLog['severity'] = 'info', context?: Record<string, any>) {
-    await this.logError({
-      errorType: 'message',
-      errorMessage: message,
-      severity: level,
-      endpoint: window.location.pathname,
-      metadata: context
+  window.addEventListener('unhandledrejection', (event) => {
+    enqueue({
+      errorType: 'unhandled_promise_rejection',
+      errorMessage: event.reason?.message || String(event.reason),
+      errorStack: event.reason?.stack || null,
+      severity: 'error',
+      endpoint: currentRoute() || null,
+      metadata: {
+        reason: event.reason,
+      },
     });
-  }
-
-  async getRecentErrors(limit: number = 50) {
-    try {
-      const { data, error } = await supabase
-        .from('error_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (error) throw error;
-
-      return data || [];
-    } catch (error) {
-      console.error('Failed to get recent errors:', error);
-      return [];
-    }
-  }
-
-  async getErrorPatterns() {
-    try {
-      const { data, error } = await supabase
-        .from('error_patterns')
-        .select('*')
-        .order('occurrence_count', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-
-      return data || [];
-    } catch (error) {
-      console.error('Failed to get error patterns:', error);
-      return [];
-    }
-  }
+  });
 }
 
-export const errorTracker = new ErrorTracker();
-
+// Utility wrapper to catch errors in arbitrary functions
 export function wrapWithErrorTracking<T extends (...args: any[]) => any>(
   fn: T,
-  context?: Record<string, any>
+  context?: ErrorContext
 ): T {
   return ((...args: any[]) => {
     try {
       const result = fn(...args);
-
       if (result instanceof Promise) {
         return result.catch((error) => {
-          errorTracker.captureException(error, context);
+          logApiError('wrapped_fn_error', error, context);
           throw error;
         });
       }
-
       return result;
     } catch (error) {
-      errorTracker.captureException(error as Error, context);
+      logApiError('wrapped_fn_error', error, context);
       throw error;
     }
   }) as T;
