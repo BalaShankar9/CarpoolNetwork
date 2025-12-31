@@ -1,5 +1,5 @@
-const CACHE_NAME = 'carpool-network-v1';
-const RUNTIME_CACHE = 'carpool-runtime-v1';
+const CACHE_NAME = 'carpool-network-v2';
+const RUNTIME_CACHE = 'carpool-runtime-v2';
 
 const PRECACHE_URLS = [
   '/',
@@ -30,45 +30,40 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.url.startsWith('http')) {
-    const url = new URL(event.request.url);
-    const isFunctionRequest =
-      url.pathname.startsWith('/.netlify/functions/') ||
-      url.pathname === '/ai-chat';
+  if (!event.request.url.startsWith('http')) return;
 
-    if (isFunctionRequest) {
-      event.respondWith(fetch(event.request));
-      return;
-    }
+  const url = new URL(event.request.url);
+  const isFunctionRequest =
+    url.pathname.startsWith('/.netlify/functions/') ||
+    url.pathname === '/ai-chat';
 
-    if (event.request.method !== 'GET') {
-      event.respondWith(fetch(event.request));
-      return;
-    }
-
-    event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-
-        return caches.open(RUNTIME_CACHE).then((cache) => {
-          return fetch(event.request).then((response) => {
-            if (response.status === 200) {
-              cache.put(event.request, response.clone());
-            }
-            return response;
-          });
-        });
-      }).catch(() => {
-        return new Response('Offline - please check your connection', {
-          status: 503,
-          statusText: 'Service Unavailable',
-          headers: new Headers({ 'Content-Type': 'text/plain' }),
-        });
-      })
-    );
+  // Always network for functions and non-GET
+  if (isFunctionRequest || event.request.method !== 'GET') {
+    event.respondWith(fetch(event.request));
+    return;
   }
+
+  // Network-first for everything else to avoid stale bundles
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      })
+      .catch(() =>
+        caches.match(event.request).then((cached) => {
+          if (cached) return cached;
+          return new Response('Offline - please check your connection', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: new Headers({ 'Content-Type': 'text/plain' }),
+          });
+        })
+      )
+  );
 });
 
 self.addEventListener('message', (event) => {
