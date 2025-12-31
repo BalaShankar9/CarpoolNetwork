@@ -1,156 +1,97 @@
 import type { Handler } from '@netlify/functions';
 
-const GEMINI_API_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const MODEL_URL =
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+
+const jsonResponse = (body: Record<string, unknown>, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
 
 export const handler: Handler = async (event) => {
-  // Requires Netlify env var: GEMINI_API_KEY
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers: {
-        'Allow': 'POST',
-        'Cache-Control': 'no-store',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
-  }
-
-  const apiKey = process.env.GEMINI_API_KEY || '';
-  const hasApiKey = Boolean(apiKey);
-  console.info('Gemini API key present:', hasApiKey);
-  if (!apiKey) {
-    console.error('Missing GEMINI_API_KEY env var');
-    return {
-      statusCode: 500,
-      headers: {
-        'Cache-Control': 'no-store',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        reply: 'Sorry, I encountered an error processing your request. Please try again later.',
-        error: 'Missing GEMINI_API_KEY',
-      }),
-    };
-  }
-
-  let payload: any = {};
   try {
-    payload = event.body ? JSON.parse(event.body) : {};
-  } catch {
-    console.error('Invalid JSON body for /gemini');
-    return {
-      statusCode: 400,
-      headers: {
-        'Cache-Control': 'no-store',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        reply: 'Sorry, I encountered an error processing your request. Please try again later.',
-        error: 'Invalid JSON body',
-      }),
-    };
-  }
+    if (event.httpMethod !== 'POST') {
+      return jsonResponse({ error: 'Method not allowed' }, 405);
+    }
 
-  const promptSource = typeof payload?.prompt === 'string'
-    ? payload.prompt
-    : typeof payload?.message === 'string'
-      ? payload.message
-      : '';
-  const prompt = promptSource.trim();
-  if (!prompt) {
-    console.error('Missing prompt/message for /gemini');
-    return {
-      statusCode: 400,
-      headers: {
-        'Cache-Control': 'no-store',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        reply: 'Sorry, I encountered an error processing your request. Please try again later.',
-        error: 'Prompt is required',
-      }),
-    };
-  }
-
-  try {
-    const geminiResponse = await fetch(GEMINI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 1024,
-        },
-      }),
-    });
-
-    const rawText = await geminiResponse.text();
-
-    if (!geminiResponse.ok) {
-      console.error('Gemini API error', geminiResponse.status, rawText);
-      return new Response(
-        JSON.stringify({
-          error: 'Gemini API error',
-          status: geminiResponse.status,
-          body: rawText,
-        }),
+    const apiKey = process.env.GEMINI_API_KEY || '';
+    if (!apiKey) {
+      return jsonResponse(
         {
-          status: geminiResponse.status,
-          headers: { 'Content-Type': 'application/json' },
-        }
+          reply: 'The AI assistant is not configured yet.',
+          error: 'Missing GEMINI_API_KEY',
+        },
+        500
       );
     }
 
-    const geminiData = rawText ? JSON.parse(rawText) : {};
-    const parts = geminiData?.candidates?.[0]?.content?.parts || [];
-    const text = parts
-      .map((part: { text?: string }) => part.text)
-      .filter(Boolean)
-      .join('');
-
-    if (!text) {
-      console.error('Gemini response missing text');
-      return {
-        statusCode: 502,
-        headers: {
-          'Cache-Control': 'no-store',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reply: 'Sorry, I encountered an error processing your request. Please try again later.',
-          error: 'Empty response from Gemini',
-        }),
-      };
+    let message: unknown;
+    try {
+      const parsed = event.body ? JSON.parse(event.body) : {};
+      message = (parsed as any)?.message;
+    } catch (error) {
+      console.error('Gemini payload parse error', error);
+      return jsonResponse(
+        { reply: 'Please send a message.', error: 'Invalid payload' },
+        400
+      );
     }
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Cache-Control': 'no-store',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ reply: text }),
-    };
-  } catch (error) {
-    console.error('Unexpected error contacting Gemini', error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Cache-Control': 'no-store',
-        'Content-Type': 'application/json',
-      },
+    if (!message || typeof message !== 'string') {
+      return jsonResponse(
+        { reply: 'Please send a message.', error: 'Invalid payload' },
+        400
+      );
+    }
+
+    const url = `${MODEL_URL}?key=${apiKey}`;
+    const geminiRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        reply: 'Sorry, I encountered an error processing your request. Please try again later.',
-        error: 'Unexpected error contacting AI service',
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: message }],
+          },
+        ],
       }),
-    };
+    });
+
+    const rawText = await geminiRes.text();
+
+    if (!geminiRes.ok) {
+      console.error('Gemini API error', geminiRes.status, rawText);
+      return jsonResponse(
+        {
+          reply: 'Sorry, I encountered an error talking to Gemini. Please try again later.',
+          error: rawText || `HTTP ${geminiRes.status}`,
+        },
+        502
+      );
+    }
+
+    let json: any = {};
+    try {
+      json = rawText ? JSON.parse(rawText) : {};
+    } catch (error) {
+      console.error('Gemini JSON parse error', error, rawText);
+    }
+
+    const replyText =
+      json?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      'Sorry, I couldn’t generate a reply.';
+
+    return jsonResponse({ reply: replyText }, 200);
+  } catch (error) {
+    console.error('Gemini function error', error);
+    return jsonResponse(
+      {
+        reply: 'Sorry, I encountered an error processing your request. Please try again later.',
+        error: 'Unexpected error',
+      },
+      500
+    );
   }
 };
