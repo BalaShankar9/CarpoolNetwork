@@ -290,6 +290,7 @@ Remember: You can see their data AND real-time conditions, so be specific and re
       const ridesContext = this.formatRideContext(rides);
       const systemPrompt = this.getSystemPrompt(bookingsContext, ridesContext, weatherInfo, trafficInfo);
 
+      // Compact prompt sent as a single message string to the Netlify function.
       const historyText = conversationHistory
         .map(msg => `${msg.role === 'assistant' ? 'Assistant' : 'User'}: ${msg.content}`)
         .join('\n');
@@ -314,15 +315,16 @@ Remember: You can see their data AND real-time conditions, so be specific and re
         }),
       });
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Gemini proxy error:', response.status, errorData);
-        throw new Error(`API request failed: ${response.status}`);
+        const reply = typeof data?.reply === 'string'
+          ? data.reply
+          : 'Sorry, I encountered an error processing your request. Please try again later.';
+        throw new Error(reply);
       }
 
-      const data = await response.json();
-
-      if (!data.reply) {
+      if (!data.reply || typeof data.reply !== 'string') {
         throw new Error('Invalid response format from AI chat');
       }
 
@@ -330,7 +332,9 @@ Remember: You can see their data AND real-time conditions, so be specific and re
 
     } catch (error) {
       console.error('Error calling AI chat:', error);
-      return 'Sorry, I encountered an error processing your request. Please try again.';
+      return error instanceof Error && error.message
+        ? error.message
+        : 'Sorry, I encountered an error processing your request. Please try again later.';
     }
   }
 

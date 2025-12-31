@@ -3,21 +3,21 @@ import type { Handler } from '@netlify/functions';
 const MODEL_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
-const jsonResponse = (body: Record<string, unknown>, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
+const buildResponse = (body: Record<string, unknown>, statusCode = 200) => ({
+  statusCode,
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body),
+});
 
 export const handler: Handler = async (event) => {
   try {
     if (event.httpMethod !== 'POST') {
-      return jsonResponse({ error: 'Method not allowed' }, 405);
+      return buildResponse({ error: 'Method not allowed' }, 405);
     }
 
     const apiKey = process.env.GEMINI_API_KEY || '';
     if (!apiKey) {
-      return jsonResponse(
+      return buildResponse(
         {
           reply: 'The AI assistant is not configured yet.',
           error: 'Missing GEMINI_API_KEY',
@@ -32,14 +32,14 @@ export const handler: Handler = async (event) => {
       message = (parsed as any)?.message;
     } catch (error) {
       console.error('Gemini payload parse error', error);
-      return jsonResponse(
+      return buildResponse(
         { reply: 'Please send a message.', error: 'Invalid payload' },
         400
       );
     }
 
     if (!message || typeof message !== 'string') {
-      return jsonResponse(
+      return buildResponse(
         { reply: 'Please send a message.', error: 'Invalid payload' },
         400
       );
@@ -63,7 +63,7 @@ export const handler: Handler = async (event) => {
 
     if (!geminiRes.ok) {
       console.error('Gemini API error', geminiRes.status, rawText);
-      return jsonResponse(
+      return buildResponse(
         {
           reply: 'Sorry, I encountered an error talking to Gemini. Please try again later.',
           error: rawText || `HTTP ${geminiRes.status}`,
@@ -83,10 +83,10 @@ export const handler: Handler = async (event) => {
       json?.candidates?.[0]?.content?.parts?.[0]?.text ||
       'Sorry, I couldn’t generate a reply.';
 
-    return jsonResponse({ reply: replyText }, 200);
+    return buildResponse({ reply: replyText }, 200);
   } catch (error) {
     console.error('Gemini function error', error);
-    return jsonResponse(
+    return buildResponse(
       {
         reply: 'Sorry, I encountered an error processing your request. Please try again later.',
         error: 'Unexpected error',
