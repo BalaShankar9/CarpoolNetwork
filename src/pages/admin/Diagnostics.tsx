@@ -129,7 +129,7 @@ export default function Diagnostics() {
     await testDatabaseStats();
     await testStorageBuckets();
     await testRealtimeSubscription();
-    await testGeminiProxy();
+    await testGeminiFunction();
     await testVehicleLookup();
     await testGoogleMapsScript();
     await testPlacesAutocomplete();
@@ -380,7 +380,7 @@ export default function Diagnostics() {
     });
   };
 
-  const testGeminiProxy = async () => {
+  const testGeminiFunction = async () => {
     const testName = 'Netlify Function (gemini)';
     updateResult(testName, { status: 'running' });
     const start = Date.now();
@@ -394,7 +394,7 @@ export default function Diagnostics() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            prompt: 'Reply with only the word "OK".',
+            message: 'Reply with only the word "OK".',
           }),
         }
       );
@@ -406,13 +406,13 @@ export default function Diagnostics() {
 
       const data = await response.json();
 
-      if (!data.text) {
-        throw new Error('No text in response');
+      if (!data.reply) {
+        throw new Error('No reply in response');
       }
 
       updateResult(testName, {
         status: 'pass',
-        details: `AI responded: "${data.text.substring(0, 30)}${data.text.length > 30 ? '...' : ''}"`,
+        details: `AI responded: "${data.reply.substring(0, 30)}${data.reply.length > 30 ? '...' : ''}"`,
         duration: Date.now() - start,
       });
     } catch (err) {

@@ -32,7 +32,7 @@ interface RideData {
   status: string;
 }
 
-const AI_CHAT_URL = '/.netlify/functions/ai-chat';
+const GEMINI_URL = '/.netlify/functions/gemini';
 
 export class GeminiService {
   private static async fetchUserBookings(userId: string): Promise<BookingData[]> {
@@ -302,7 +302,7 @@ Remember: You can see their data AND real-time conditions, so be specific and re
       promptSections.push('', `User: ${userMessage}`, 'Assistant:');
       const prompt = promptSections.join('\n');
 
-      const response = await fetch(AI_CHAT_URL, {
+      const response = await fetch(GEMINI_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

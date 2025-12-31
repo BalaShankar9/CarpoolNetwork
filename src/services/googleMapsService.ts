@@ -1,17 +1,6 @@
 import { cache } from '../lib/cache';
-import { getRuntimeConfig } from '../lib/runtimeConfig';
 
-let cachedMapsApiKey: string | null = null;
-
-const getMapsApiKey = async (): Promise<string> => {
-  if (cachedMapsApiKey !== null) {
-    return cachedMapsApiKey;
-  }
-
-  const { mapsApiKey } = await getRuntimeConfig();
-  cachedMapsApiKey = mapsApiKey || '';
-  return cachedMapsApiKey;
-};
+const getMapsApiKey = (): string => import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
 export type DistanceUnit = 'km' | 'mi';
 
@@ -110,7 +99,7 @@ export class GoogleMapsService {
       return { data: null, error: 'Address is required' };
     }
 
-    const apiKey = await getMapsApiKey();
+    const apiKey = getMapsApiKey();
     if (!apiKey) {
       return { data: null, error: 'Missing Google Maps API key' };
     }
@@ -147,7 +136,7 @@ export class GoogleMapsService {
     destination: { lat: number; lng: number },
     departureTime?: Date
   ): Promise<RouteOption[]> {
-    const apiKey = await getMapsApiKey();
+    const apiKey = getMapsApiKey();
     if (!apiKey) {
       return this.getFallbackRoute(origin, destination);
     }
@@ -327,7 +316,7 @@ export class GoogleMapsService {
   }
 
   async getWeatherForecast(lat: number, lng: number, targetDate?: Date): Promise<WeatherData> {
-    const apiKey = await getMapsApiKey();
+    const apiKey = getMapsApiKey();
     if (!apiKey) {
       return this.getMockWeatherData(targetDate);
     }
@@ -403,7 +392,7 @@ export class GoogleMapsService {
   }
 
   async getAirQuality(lat: number, lng: number): Promise<AirQualityData> {
-    const apiKey = await getMapsApiKey();
+    const apiKey = getMapsApiKey();
     if (!apiKey) {
       return {
         aqi: 50,
@@ -471,7 +460,7 @@ export class GoogleMapsService {
   }
 
   async getPollenData(lat: number, lng: number): Promise<PollenData[]> {
-    const apiKey = await getMapsApiKey();
+    const apiKey = getMapsApiKey();
     if (!apiKey) {
       return this.getMockPollenData();
     }
@@ -526,7 +515,7 @@ export class GoogleMapsService {
     type: string,
     radius: number = 5000
   ): Promise<PlaceDetails[]> {
-    const apiKey = await getMapsApiKey();
+    const apiKey = getMapsApiKey();
     if (!apiKey) {
       return [];
     }
@@ -591,7 +580,7 @@ export class GoogleMapsService {
     height: number = 400,
     markers?: Array<{ lat: number; lng: number; label?: string }>
   ): string {
-    const apiKey = cachedMapsApiKey || '';
+    const apiKey = getMapsApiKey();
     if (!apiKey) {
       return '';
     }

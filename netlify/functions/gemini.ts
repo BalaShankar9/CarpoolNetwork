@@ -4,6 +4,7 @@ const GEMINI_API_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 export const handler: Handler = async (event) => {
+  // Requires Netlify env var: GEMINI_API_KEY
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
@@ -16,22 +17,21 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  const apiKey =
-    process.env.AI_Acsess ||
-    process.env.AI_Access ||
-    process.env.AI_Acess ||
-    '';
+  const apiKey = process.env.GEMINI_API_KEY || '';
   const hasApiKey = Boolean(apiKey);
   console.info('Gemini API key present:', hasApiKey);
   if (!apiKey) {
-    console.error('Missing AI_Acsess env var');
+    console.error('Missing GEMINI_API_KEY env var');
     return {
       statusCode: 500,
       headers: {
         'Cache-Control': 'no-store',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ reply: 'Sorry, I encountered an error processing your request.', error: 'Missing AI_Acsess env var' }),
+      body: JSON.stringify({
+        reply: 'Sorry, I encountered an error processing your request. Please try again later.',
+        error: 'Missing GEMINI_API_KEY',
+      }),
     };
   }
 
@@ -46,7 +46,10 @@ export const handler: Handler = async (event) => {
         'Cache-Control': 'no-store',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ reply: 'Sorry, I encountered an error processing your request.', error: 'Invalid JSON body' }),
+      body: JSON.stringify({
+        reply: 'Sorry, I encountered an error processing your request. Please try again later.',
+        error: 'Invalid JSON body',
+      }),
     };
   }
 
@@ -64,7 +67,10 @@ export const handler: Handler = async (event) => {
         'Cache-Control': 'no-store',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ reply: 'Sorry, I encountered an error processing your request.', error: 'Prompt is required' }),
+      body: JSON.stringify({
+        reply: 'Sorry, I encountered an error processing your request. Please try again later.',
+        error: 'Prompt is required',
+      }),
     };
   }
 
@@ -100,7 +106,7 @@ export const handler: Handler = async (event) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          reply: 'Sorry, I encountered an error processing your request.',
+          reply: 'Sorry, I encountered an error processing your request. Please try again later.',
           error: `Gemini request failed (status ${geminiResponse.status})`,
         }),
       };
@@ -122,7 +128,7 @@ export const handler: Handler = async (event) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          reply: 'Sorry, I encountered an error processing your request.',
+          reply: 'Sorry, I encountered an error processing your request. Please try again later.',
           error: 'Empty response from Gemini',
         }),
       };
@@ -145,7 +151,7 @@ export const handler: Handler = async (event) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        reply: 'Sorry, I encountered an error processing your request.',
+        reply: 'Sorry, I encountered an error processing your request. Please try again later.',
         error: 'Unexpected error contacting AI service',
       }),
     };

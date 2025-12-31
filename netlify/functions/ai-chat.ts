@@ -2,7 +2,7 @@ import type { Handler } from '@netlify/functions';
 
 const GEMINI_API_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
-const DEFAULT_REPLY = 'Sorry I encountered an error processing your request. Please try again.';
+const DEFAULT_REPLY = 'Sorry, I encountered an error processing your request. Please try again later.';
 const RESPONSE_HEADERS = {
   'Content-Type': 'application/json',
   'Cache-Control': 'no-store',
@@ -19,9 +19,10 @@ export const handler: Handler = async (event) => {
     return buildErrorResponse();
   }
 
-  const apiKey = process.env.AI_Access;
+  // Requires Netlify env var: GEMINI_API_KEY
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.error('AI_Access is not configured');
+    console.error('GEMINI_API_KEY is not configured');
     return buildErrorResponse();
   }
 

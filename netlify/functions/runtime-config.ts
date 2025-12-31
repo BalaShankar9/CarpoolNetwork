@@ -8,7 +8,7 @@ export const handler: Handler = async () => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      mapsApiKey: process.env.Maps_Platform_API_Key || '',
+      mapsApiKey: process.env.VITE_GOOGLE_MAPS_API_KEY || '',
     }),
   };
 };

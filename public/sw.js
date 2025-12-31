@@ -31,6 +31,21 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.url.startsWith('http')) {
+    const url = new URL(event.request.url);
+    const isFunctionRequest =
+      url.pathname.startsWith('/.netlify/functions/') ||
+      url.pathname === '/ai-chat';
+
+    if (isFunctionRequest) {
+      event.respondWith(fetch(event.request));
+      return;
+    }
+
+    if (event.request.method !== 'GET') {
+      event.respondWith(fetch(event.request));
+      return;
+    }
+
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
         if (cachedResponse) {
