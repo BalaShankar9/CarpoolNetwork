@@ -66,7 +66,7 @@ function isDateExpired(dateString?: string): boolean {
 }
 
 export default function Profile() {
-  const { profile, updateProfile } = useAuth();
+  const { user, profile, updateProfile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [showVehicleForm, setShowVehicleForm] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -80,7 +80,7 @@ export default function Profile() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const vehicleImageInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const profileImageInputRef = useRef<HTMLInputElement>(null);
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [vehicleToRemovePhoto, setVehicleToRemovePhoto] = useState<string | null>(null);
@@ -107,6 +107,10 @@ export default function Profile() {
   const [preferencesSaving, setPreferencesSaving] = useState(false);
 
   useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/sign-in');
+      return;
+    }
     if (profile) {
       loadVehicles();
       loadPreferences();
@@ -118,7 +122,7 @@ export default function Profile() {
         preferred_contact_method: (profile as any).preferred_contact_method || 'both',
       });
     }
-  }, [profile]);
+  }, [profile, authLoading, user, navigate]);
 
   const loadVehicles = async () => {
     try {
@@ -263,12 +267,12 @@ export default function Profile() {
     e.preventDefault();
     setError('');
     setSuccess('');
-    setLoading(true);
+    setSaving(true);
 
     try {
       if (!vehicleNumber.trim()) {
         setError('Please enter a vehicle number');
-        setLoading(false);
+        setSaving(false);
         return;
       }
 
@@ -346,7 +350,7 @@ export default function Profile() {
     } catch (err: any) {
       setError(err.message || 'Failed to add vehicle');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -354,7 +358,7 @@ export default function Profile() {
     e.preventDefault();
     setError('');
     setSuccess('');
-    setLoading(true);
+    setSaving(true);
 
     try {
       const { error } = await updateProfile(editForm);
@@ -368,7 +372,7 @@ export default function Profile() {
     } catch (err: any) {
       setError(err.message || 'Failed to update profile');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -557,10 +561,44 @@ export default function Profile() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12 flex items-center justify-center">
+        <div className="animate-spin w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12 flex items-center justify-center">
+        <div className="bg-white shadow-sm rounded-lg p-6 text-center max-w-md">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Please sign in</h2>
+          <p className="text-gray-600 mb-4">You need to be signed in to view your profile.</p>
+          <button
+            onClick={() => navigate('/sign-in')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Go to Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!profile) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+      <div className="min-h-screen bg-gray-50 py-12 flex items-center justify-center">
+        <div className="bg-white shadow-sm rounded-lg p-6 text-center max-w-md">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Profile not available</h2>
+          <p className="text-gray-600 mb-4">We could not load your profile. Please refresh or try signing out and in again.</p>
+          <button
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Go Home
+          </button>
+        </div>
       </div>
     );
   }
@@ -1010,10 +1048,10 @@ export default function Profile() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={saving}
                   className="flex-1 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
                 >
-                  {loading ? 'Saving...' : 'Save Changes'}
+                  {saving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
