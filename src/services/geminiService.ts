@@ -1,25 +1,20 @@
 import { supabase } from '../lib/supabase';
+import {
+  AiClientContext,
+  AiMessage,
+  AiRouterResponse,
+  UserRole,
+} from '../lib/aiCapabilities';
+import { logApiError } from './errorTracking';
 
 const AI_ENDPOINT = '/.netlify/functions/ai-router';
 
 export type AiRequestPayload = {
   message: string;
-  conversationId?: string;
-  userContext: {
-    userId: string | null;
-    displayName: string | null;
-    role: 'user' | 'admin' | 'guest';
-    currentRoute: string;
-    vehicleCount?: number;
-    upcomingRidesCount?: number;
-    unreadNotificationsCount?: number;
-  };
+  threadId?: string | null;
+  history?: AiMessage[];
+  context: AiClientContext;
 };
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
 
 export class GeminiService {
   private static async getAccessToken(): Promise<string | null> {
@@ -33,14 +28,13 @@ export class GeminiService {
 
   static async chat(
     userMessage: string,
-    _conversationHistory: Message[],
-    _userId: string,
-    conversationId: string | undefined,
-    userContext: AiRequestPayload['userContext']
-  ): Promise<string> {
+    history: AiMessage[],
+    threadId: string | undefined,
+    context: AiClientContext
+  ): Promise<AiRouterResponse> {
     const token = await this.getAccessToken();
     if (!token) {
-      return 'Please sign in to use the AI assistant.';
+      return { reply: 'Please sign in to use the AI assistant.' };
     }
 
     try {
@@ -52,8 +46,9 @@ export class GeminiService {
         },
         body: JSON.stringify({
           message: userMessage,
-          conversationId,
-          userContext,
+          threadId,
+          history,
+          context,
         } satisfies AiRequestPayload),
       });
 
@@ -67,13 +62,21 @@ export class GeminiService {
       }
 
       if (typeof data?.reply === 'string' && data.reply.trim()) {
-        return data.reply;
+        return {
+          reply: data.reply,
+          actions: Array.isArray(data?.actions) ? data.actions : [],
+          debug: data?.debug,
+        } as AiRouterResponse;
       }
 
-      return 'Sorry, I could not understand the response from the assistant.';
+      return { reply: 'Sorry, I could not understand the response from the assistant.', actions: [] };
     } catch (error) {
-      console.error('Error calling AI assistant:', error);
-      return 'Sorry, I encountered an error processing your request. Please try again later.';
+      await logApiError('ai-router-client', error, {
+        role: (context.role as UserRole) || 'guest',
+        route: context.currentRoute,
+        userId: context.userId ?? null,
+      });
+      return { reply: 'Sorry, I encountered an error processing your request. Please try again later.', actions: [] };
     }
   }
 

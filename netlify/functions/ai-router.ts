@@ -1,25 +1,61 @@
 import type { Handler } from '@netlify/functions';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-const MAX_REQUESTS_PER_MINUTE = 10;
+type UserRole = 'guest' | 'user' | 'admin';
 
-type RateState = { windowStart: number; count: number };
-const rateLimiter = new Map<string, RateState>();
+type AiActionType =
+  | 'NAVIGATE'
+  | 'SHOW_HELP'
+  | 'LIST_VEHICLES'
+  | 'LIST_MY_RIDES'
+  | 'LIST_MY_BOOKINGS'
+  | 'SHOW_TODAY_ACTIVITY'
+  | 'START_ADD_VEHICLE'
+  | 'START_POST_RIDE'
+  | 'SUGGEST_RIDE_PLAN'
+  | 'ADMIN_OVERVIEW'
+  | 'ADMIN_RECENT_BUG_REPORTS'
+  | 'ADMIN_RECENT_ERRORS'
+  | 'ADMIN_USER_SUMMARY';
 
-type ToolName =
-  | 'get_my_bookings'
-  | 'get_my_rides'
-  | 'find_rides'
-  | 'cancel_booking'
-  | 'update_profile'
-  | 'get_my_vehicles'
-  | 'add_vehicle';
+interface AiAction {
+  type: AiActionType;
+  params?: Record<string, unknown>;
+  note?: string;
+}
 
-interface ToolCall {
-  tool: ToolName;
-  params: Record<string, any>;
+interface AiMessage {
+  id: string;
+  author: 'user' | 'assistant' | 'system';
+  content: string;
+  createdAt: string;
+}
+
+interface AiClientContext {
+  userId?: string | null;
+  displayName?: string | null;
+  role: UserRole;
+  currentRoute: string;
+  locale?: string;
+  counters?: {
+    vehiclesCount?: number;
+    offeredRidesCount?: number;
+    takenRidesCount?: number;
+    upcomingBookingsCount?: number;
+  };
+}
+
+interface AiRouterRequest {
+  message: string;
+  threadId?: string | null;
+  history?: AiMessage[];
+  context?: AiClientContext;
+}
+
+interface AiRouterResponse {
+  reply: string;
+  actions?: AiAction[];
+  debug?: Record<string, unknown>;
 }
 
 const json = (statusCode: number, data: any) => ({
@@ -35,87 +71,91 @@ const supabaseFromToken = (token: string): SupabaseClient => {
     throw new Error('Supabase env vars missing');
   }
   return createClient(url, anonKey, {
-    global: {
-      headers: { Authorization: `Bearer ${token}` },
-    },
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
   });
 };
 
-const rateLimit = (userId: string) => {
-  const now = Date.now();
-  const state = rateLimiter.get(userId) || { windowStart: now, count: 0 };
-  const windowMs = 60_000;
-  if (now - state.windowStart > windowMs) {
-    rateLimiter.set(userId, { windowStart: now, count: 1 });
-    return false;
+const ALLOWED_ACTIONS: AiActionType[] = [
+  'NAVIGATE',
+  'SHOW_HELP',
+  'LIST_VEHICLES',
+  'LIST_MY_RIDES',
+  'LIST_MY_BOOKINGS',
+  'SHOW_TODAY_ACTIVITY',
+  'START_ADD_VEHICLE',
+  'START_POST_RIDE',
+  'SUGGEST_RIDE_PLAN',
+  'ADMIN_OVERVIEW',
+  'ADMIN_RECENT_BUG_REPORTS',
+  'ADMIN_RECENT_ERRORS',
+  'ADMIN_USER_SUMMARY',
+];
+
+const isActionAllowedForRole = (role: UserRole, action: AiActionType) => {
+  if (role === 'admin') return true;
+  if (role === 'guest') {
+    return action === 'NAVIGATE' || action === 'SHOW_HELP' || action === 'SUGGEST_RIDE_PLAN';
   }
-  if (state.count >= MAX_REQUESTS_PER_MINUTE) {
-    return true;
-  }
-  state.count += 1;
-  rateLimiter.set(userId, state);
-  return false;
+  return !action.startsWith('ADMIN_');
 };
 
-const SYSTEM_PROMPT = `You are the CEO Assistant for Carpool Network. Help users with concise answers and use tools when needed.
+const buildSystemPrompt = (context: AiClientContext) => {
+  const capabilities = `
+CarpoolNetwork is a community carpooling app. Users can add vehicles, post rides as drivers, find/request/book rides as riders, view/cancel bookings, update profile and preferences, and view notifications. Admins can view analytics, bug reports, diagnostics, and manage users/verifications.
 
-You can use these tools by responding ONLY with a JSON object:
-{ "tool": "<tool_name>", "params": { ... } }
-Otherwise, reply with:
-{ "reply": "<message>" }
+You are an in-app CEO assistant. Be concise, transparent, and helpful. Provide a friendly reply AND a list of structured actions where useful.
 
-Tools:
-- get_my_bookings: Fetch the user's bookings.
-- get_my_rides: Fetch rides the user is offering.
-- find_rides: Search active rides. Params: origin (string), destination (string), date (optional ISO date).
-- cancel_booking: Cancel a booking for the user. Params: booking_id (string), confirm (boolean). Require confirm=true to proceed.
-- update_profile: Update profile fields. Params: key-value pairs (e.g., phone, full_name, preferences).
-- get_my_vehicles: List the user's vehicles.
-- add_vehicle: Add a vehicle. Params: make (string), model (string), year (number), color (string), license_plate (string), capacity (number), fuel_type (optional string), vehicle_type (optional string).
+Actions schema (TypeScript):
+type AiActionType =
+  "NAVIGATE" | "SHOW_HELP" | "LIST_VEHICLES" | "LIST_MY_RIDES" | "LIST_MY_BOOKINGS" | "SHOW_TODAY_ACTIVITY" | "START_ADD_VEHICLE" | "START_POST_RIDE" | "SUGGEST_RIDE_PLAN" | "ADMIN_OVERVIEW" | "ADMIN_RECENT_BUG_REPORTS" | "ADMIN_RECENT_ERRORS" | "ADMIN_USER_SUMMARY";
 
-Rules:
-- Keep responses short and clear.
-- Never include secrets.
-- Only one tool per request.
-- If a tool returns data, summarize it for the user.
-- If role=admin you may reference admin functions; otherwise, keep to the user's own data.`;
+type AiAction = { type: AiActionType; params?: Record<string, unknown>; note?: string; };
 
-const buildContextPrefix = (context: UserContextPayload) => {
-  const lines = [
-    `User ID: ${context.userId || 'unknown'}`,
-    `Name/Email: ${context.displayName || 'unknown'}`,
+Respond with a single JSON object:
+{
+  "reply": "<helpful concise answer>",
+  "actions": [AiAction, ...]
+}
+
+Role rules:
+- role="user": only their own data, non-destructive guidance. Use LIST_* and NAVIGATE/START_* to help.
+- role="admin": may use ADMIN_* actions and analytics references; still avoid destructive steps.
+- role="guest": read-only guidance; encourage sign in; only NAVIGATE/SHOW_HELP/SUGGEST_RIDE_PLAN.
+
+If unsure, default to SHOW_HELP and a clear reply. Never include Markdown, only JSON.
+`;
+
+  const contextLines = [
+    `User: ${context.displayName || context.userId || 'unknown'}`,
     `Role: ${context.role}`,
-    `Current route: ${context.currentRoute || 'unknown'}`,
+    `Route: ${context.currentRoute}`,
   ];
-  if (context.vehicleCount !== undefined) lines.push(`Vehicle count: ${context.vehicleCount}`);
-  if (context.upcomingRidesCount !== undefined) lines.push(`Upcoming rides: ${context.upcomingRidesCount}`);
-  if (context.unreadNotificationsCount !== undefined)
-    lines.push(`Unread notifications: ${context.unreadNotificationsCount}`);
-  return lines.join('\\n');
+  if (context.counters) {
+    const c = context.counters;
+    if (c.vehiclesCount !== undefined) contextLines.push(`Vehicles: ${c.vehiclesCount}`);
+    if (c.offeredRidesCount !== undefined) contextLines.push(`Offered rides: ${c.offeredRidesCount}`);
+    if (c.takenRidesCount !== undefined) contextLines.push(`Taken rides: ${c.takenRidesCount}`);
+    if (c.upcomingBookingsCount !== undefined) contextLines.push(`Upcoming bookings: ${c.upcomingBookingsCount}`);
+  }
+
+  return `${capabilities}\nContext:\n${contextLines.join('\n')}`;
 };
 
-const callGemini = async (message: string, apiKey: string, context: UserContextPayload): Promise<string> => {
-  const contextText = buildContextPrefix(context);
-  const res = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
+const callGemini = async (prompt: string, apiKey: string): Promise<string> => {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(
+    apiKey
+  )}`;
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      contents: [
-        { role: 'system', parts: [{ text: SYSTEM_PROMPT }] },
-        { role: 'user', parts: [{ text: `Context:\\n${contextText}\\n\\nUser message:\\n${message}` }] },
-      ],
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.3, maxOutputTokens: 512 },
     }),
   });
-
   const raw = await res.text();
-  if (!res.ok) {
-    throw new Error(`Gemini error ${res.status}: ${raw}`);
-  }
+  if (!res.ok) throw new Error(`Gemini ${res.status}: ${raw}`);
   const data = raw ? JSON.parse(raw) : {};
   const text =
     data?.candidates?.[0]?.content?.parts
@@ -123,333 +163,105 @@ const callGemini = async (message: string, apiKey: string, context: UserContextP
       .filter((t: any) => typeof t === 'string')
       .join(' ')
       .trim() || '';
-
   return text;
 };
 
-const callOpenAI = async (message: string, apiKey: string, context: UserContextPayload): Promise<string> => {
+const callOpenAI = async (prompt: string, apiKey: string): Promise<string> => {
   const url = 'https://api.openai.com/v1/chat/completions';
-  const contextText = buildContextPrefix(context);
   const res = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
       model: 'gpt-4.1-mini',
       messages: [
         {
           role: 'system',
           content:
-            'You are the AI Assistant for Carpool Network. Help users with rides, bookings, and profile questions. Be concise.',
+            'You are the AI Assistant for Carpool Network. Keep replies concise and include structured actions when helpful. Respond with pure JSON only.',
         },
-        { role: 'user', content: `Context:\\n${contextText}\\n\\nUser message:\\n${message}` },
+        { role: 'user', content: prompt },
       ],
       temperature: 0.3,
       max_tokens: 512,
     }),
   });
-
   const raw = await res.text();
-  if (!res.ok) {
-    throw new Error(`OpenAI error ${res.status}: ${raw}`);
-  }
+  if (!res.ok) throw new Error(`OpenAI ${res.status}: ${raw}`);
   const data = raw ? JSON.parse(raw) : {};
   const text = data?.choices?.[0]?.message?.content?.trim() || '';
-  if (!text) {
-    throw new Error('Empty OpenAI reply');
-  }
   return text;
 };
 
-const parseModelResponse = (text: string): { reply?: string; toolCall?: ToolCall } => {
+const parseModelResponse = (raw: string): AiRouterResponse => {
   try {
-    const parsed = JSON.parse(text);
-    if (parsed && typeof parsed === 'object') {
-      if (parsed.tool && parsed.params) {
-        return { toolCall: parsed as ToolCall };
-      }
-      if (parsed.reply) {
-        return { reply: String(parsed.reply) };
-      }
-    }
-  } catch {
-    // fallthrough
+    const parsed = JSON.parse(raw);
+    const reply = typeof parsed?.reply === 'string' && parsed.reply.trim() ? parsed.reply : raw;
+    const actions = Array.isArray(parsed?.actions)
+      ? parsed.actions.filter(
+          (a: any) => a && typeof a === 'object' && ALLOWED_ACTIONS.includes(a.type)
+        )
+      : [];
+    return { reply, actions };
+  } catch (err) {
+    return {
+      reply: `I had trouble understanding my own output. Here's what I can say: ${raw}`,
+      actions: [],
+      debug: { parseError: String((err as Error)?.message || err) },
+    };
   }
-  return { reply: text || 'Sorry, I could not understand the response.' };
 };
 
-const getUser = async (supabase: SupabaseClient, token: string) => {
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data?.user) {
-    throw new Error('Invalid or expired token');
-  }
-  return data.user;
-};
-
-const logAudit = async (
-  supabase: SupabaseClient,
-  userId: string,
-  action: string,
-  conversationId?: string,
-  metadata?: Record<string, any>
+const logApiError = async (
+  supabase: SupabaseClient | null,
+  label: string,
+  error: unknown,
+  context?: Record<string, unknown>
 ) => {
+  console.error(label, error);
+  if (!supabase) return;
   try {
-    await supabase.from('ai_audit_logs').insert({
-      user_id: userId,
-      conversation_id: conversationId || null,
-      action,
-      metadata: metadata || {},
+    await supabase.rpc('log_error', {
+      p_error_type: label,
+      p_error_message: error instanceof Error ? error.message : String(error),
+      p_error_stack: error instanceof Error ? error.stack || null : null,
+      p_severity: 'error',
+      p_endpoint: context?.route || null,
+      p_metadata: context || {},
     });
-  } catch (error) {
-    console.error('Audit log failed', error);
+  } catch {
+    // best effort
   }
 };
 
-async function tool_get_my_bookings(supabase: SupabaseClient, userId: string) {
-  const { data, error } = await supabase
-    .from('ride_bookings')
-    .select(
-      'id,status,pickup_location,dropoff_location,seats_requested,created_at,ride:rides(origin,destination,departure_time)'
-    )
-    .eq('passenger_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(10);
-  if (error) throw error;
-  return data || [];
-}
-
-async function tool_get_my_rides(supabase: SupabaseClient, userId: string) {
-  const { data, error } = await supabase
-    .from('rides')
-    .select('id,origin,destination,departure_time,available_seats,status')
-    .eq('driver_id', userId)
-    .order('departure_time', { ascending: true })
-    .limit(10);
-  if (error) throw error;
-  return data || [];
-}
-
-async function tool_get_my_vehicles(supabase: SupabaseClient, userId: string) {
-  const { data, error } = await supabase
-    .from('vehicles')
-    .select('id,make,model,year,color,license_plate,capacity,fuel_type,vehicle_type,is_active')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(5);
-  if (error) throw error;
-  return data || [];
-}
-
-async function tool_find_rides(
-  supabase: SupabaseClient,
-  params: { origin?: string; destination?: string; date?: string }
-) {
-  let query = supabase
-    .from('rides')
-    .select('id,origin,destination,departure_time,available_seats,status')
-    .eq('status', 'active')
-    .gt('departure_time', new Date().toISOString())
-    .order('departure_time', { ascending: true })
-    .limit(10);
-
-  if (params.origin) {
-    query = query.ilike('origin', `%${params.origin}%`);
-  }
-  if (params.destination) {
-    query = query.ilike('destination', `%${params.destination}%`);
-  }
-  if (params.date) {
-    query = query.gte('departure_time', params.date);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return data || [];
-}
-
-async function tool_cancel_booking(
-  supabase: SupabaseClient,
-  params: { booking_id?: string; confirm?: boolean }
-) {
-  if (!params.booking_id) {
-    throw new Error('booking_id is required');
-  }
-  if (!params.confirm) {
-    return { message: 'Please confirm cancellation by setting confirm=true.' };
-  }
-  const { error } = await supabase.rpc('cancel_booking', {
-    p_booking_id: params.booking_id,
-    p_reason: 'Cancelled by user via AI assistant',
-  });
-  if (error) throw error;
-  return { message: `Booking ${params.booking_id} cancelled.` };
-}
-
-async function tool_update_profile(
+const saveHistory = async (
   supabase: SupabaseClient,
   userId: string,
-  params: Record<string, any>
-) {
-  if (!Object.keys(params || {}).length) {
-    throw new Error('No profile fields provided');
-  }
-  const { data, error } = await supabase
-    .from('profiles')
-    .update(params)
-    .eq('id', userId)
-    .select('id,full_name,phone,updated_at')
-    .single();
-  if (error) throw error;
-  return data;
-}
-
-async function tool_add_vehicle(
-  supabase: SupabaseClient,
-  userId: string,
-  params: Record<string, any>
-) {
-  const required = ['make', 'model', 'year', 'color', 'license_plate'];
-  for (const key of required) {
-    if (!params[key]) throw new Error(`Missing required vehicle field: ${key}`);
-  }
-  const payload: Record<string, any> = {
-    user_id: userId,
-    make: String(params.make),
-    model: String(params.model),
-    year: Number(params.year) || new Date().getFullYear(),
-    color: String(params.color),
-    license_plate: String(params.license_plate).toUpperCase(),
-    capacity: params.capacity ? Number(params.capacity) : 4,
-    is_active: true,
-  };
-  if (params.fuel_type) payload.fuel_type = String(params.fuel_type);
-  if (params.vehicle_type) payload.vehicle_type = String(params.vehicle_type);
-
-  const { data, error } = await supabase.from('vehicles').insert(payload).select().single();
-  if (error) throw error;
-  return data;
-}
-
-async function executeTool(
-  supabase: SupabaseClient,
-  userId: string,
-  conversationId: string | undefined,
-  toolCall: ToolCall
-) {
-  switch (toolCall.tool) {
-    case 'get_my_bookings': {
-      const result = await tool_get_my_bookings(supabase, userId);
-      await logAudit(supabase, userId, 'get_my_bookings', conversationId, { count: result.length });
-      return result;
-    }
-    case 'get_my_rides': {
-      const result = await tool_get_my_rides(supabase, userId);
-      await logAudit(supabase, userId, 'get_my_rides', conversationId, { count: result.length });
-      return result;
-    }
-    case 'find_rides': {
-      const result = await tool_find_rides(supabase, toolCall.params || {});
-      await logAudit(supabase, userId, 'find_rides', conversationId, { count: result.length });
-      return result;
-    }
-    case 'get_my_vehicles': {
-      const result = await tool_get_my_vehicles(supabase, userId);
-      await logAudit(supabase, userId, 'get_my_vehicles', conversationId, { count: result.length });
-      return result;
-    }
-    case 'cancel_booking': {
-      const result = await tool_cancel_booking(supabase, toolCall.params || {});
-      await logAudit(supabase, userId, 'cancel_booking', conversationId, { booking: toolCall.params?.booking_id });
-      return result;
-    }
-    case 'update_profile': {
-      const result = await tool_update_profile(supabase, userId, toolCall.params || {});
-      await logAudit(supabase, userId, 'update_profile', conversationId, {
-        fields: Object.keys(toolCall.params || {}),
-      });
-      return result;
-    }
-    case 'add_vehicle': {
-      const result = await tool_add_vehicle(supabase, userId, toolCall.params || {});
-      await logAudit(supabase, userId, 'add_vehicle', conversationId, { vehicle: result?.id });
-      return result;
-    }
-    default:
-      throw new Error(`Unsupported tool: ${toolCall.tool}`);
-  }
-}
-
-const summarizeToolResult = (tool: ToolName, result: any): string => {
-  switch (tool) {
-    case 'get_my_bookings': {
-      if (!Array.isArray(result) || result.length === 0) return 'You have no bookings.';
-      const summary = result
-        .map(
-          (b: any) =>
-            `- ${b.id}: ${b.ride?.origin || ''} to ${b.ride?.destination || ''} on ${b.ride?.departure_time || ''} (${b.status})`
-        )
-        .join('\n');
-      return `You have ${result.length} booking(s):\n${summary}`;
-    }
-    case 'get_my_rides': {
-      if (!Array.isArray(result) || result.length === 0) return 'You are not offering any rides.';
-      const summary = result
-        .map(
-          (r: any) =>
-            `- ${r.id}: ${r.origin} -> ${r.destination} at ${r.departure_time} (seats ${r.available_seats}, ${r.status})`
-        )
-        .join('\n');
-      return `Your rides (${result.length}):\n${summary}`;
-    }
-    case 'find_rides': {
-      if (!Array.isArray(result) || result.length === 0) return 'No matching rides found.';
-      const summary = result
-        .map((r: any) => `- ${r.id}: ${r.origin} -> ${r.destination} at ${r.departure_time} (seats ${r.available_seats})`)
-        .join('\n');
-      return `Found ${result.length} ride option(s):\n${summary}`;
-    }
-    case 'get_my_vehicles': {
-      if (!Array.isArray(result) || result.length === 0) return 'You have no vehicles on file.';
-      const summary = result
-        .map(
-          (v: any) =>
-            `- ${v.id}: ${v.make} ${v.model} (${v.year}) ${v.color}, plate ${v.license_plate}, seats ${v.capacity}${
-              v.is_active === false ? ' (inactive)' : ''
-            }`
-        )
-        .join('\n');
-      return `Your vehicles (${result.length}):\n${summary}`;
-    }
-    case 'cancel_booking':
-      return typeof result?.message === 'string' ? result.message : 'Cancellation processed.';
-    case 'update_profile':
-      return 'Profile updated successfully.';
-    case 'add_vehicle':
-      return 'Vehicle added successfully.';
-    default:
-      return 'Completed.';
-  }
-};
-
-const buildToolFollowup = async (
+  sessionId: string | undefined,
   userMessage: string,
-  tool: ToolName,
-  toolResult: any,
-  context: UserContextPayload,
-  apiKey: string
+  assistantReply: string
 ) => {
-  const prompt = [
-    'Tool execution finished. Summarize succinctly for the user.',
-    `User message: ${userMessage}`,
-    `Tool used: ${tool}`,
-    `Tool result: ${JSON.stringify(toolResult)}`,
-  ].join('\n');
-  return callGemini(prompt, apiKey, context);
+  try {
+    await supabase.from('ai_chat_history').insert([
+      {
+        user_id: userId,
+        session_id: sessionId || 'default',
+        role: 'user',
+        message: userMessage,
+      },
+      {
+        user_id: userId,
+        session_id: sessionId || 'default',
+        role: 'assistant',
+        message: assistantReply,
+      },
+    ]);
+  } catch (err) {
+    console.error('Failed to persist chat history', err);
+  }
 };
 
 export const handler: Handler = async (event) => {
+  let supabase: SupabaseClient | null = null;
   try {
     const authHeader = event.headers.authorization || event.headers.Authorization;
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : '';
@@ -457,118 +269,98 @@ export const handler: Handler = async (event) => {
       return json(401, { reply: 'Please sign in to use the assistant.', error: 'NO_AUTH' });
     }
 
-    let payload: any = {};
+    let payload: AiRouterRequest = { message: '', history: [], threadId: null, context: undefined };
     try {
-      payload = event.body ? JSON.parse(event.body) : {};
+      payload = event.body ? JSON.parse(event.body) : payload;
     } catch {
       return json(400, { reply: 'Invalid JSON body.', error: 'BAD_JSON' });
     }
 
     const message = typeof payload?.message === 'string' ? payload.message.trim() : '';
-    const conversationId = typeof payload?.conversationId === 'string' ? payload.conversationId : undefined;
-    const incomingContext: UserContextPayload = {
-      userId: payload?.userContext?.userId ?? null,
-      displayName: payload?.userContext?.displayName ?? null,
-      role: payload?.userContext?.role ?? 'user',
-      currentRoute: payload?.userContext?.currentRoute ?? 'unknown',
-      vehicleCount: payload?.userContext?.vehicleCount,
-      upcomingRidesCount: payload?.userContext?.upcomingRidesCount,
-      unreadNotificationsCount: payload?.userContext?.unreadNotificationsCount,
-    };
-
     if (!message) {
       return json(400, { reply: 'Please type a message for the assistant.', error: 'NO_MESSAGE' });
     }
 
-    const supabase = supabaseFromToken(token);
-    const user = await getUser(supabase, token);
-
-    if (rateLimit(user.id)) {
-      return json(429, {
-        reply: 'You are sending messages too quickly. Please wait a moment and try again.',
-        error: 'RATE_LIMIT',
-      });
+    supabase = supabaseFromToken(token);
+    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      return json(401, { reply: 'Session expired. Please sign in again.', error: 'NO_USER' });
     }
+    const userId = userData.user.id;
 
-    const { data: profileRow } = await supabase
-      .from('profiles')
-      .select('full_name,is_admin')
-      .eq('id', user.id)
-      .maybeSingle();
+    const { data: profile } = await supabase.from('profiles').select('full_name,is_admin').eq('id', userId).maybeSingle();
 
-    const resolvedContext: UserContextPayload = {
-      ...incomingContext,
-      userId: user.id,
-      displayName: profileRow?.full_name || incomingContext.displayName,
-      role: profileRow?.is_admin ? 'admin' : incomingContext.role || 'user',
+    const context: AiClientContext = {
+      userId,
+      displayName: profile?.full_name || payload?.context?.displayName || null,
+      role: profile?.is_admin ? 'admin' : payload?.context?.role || 'user',
+      currentRoute: payload?.context?.currentRoute || 'unknown',
+      locale: payload?.context?.locale,
+      counters: payload?.context?.counters,
     };
 
-    const geminiKey = process.env.GEMINI_API_KEY || process.env.AI_Access || '';
-    const openAIKey = process.env.Open_AI_Api_key || process.env.OPENAI_API_KEY || '';
+    const promptParts = [
+      buildSystemPrompt(context),
+      `User message: ${message}`,
+      payload.history && payload.history.length
+        ? `Recent history:\n${payload.history
+            .slice(-6)
+            .map((m) => `${m.author}: ${m.content}`)
+            .join('\n')}`
+        : '',
+    ];
+    const finalPrompt = promptParts.filter(Boolean).join('\n\n');
 
+    const geminiKey = process.env.GEMINI_API_KEY || '';
+    const openAIKey = process.env.Open_AI_Api_key || process.env.OPENAI_API_KEY || '';
     if (!geminiKey && !openAIKey) {
-      return json(500, {
-        reply: 'AI is not configured yet. Please contact support.',
-        error: 'NO_KEYS',
+      return json(500, { reply: 'AI is not configured yet. Please contact support.', error: 'NO_KEYS' });
+    }
+
+    let raw = '';
+    let parsed: AiRouterResponse | null = null;
+    if (geminiKey) {
+      try {
+        raw = await callGemini(finalPrompt, geminiKey);
+        parsed = parseModelResponse(raw);
+      } catch (err) {
+        await logApiError(supabase, 'ai-router-llm', err, { provider: 'gemini', route: context.currentRoute, userId });
+      }
+    }
+
+    if ((!parsed || !parsed.reply) && openAIKey) {
+      try {
+        raw = await callOpenAI(finalPrompt, openAIKey);
+        parsed = parseModelResponse(raw);
+      } catch (err) {
+        await logApiError(supabase, 'ai-router-llm', err, { provider: 'openai', route: context.currentRoute, userId });
+      }
+    }
+
+    if (!parsed) {
+      return json(502, {
+        reply: 'Sorry, the AI assistant is temporarily unavailable. Please try again later.',
+        error: 'LLM_FAILED',
       });
     }
 
-    // First Gemini call: decide if tool or direct reply
-    let geminiRaw = '';
-    let parsed: { reply?: string; toolCall?: ToolCall } = {};
-    let geminiFailed: Error | null = null;
-    if (geminiKey) {
-      try {
-        geminiRaw = await callGemini(message, geminiKey, resolvedContext);
-        parsed = parseModelResponse(geminiRaw);
-      } catch (err: any) {
-        geminiFailed = err instanceof Error ? err : new Error(String(err));
-        console.error('Gemini failed, will attempt OpenAI fallback if available:', geminiFailed.message);
-      }
-    }
+    const actions =
+      parsed.actions?.filter(
+        (a) => a && typeof a === 'object' && ALLOWED_ACTIONS.includes(a.type) && isActionAllowedForRole(context.role, a.type)
+      ) || [];
 
-    if (!parsed.toolCall && !parsed.reply && openAIKey && (!geminiKey || geminiFailed)) {
-      try {
-        const openAiRaw = await callOpenAI(message, openAIKey, resolvedContext);
-        parsed = parseModelResponse(openAiRaw);
-        geminiRaw = openAiRaw;
-      } catch (openErr: any) {
-        console.error('OpenAI fallback failed:', openErr);
-      }
-    }
-
-    if (!parsed.toolCall) {
-      await logAudit(supabase, user.id, 'direct_reply', conversationId, { message });
-      return json(200, { reply: parsed.reply || geminiRaw, provider: parsed.reply ? 'gemini' : 'openai' });
-    }
-
-    // Execute tool
-    const toolResult = await executeTool(supabase, user.id, conversationId, parsed.toolCall);
-    const toolSummary = summarizeToolResult(parsed.toolCall.tool, toolResult);
-
-    // Second Gemini call with tool result
-    const followUpRaw = await buildToolFollowup(
-      message,
-      parsed.toolCall.tool,
-      toolSummary,
-      resolvedContext,
-      geminiKey || openAIKey || ''
-    );
-    const followParsed = parseModelResponse(followUpRaw);
-
-    await logAudit(supabase, user.id, parsed.toolCall.tool, conversationId, { toolResult });
+    await saveHistory(supabase, userId, payload.threadId || undefined, message, parsed.reply);
 
     return json(200, {
-      reply: followParsed.reply || followUpRaw,
-      provider: 'gemini',
-      tool: parsed.toolCall.tool,
-      toolResult,
-    });
-  } catch (error: any) {
-    console.error('AI assistant fatal error', error);
+      reply: parsed.reply,
+      actions,
+      debug: parsed.debug,
+    } as AiRouterResponse);
+  } catch (err: any) {
+    await logApiError(supabase, 'ai-router-fatal', err, {});
     return json(500, {
       reply: 'Sorry, something went wrong with the AI assistant.',
-      error: String(error?.message || error),
+      error: String(err?.message || err),
     });
   }
 };

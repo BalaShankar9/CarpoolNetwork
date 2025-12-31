@@ -1,31 +1,40 @@
-import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, User as UserIcon, AlertCircle, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { MessageCircle, X, Send, Bot, User as UserIcon, AlertCircle, Trash2, Info } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { GeminiService, AiRequestPayload } from '../../services/geminiService';
+import { GeminiService } from '../../services/geminiService';
+import {
+  AiClientContext,
+  AiMessage,
+  AiRouterResponse,
+  UserRole,
+} from '../../lib/aiCapabilities';
+import { executeAiActions } from '../../lib/aiDispatcher';
+import { logApiError } from '../../services/errorTracking';
 import { supabase } from '../../lib/supabase';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
+type ChatMessage = AiMessage & { timestamp: Date };
 
 interface QuickAction {
   label: string;
   action: () => void;
 }
 
+const INITIAL_GREETING =
+  "Hi! I'm your AI assistant for Carpool Network. I can help you:\n\n- View your bookings and rides\n- Add a vehicle or post a ride\n- Navigate to different pages\n- Answer questions about the app\n\nWhat would you like to do?";
+
 export default function AiAssistantWidget() {
   const { user, profile, isAdmin } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
-      role: 'assistant',
-      content: "Hi! I'm your AI assistant for Carpool Network. I can help you:\n\n- View your bookings and rides\n- Cancel bookings or rides\n- Update your profile\n- Change your preferences\n- Answer questions about the app\n\nWhat would you like to do?",
+      author: 'assistant',
+      content: INITIAL_GREETING,
+      createdAt: new Date().toISOString(),
       timestamp: new Date(),
     },
   ]);
@@ -33,8 +42,8 @@ export default function AiAssistantWidget() {
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>(Date.now().toString());
+  const [lastSentAt, setLastSentAt] = useState<number>(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -42,53 +51,89 @@ export default function AiAssistantWidget() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isTyping]);
 
   useEffect(() => {
     if (user && isOpen) {
       loadChatHistory();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isOpen]);
+
+  const role: UserRole = useMemo(() => {
+    if (isAdmin) return 'admin';
+    if (user) return 'user';
+    return 'guest';
+  }, [isAdmin, user]);
+
+  const context: AiClientContext = useMemo(
+    () => ({
+      userId: user?.id ?? null,
+      displayName: profile?.full_name || user?.email || null,
+      role,
+      currentRoute: location.pathname,
+      counters: {},
+    }),
+    [user?.id, profile?.full_name, user?.email, role, location.pathname]
+  );
+
+  const quickActions: QuickAction[] = [
+    { label: 'Show my bookings', action: () => handleSend('Show me my bookings') },
+    { label: 'View my rides', action: () => handleSend("Show me the rides I'm offering") },
+    {
+      label: 'Find a ride',
+      action: () => {
+        navigate('/find-rides');
+        setIsOpen(false);
+      },
+    },
+  ];
 
   const loadChatHistory = async () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error: supaError } = await supabase
         .from('ai_chat_history')
         .select('*')
         .eq('user_id', user.id)
         .eq('session_id', sessionId)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (supaError) throw supaError;
 
       if (data && data.length > 0) {
-        const loadedMessages: Message[] = data.map((msg) => ({
+        const loadedMessages: ChatMessage[] = data.map((msg) => ({
           id: msg.id,
-          role: msg.role as 'user' | 'assistant',
+          author: (msg.role as 'user' | 'assistant') || 'assistant',
           content: msg.message,
+          createdAt: msg.created_at,
           timestamp: new Date(msg.created_at),
         }));
         setMessages(loadedMessages);
       }
-    } catch (error) {
-      console.error('Error loading chat history:', error);
+    } catch (err) {
+      console.error('Error loading chat history:', err);
+      await logApiError('ai-chat-history-load', err, {
+        route: location.pathname,
+        userId: user?.id ?? null,
+        role,
+      });
     }
   };
 
-  const saveChatMessage = async (message: Message) => {
+  const saveChatMessage = async (message: ChatMessage) => {
     if (!user) return;
 
     try {
       await supabase.from('ai_chat_history').insert({
         user_id: user.id,
         message: message.content,
-        role: message.role,
+        role: message.author === 'assistant' ? 'assistant' : 'user',
         session_id: sessionId,
       });
-    } catch (error) {
-      console.error('Error saving chat message:', error);
+    } catch (err) {
+      console.error('Error saving chat message:', err);
     }
   };
 
@@ -105,15 +150,27 @@ export default function AiAssistantWidget() {
       setMessages([
         {
           id: '1',
-          role: 'assistant',
+          author: 'assistant',
           content: 'Chat history cleared. How can I help you today?',
+          createdAt: new Date().toISOString(),
           timestamp: new Date(),
         },
       ]);
       setSessionId(Date.now().toString());
-    } catch (error) {
-      console.error('Error clearing chat history:', error);
+    } catch (err) {
+      console.error('Error clearing chat history:', err);
     }
+  };
+
+  const appendSystemMessage = (text: string) => {
+    const msg: ChatMessage = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      author: 'assistant',
+      content: text,
+      createdAt: new Date().toISOString(),
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, msg]);
   };
 
   const handleSend = async (text?: string) => {
@@ -121,14 +178,20 @@ export default function AiAssistantWidget() {
       setError('Please sign in to use the AI assistant.');
       return;
     }
+    const now = Date.now();
+    if (now - lastSentAt < 2000) {
+      setError('Please wait a moment before sending another message.');
+      return;
+    }
 
     const messageText = text || inputValue.trim();
     if (!messageText) return;
 
-    const userMessage: Message = {
+    const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      role: 'user',
+      author: 'user',
       content: messageText,
+      createdAt: new Date().toISOString(),
       timestamp: new Date(),
     };
 
@@ -136,130 +199,56 @@ export default function AiAssistantWidget() {
     setInputValue('');
     setIsTyping(true);
     setError(null);
+    setLastSentAt(now);
 
     await saveChatMessage(userMessage);
 
     try {
-      const conversationHistory = messages.map(msg => ({
-        role: msg.role,
-        content: msg.content
+      const history: AiMessage[] = [...messages, userMessage].slice(-15).map((msg) => ({
+        id: msg.id,
+        author: msg.author,
+        content: msg.content,
+        createdAt: msg.createdAt,
       }));
 
-      const userContext: AiRequestPayload['userContext'] = {
-        userId: user?.id ?? null,
-        displayName: profile?.full_name || user?.email || null,
-        role: isAdmin ? 'admin' : user ? 'user' : 'guest',
-        currentRoute: location.pathname,
-      };
+      const response: AiRouterResponse = await GeminiService.chat(messageText, history, sessionId, context);
 
-      const response = await GeminiService.chat(
-        messageText,
-        conversationHistory,
-        user?.id || '',
-        sessionId,
-        userContext
-      );
-
-      const botMessage: Message = {
+      const botMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response,
+        author: 'assistant',
+        content: response.reply,
+        createdAt: new Date().toISOString(),
         timestamp: new Date(),
       };
 
       setMessages((prev) => [...prev, botMessage]);
       await saveChatMessage(botMessage);
 
-      if (response.includes('Booking ID:')) {
-        const bookingIdMatch = response.match(/Booking ID: ([a-f0-9-]+)/i);
-        if (bookingIdMatch) {
-          const bookingId = bookingIdMatch[1];
-          if (messageText.toLowerCase().includes('cancel')) {
-            setTimeout(() => {
-              const confirmMessage = `Would you like me to cancel booking ${bookingId}? Reply "yes" to confirm.`;
-              const confirmMsg: Message = {
-                id: (Date.now() + 2).toString(),
-                role: 'assistant',
-                content: confirmMessage,
-                timestamp: new Date(),
-              };
-              setMessages((prev) => [...prev, confirmMsg]);
-            }, 500);
-          }
-        }
+      if (response.actions?.length) {
+        await executeAiActions(response.actions, context, {
+          navigate,
+          appendSystemMessage,
+        });
       }
-
-      if (messageText.toLowerCase() === 'yes' && messages.length > 0) {
-        const lastBotMessage = messages[messages.length - 1];
-        if (lastBotMessage.role === 'assistant' && lastBotMessage.content.includes('cancel booking')) {
-          const bookingIdMatch = lastBotMessage.content.match(/booking ([a-f0-9-]+)/i);
-          if (bookingIdMatch) {
-            await handleCancelBooking(bookingIdMatch[1]);
-          }
-        }
-      }
-
-    } catch (error) {
-      console.error('Error getting AI response:', error);
-      setError('Failed to get response. Please try again.');
+    } catch (err) {
+      console.error('Error getting AI response:', err);
+      await logApiError('ai-router-client', err, {
+        route: location.pathname,
+        userId: user?.id ?? null,
+        role,
+      });
+      setError("I couldn't reach my brain service just now. Please try again in a moment.");
     } finally {
       setIsTyping(false);
     }
   };
-
-  const handleCancelBooking = async (bookingId: string) => {
-    if (!user) return;
-
-    setIsTyping(true);
-    try {
-      const result = await GeminiService.cancelBooking(bookingId, user.id);
-
-      const resultMessage: Message = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: result.message,
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, resultMessage]);
-    } catch (error) {
-      console.error('Error cancelling booking:', error);
-      const errorMessage: Message = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: 'Sorry, I encountered an error cancelling your booking. Please try again or visit the My Rides page.',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsTyping(false);
-    }
-  };
-
-  const quickActions: QuickAction[] = [
-    {
-      label: 'Show my bookings',
-      action: () => handleSend('Show me all my current bookings'),
-    },
-    {
-      label: 'View my rides',
-      action: () => handleSend('Show me the rides I\'m offering'),
-    },
-    {
-      label: 'Find a ride',
-      action: () => {
-        navigate('/find-rides');
-        setIsOpen(false);
-      },
-    },
-  ];
 
   return (
     <>
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-28 md:bottom-6 right-4 md:right-6 z-[90] p-3 md:p-4 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-full shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300 group"
+          className="fixed bottom-[100px] md:bottom-6 right-4 md:right-6 z-[90] p-3 md:p-4 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-full shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300 group"
           aria-label="Open AI chat"
           style={{ pointerEvents: 'auto' }}
         >
@@ -269,7 +258,7 @@ export default function AiAssistantWidget() {
       )}
 
       {isOpen && (
-        <div className="fixed bottom-28 md:bottom-6 right-4 md:right-6 z-[90] w-96 max-w-[calc(100vw-2rem)] h-[500px] max-h-[calc(100vh-15rem)] md:h-[600px] md:max-h-[calc(100vh-2rem)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
+        <div className="fixed bottom-[100px] md:bottom-6 right-4 md:right-6 z-[90] w-96 max-w-[calc(100vw-2rem)] h-[500px] max-h-[calc(100vh-15rem)] md:h-[600px] md:max-h-[calc(100vh-2rem)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
@@ -277,7 +266,7 @@ export default function AiAssistantWidget() {
               </div>
               <div>
                 <h3 className="font-semibold">AI Assistant</h3>
-                <p className="text-xs text-blue-100">Powered by Gemini</p>
+                <p className="text-xs text-blue-100">Powered by Gemini / OpenAI</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -289,10 +278,7 @@ export default function AiAssistantWidget() {
               >
                 <Trash2 className="w-5 h-5" />
               </button>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-1 hover:bg-white/10 rounded-lg transition-colors"
-              >
+              <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -301,9 +287,7 @@ export default function AiAssistantWidget() {
           {!user && (
             <div className="p-4 bg-yellow-50 border-b border-yellow-100 flex items-start gap-2">
               <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-yellow-800">
-                Please sign in to use the AI assistant with your booking data.
-              </p>
+              <p className="text-sm text-yellow-800">Please sign in to use the AI assistant with your booking data.</p>
             </div>
           )}
 
@@ -318,18 +302,16 @@ export default function AiAssistantWidget() {
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex gap-2 ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}
+                className={`flex gap-2 ${message.author === 'assistant' ? 'justify-start' : 'justify-end'}`}
               >
-                {message.role === 'assistant' && (
+                {message.author === 'assistant' && (
                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <Bot className="w-5 h-5 text-blue-600" />
                   </div>
                 )}
                 <div
                   className={`max-w-[75%] rounded-2xl px-4 py-2 ${
-                    message.role === 'assistant'
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'bg-blue-600 text-white'
+                    message.author === 'assistant' ? 'bg-white text-gray-900 shadow-sm' : 'bg-blue-600 text-white'
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -337,7 +319,7 @@ export default function AiAssistantWidget() {
                     {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
-                {message.role === 'user' && (
+                {message.author === 'user' && (
                   <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
                     <UserIcon className="w-5 h-5 text-white" />
                   </div>
@@ -353,8 +335,14 @@ export default function AiAssistantWidget() {
                 <div className="bg-white rounded-2xl px-4 py-3 shadow-sm">
                   <div className="flex gap-1">
                     <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                    <span
+                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style={{ animationDelay: '150ms' }}
+                    ></span>
+                    <span
+                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style={{ animationDelay: '300ms' }}
+                    ></span>
                   </div>
                 </div>
               </div>
@@ -362,8 +350,8 @@ export default function AiAssistantWidget() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="p-4 bg-white border-t border-gray-200">
-            <div className="flex flex-wrap gap-2 mb-3">
+          <div className="p-4 bg-white border-t border-gray-200 space-y-3">
+            <div className="flex flex-wrap gap-2">
               {quickActions.map((action, index) => (
                 <button
                   key={index}
@@ -374,6 +362,13 @@ export default function AiAssistantWidget() {
                   {action.label}
                 </button>
               ))}
+            </div>
+
+            <div className="flex items-start gap-2 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg p-2">
+              <Info className="w-4 h-4 text-blue-500 mt-0.5" />
+              <p className="leading-tight">
+                Tip: Ask “What can you do?” or “Take me to my rides” — the assistant will navigate and summarize for you.
+              </p>
             </div>
 
             <form
@@ -405,4 +400,3 @@ export default function AiAssistantWidget() {
     </>
   );
 }
-
