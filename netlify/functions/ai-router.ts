@@ -81,16 +81,32 @@ Rules:
 - Keep responses short and clear.
 - Never include secrets.
 - Only one tool per request.
-- If a tool returns data, summarize it for the user.`;
+- If a tool returns data, summarize it for the user.
+- If role=admin you may reference admin functions; otherwise, keep to the user's own data.`;
 
-const callGemini = async (message: string, apiKey: string): Promise<string> => {
+const buildContextPrefix = (context: UserContextPayload) => {
+  const lines = [
+    `User ID: ${context.userId || 'unknown'}`,
+    `Name/Email: ${context.displayName || 'unknown'}`,
+    `Role: ${context.role}`,
+    `Current route: ${context.currentRoute || 'unknown'}`,
+  ];
+  if (context.vehicleCount !== undefined) lines.push(`Vehicle count: ${context.vehicleCount}`);
+  if (context.upcomingRidesCount !== undefined) lines.push(`Upcoming rides: ${context.upcomingRidesCount}`);
+  if (context.unreadNotificationsCount !== undefined)
+    lines.push(`Unread notifications: ${context.unreadNotificationsCount}`);
+  return lines.join('\\n');
+};
+
+const callGemini = async (message: string, apiKey: string, context: UserContextPayload): Promise<string> => {
+  const contextText = buildContextPrefix(context);
   const res = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [
         { role: 'system', parts: [{ text: SYSTEM_PROMPT }] },
-        { role: 'user', parts: [{ text: message }] },
+        { role: 'user', parts: [{ text: `Context:\\n${contextText}\\n\\nUser message:\\n${message}` }] },
       ],
       generationConfig: { temperature: 0.3, maxOutputTokens: 512 },
     }),
@@ -111,8 +127,9 @@ const callGemini = async (message: string, apiKey: string): Promise<string> => {
   return text;
 };
 
-const callOpenAI = async (message: string, apiKey: string): Promise<string> => {
+const callOpenAI = async (message: string, apiKey: string, context: UserContextPayload): Promise<string> => {
   const url = 'https://api.openai.com/v1/chat/completions';
+  const contextText = buildContextPrefix(context);
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -127,7 +144,7 @@ const callOpenAI = async (message: string, apiKey: string): Promise<string> => {
           content:
             'You are the AI Assistant for Carpool Network. Help users with rides, bookings, and profile questions. Be concise.',
         },
-        { role: 'user', content: message },
+        { role: 'user', content: `Context:\\n${contextText}\\n\\nUser message:\\n${message}` },
       ],
       temperature: 0.3,
       max_tokens: 512,
@@ -288,6 +305,33 @@ async function tool_update_profile(
   return data;
 }
 
+async function tool_add_vehicle(
+  supabase: SupabaseClient,
+  userId: string,
+  params: Record<string, any>
+) {
+  const required = ['make', 'model', 'year', 'color', 'license_plate'];
+  for (const key of required) {
+    if (!params[key]) throw new Error(`Missing required vehicle field: ${key}`);
+  }
+  const payload: Record<string, any> = {
+    user_id: userId,
+    make: String(params.make),
+    model: String(params.model),
+    year: Number(params.year) || new Date().getFullYear(),
+    color: String(params.color),
+    license_plate: String(params.license_plate).toUpperCase(),
+    capacity: params.capacity ? Number(params.capacity) : 4,
+    is_active: true,
+  };
+  if (params.fuel_type) payload.fuel_type = String(params.fuel_type);
+  if (params.vehicle_type) payload.vehicle_type = String(params.vehicle_type);
+
+  const { data, error } = await supabase.from('vehicles').insert(payload).select().single();
+  if (error) throw error;
+  return data;
+}
+
 async function executeTool(
   supabase: SupabaseClient,
   userId: string,
@@ -325,6 +369,11 @@ async function executeTool(
       await logAudit(supabase, userId, 'update_profile', conversationId, {
         fields: Object.keys(toolCall.params || {}),
       });
+      return result;
+    }
+    case 'add_vehicle': {
+      const result = await tool_add_vehicle(supabase, userId, toolCall.params || {});
+      await logAudit(supabase, userId, 'add_vehicle', conversationId, { vehicle: result?.id });
       return result;
     }
     default:
@@ -377,19 +426,27 @@ const summarizeToolResult = (tool: ToolName, result: any): string => {
       return typeof result?.message === 'string' ? result.message : 'Cancellation processed.';
     case 'update_profile':
       return 'Profile updated successfully.';
+    case 'add_vehicle':
+      return 'Vehicle added successfully.';
     default:
       return 'Completed.';
   }
 };
 
-const buildToolFollowup = async (userMessage: string, tool: ToolName, toolResult: any) => {
+const buildToolFollowup = async (
+  userMessage: string,
+  tool: ToolName,
+  toolResult: any,
+  context: UserContextPayload,
+  apiKey: string
+) => {
   const prompt = [
     'Tool execution finished. Summarize succinctly for the user.',
     `User message: ${userMessage}`,
     `Tool used: ${tool}`,
     `Tool result: ${JSON.stringify(toolResult)}`,
   ].join('\n');
-  return callGemini(prompt);
+  return callGemini(prompt, apiKey, context);
 };
 
 export const handler: Handler = async (event) => {
@@ -409,6 +466,15 @@ export const handler: Handler = async (event) => {
 
     const message = typeof payload?.message === 'string' ? payload.message.trim() : '';
     const conversationId = typeof payload?.conversationId === 'string' ? payload.conversationId : undefined;
+    const incomingContext: UserContextPayload = {
+      userId: payload?.userContext?.userId ?? null,
+      displayName: payload?.userContext?.displayName ?? null,
+      role: payload?.userContext?.role ?? 'user',
+      currentRoute: payload?.userContext?.currentRoute ?? 'unknown',
+      vehicleCount: payload?.userContext?.vehicleCount,
+      upcomingRidesCount: payload?.userContext?.upcomingRidesCount,
+      unreadNotificationsCount: payload?.userContext?.unreadNotificationsCount,
+    };
 
     if (!message) {
       return json(400, { reply: 'Please type a message for the assistant.', error: 'NO_MESSAGE' });
@@ -423,6 +489,19 @@ export const handler: Handler = async (event) => {
         error: 'RATE_LIMIT',
       });
     }
+
+    const { data: profileRow } = await supabase
+      .from('profiles')
+      .select('full_name,is_admin')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const resolvedContext: UserContextPayload = {
+      ...incomingContext,
+      userId: user.id,
+      displayName: profileRow?.full_name || incomingContext.displayName,
+      role: profileRow?.is_admin ? 'admin' : incomingContext.role || 'user',
+    };
 
     const geminiKey = process.env.GEMINI_API_KEY || process.env.AI_Access || '';
     const openAIKey = process.env.Open_AI_Api_key || process.env.OPENAI_API_KEY || '';
@@ -440,7 +519,7 @@ export const handler: Handler = async (event) => {
     let geminiFailed: Error | null = null;
     if (geminiKey) {
       try {
-        geminiRaw = await callGemini(message, geminiKey);
+        geminiRaw = await callGemini(message, geminiKey, resolvedContext);
         parsed = parseModelResponse(geminiRaw);
       } catch (err: any) {
         geminiFailed = err instanceof Error ? err : new Error(String(err));
@@ -448,9 +527,9 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    if (!parsed.toolCall && !parsed.reply && openAIKey && geminiFailed) {
+    if (!parsed.toolCall && !parsed.reply && openAIKey && (!geminiKey || geminiFailed)) {
       try {
-        const openAiRaw = await callOpenAI(message, openAIKey);
+        const openAiRaw = await callOpenAI(message, openAIKey, resolvedContext);
         parsed = parseModelResponse(openAiRaw);
         geminiRaw = openAiRaw;
       } catch (openErr: any) {
@@ -468,7 +547,13 @@ export const handler: Handler = async (event) => {
     const toolSummary = summarizeToolResult(parsed.toolCall.tool, toolResult);
 
     // Second Gemini call with tool result
-    const followUpRaw = await buildToolFollowup(message, parsed.toolCall.tool, toolSummary);
+    const followUpRaw = await buildToolFollowup(
+      message,
+      parsed.toolCall.tool,
+      toolSummary,
+      resolvedContext,
+      geminiKey || openAIKey || ''
+    );
     const followParsed = parseModelResponse(followUpRaw);
 
     await logAudit(supabase, user.id, parsed.toolCall.tool, conversationId, { toolResult });

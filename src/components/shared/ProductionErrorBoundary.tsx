@@ -13,6 +13,9 @@ interface State {
   error: Error | null;
   errorInfo: any | null;
   errorCount: number;
+  errorId?: string;
+  reporting?: boolean;
+  reportSuccess?: boolean;
 }
 
 export class ProductionErrorBoundary extends Component<Props, State> {
@@ -23,6 +26,9 @@ export class ProductionErrorBoundary extends Component<Props, State> {
       error: null,
       errorInfo: null,
       errorCount: 0,
+      errorId: undefined,
+      reporting: false,
+      reportSuccess: false,
     };
   }
 
@@ -34,15 +40,18 @@ export class ProductionErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
+    const errorId = `err-${Date.now().toString(36)}`;
     this.setState(prevState => ({
       errorInfo,
       errorCount: prevState.errorCount + 1,
+      errorId,
     }));
 
     errorTracker.captureException(error, {
       componentStack: errorInfo.componentStack,
       errorBoundary: true,
       errorCount: this.state.errorCount + 1,
+      errorId,
     });
 
     if (this.props.onError) {
@@ -68,7 +77,9 @@ export class ProductionErrorBoundary extends Component<Props, State> {
     window.location.href = '/';
   };
 
-  handleReportBug = () => {
+  handleReportBug = async () => {
+    if (!this.state.error) return;
+    this.setState({ reporting: true, reportSuccess: false });
     const error = this.state.error;
     const errorInfo = this.state.errorInfo;
 
@@ -79,11 +90,17 @@ export class ProductionErrorBoundary extends Component<Props, State> {
       userAgent: navigator.userAgent,
       url: window.location.href,
       timestamp: new Date().toISOString(),
+      errorId: this.state.errorId,
     };
 
-    console.log('Bug report:', bugReport);
-
-    alert('Error details have been logged. Our team will investigate this issue.');
+    try {
+      await errorTracker.captureMessage('user_bug_report', 'error', bugReport);
+      this.setState({ reportSuccess: true });
+    } catch (reportErr) {
+      console.error('Failed to report bug', reportErr);
+    } finally {
+      this.setState({ reporting: false });
+    }
   };
 
   render() {
@@ -190,15 +207,16 @@ export class ProductionErrorBoundary extends Component<Props, State> {
 
                 <button
                   onClick={this.handleReportBug}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors font-medium"
+                  className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors font-medium disabled:opacity-60"
+                  disabled={this.state.reporting}
                 >
                   <Bug className="w-4 h-4" />
-                  Report Bug
+                  {this.state.reporting ? 'Sending...' : this.state.reportSuccess ? 'Bug Logged' : 'Report Bug'}
                 </button>
               </div>
 
               <p className="text-xs text-gray-500 text-center pt-4 border-t border-gray-200">
-                Error ID: {Date.now().toString(36)}
+                Error ID: {this.state.errorId || 'n/a'}
                 {isDevelopment && ' • Development Mode'}
               </p>
             </div>

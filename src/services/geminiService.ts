@@ -2,6 +2,20 @@ import { supabase } from '../lib/supabase';
 
 const AI_ENDPOINT = '/.netlify/functions/ai-router';
 
+export type AiRequestPayload = {
+  message: string;
+  conversationId?: string;
+  userContext: {
+    userId: string | null;
+    displayName: string | null;
+    role: 'user' | 'admin' | 'guest';
+    currentRoute: string;
+    vehicleCount?: number;
+    upcomingRidesCount?: number;
+    unreadNotificationsCount?: number;
+  };
+};
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -21,7 +35,8 @@ export class GeminiService {
     userMessage: string,
     _conversationHistory: Message[],
     _userId: string,
-    conversationId?: string
+    conversationId: string | undefined,
+    userContext: AiRequestPayload['userContext']
   ): Promise<string> {
     const token = await this.getAccessToken();
     if (!token) {
@@ -38,7 +53,8 @@ export class GeminiService {
         body: JSON.stringify({
           message: userMessage,
           conversationId,
-        }),
+          userContext,
+        } satisfies AiRequestPayload),
       });
 
       const data = await response.json().catch(() => ({}));

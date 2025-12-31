@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { Home, Search, PlusCircle, Calendar, MessageSquare, User, LogOut, MessageCircle, LayoutDashboard, UserCheck, Activity, Bug, MapPin, Settings, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import Logo from '../shared/Logo';
-import AIChatbot from '../shared/AIChatbot';
+import AiAssistantWidget from '../shared/AIChatbot';
 import EnvironmentBanner from '../shared/EnvironmentBanner';
 import OfflineBanner from '../shared/OfflineBanner';
 import FeedbackButton from '../shared/FeedbackButton';
@@ -131,17 +131,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
 
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto p-6 pb-28 md:pb-6">
+          <div className="max-w-7xl mx-auto p-6 pb-32 md:pb-10">
             {children}
           </div>
         </main>
       </div>
 
-      <AIChatbot />
+      <AiAssistantWidget />
       <FeedbackButton />
 
-      <nav className="md:hidden bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 z-50">
-        <div className="grid grid-cols-4 gap-1 p-2">
+      <nav className="md:hidden bg-white/95 backdrop-blur border-t border-gray-200 fixed bottom-0 left-0 right-0 z-50 shadow-lg">
+        <div className="grid grid-cols-5 gap-1 p-2">
           <NavLink
             to="/"
             className={({ isActive }) =>
@@ -165,15 +165,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <span className="text-xs">Find</span>
           </NavLink>
           <NavLink
-            to="/my-rides"
+            to="/post-ride"
             className={({ isActive }) =>
               `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
                 isActive ? 'text-blue-600' : 'text-gray-600'
               }`
             }
           >
-            <Calendar className="w-5 h-5" />
-            <span className="text-xs">Rides</span>
+            <PlusCircle className="w-6 h-6" />
+            <span className="text-xs">Post</span>
           </NavLink>
           <NavLink
             to="/messages"
@@ -186,30 +186,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <MessageSquare className="w-5 h-5" />
             <span className="text-xs">Messages</span>
           </NavLink>
-        </div>
-        <div className="grid grid-cols-4 gap-1 px-2 pb-2">
-          <NavLink
-            to="/post-ride"
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
-                isActive ? 'text-blue-600' : 'text-gray-600'
-              }`
-            }
-          >
-            <PlusCircle className="w-5 h-5" />
-            <span className="text-xs">Post</span>
-          </NavLink>
-          <NavLink
-            to="/request-ride"
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
-                isActive ? 'text-blue-600' : 'text-gray-600'
-              }`
-            }
-          >
-            <MapPin className="w-5 h-5" />
-            <span className="text-xs">Request</span>
-          </NavLink>
           <NavLink
             to="/profile"
             className={({ isActive }) =>
@@ -220,17 +196,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           >
             <User className="w-5 h-5" />
             <span className="text-xs">Profile</span>
-          </NavLink>
-          <NavLink
-            to="/settings"
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
-                isActive ? 'text-blue-600' : 'text-gray-600'
-              }`
-            }
-          >
-            <Settings className="w-5 h-5" />
-            <span className="text-xs">Settings</span>
           </NavLink>
         </div>
       </nav>

@@ -98,8 +98,8 @@ class ErrorTracker {
     });
   }
 
-  captureMessage(message: string, level: ErrorLog['severity'] = 'info', context?: Record<string, any>) {
-    this.logError({
+  async captureMessage(message: string, level: ErrorLog['severity'] = 'info', context?: Record<string, any>) {
+    await this.logError({
       errorType: 'message',
       errorMessage: message,
       severity: level,

@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Bot, User as UserIcon, AlertCircle, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { GeminiService } from '../../services/geminiService';
+import { GeminiService, AiRequestPayload } from '../../services/geminiService';
 import { supabase } from '../../lib/supabase';
 
 interface Message {
@@ -17,8 +17,9 @@ interface QuickAction {
   action: () => void;
 }
 
-export default function AIChatbot() {
-  const { user } = useAuth();
+export default function AiAssistantWidget() {
+  const { user, profile, isAdmin } = useAuth();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -144,7 +145,20 @@ export default function AIChatbot() {
         content: msg.content
       }));
 
-      const response = await GeminiService.chat(messageText, conversationHistory, user.id, sessionId);
+      const userContext: AiRequestPayload['userContext'] = {
+        userId: user?.id ?? null,
+        displayName: profile?.full_name || user?.email || null,
+        role: isAdmin ? 'admin' : user ? 'user' : 'guest',
+        currentRoute: location.pathname,
+      };
+
+      const response = await GeminiService.chat(
+        messageText,
+        conversationHistory,
+        user?.id || '',
+        sessionId,
+        userContext
+      );
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -245,7 +259,7 @@ export default function AIChatbot() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-[100px] md:bottom-6 right-4 md:right-6 z-[90] p-3 md:p-4 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-full shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300 group"
+          className="fixed bottom-28 md:bottom-6 right-4 md:right-6 z-[90] p-3 md:p-4 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-full shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300 group"
           aria-label="Open AI chat"
           style={{ pointerEvents: 'auto' }}
         >
@@ -255,7 +269,7 @@ export default function AIChatbot() {
       )}
 
       {isOpen && (
-        <div className="fixed bottom-[100px] md:bottom-6 right-4 md:right-6 z-[90] w-96 max-w-[calc(100vw-2rem)] h-[500px] max-h-[calc(100vh-15rem)] md:h-[600px] md:max-h-[calc(100vh-2rem)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
+        <div className="fixed bottom-28 md:bottom-6 right-4 md:right-6 z-[90] w-96 max-w-[calc(100vw-2rem)] h-[500px] max-h-[calc(100vh-15rem)] md:h-[600px] md:max-h-[calc(100vh-2rem)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
