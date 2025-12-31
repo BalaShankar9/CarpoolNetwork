@@ -13,7 +13,9 @@ type ToolName =
   | 'get_my_rides'
   | 'find_rides'
   | 'cancel_booking'
-  | 'update_profile';
+  | 'update_profile'
+  | 'get_my_vehicles'
+  | 'add_vehicle';
 
 interface ToolCall {
   tool: ToolName;
@@ -72,6 +74,8 @@ Tools:
 - find_rides: Search active rides. Params: origin (string), destination (string), date (optional ISO date).
 - cancel_booking: Cancel a booking for the user. Params: booking_id (string), confirm (boolean). Require confirm=true to proceed.
 - update_profile: Update profile fields. Params: key-value pairs (e.g., phone, full_name, preferences).
+- get_my_vehicles: List the user's vehicles.
+- add_vehicle: Add a vehicle. Params: make (string), model (string), year (number), color (string), license_plate (string), capacity (number), fuel_type (optional string), vehicle_type (optional string).
 
 Rules:
 - Keep responses short and clear.
@@ -210,6 +214,17 @@ async function tool_get_my_rides(supabase: SupabaseClient, userId: string) {
   return data || [];
 }
 
+async function tool_get_my_vehicles(supabase: SupabaseClient, userId: string) {
+  const { data, error } = await supabase
+    .from('vehicles')
+    .select('id,make,model,year,color,license_plate,capacity,fuel_type,vehicle_type,is_active')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(5);
+  if (error) throw error;
+  return data || [];
+}
+
 async function tool_find_rides(
   supabase: SupabaseClient,
   params: { origin?: string; destination?: string; date?: string }
@@ -295,6 +310,11 @@ async function executeTool(
       await logAudit(supabase, userId, 'find_rides', conversationId, { count: result.length });
       return result;
     }
+    case 'get_my_vehicles': {
+      const result = await tool_get_my_vehicles(supabase, userId);
+      await logAudit(supabase, userId, 'get_my_vehicles', conversationId, { count: result.length });
+      return result;
+    }
     case 'cancel_booking': {
       const result = await tool_cancel_booking(supabase, toolCall.params || {});
       await logAudit(supabase, userId, 'cancel_booking', conversationId, { booking: toolCall.params?.booking_id });
@@ -340,6 +360,18 @@ const summarizeToolResult = (tool: ToolName, result: any): string => {
         .map((r: any) => `- ${r.id}: ${r.origin} -> ${r.destination} at ${r.departure_time} (seats ${r.available_seats})`)
         .join('\n');
       return `Found ${result.length} ride option(s):\n${summary}`;
+    }
+    case 'get_my_vehicles': {
+      if (!Array.isArray(result) || result.length === 0) return 'You have no vehicles on file.';
+      const summary = result
+        .map(
+          (v: any) =>
+            `- ${v.id}: ${v.make} ${v.model} (${v.year}) ${v.color}, plate ${v.license_plate}, seats ${v.capacity}${
+              v.is_active === false ? ' (inactive)' : ''
+            }`
+        )
+        .join('\n');
+      return `Your vehicles (${result.length}):\n${summary}`;
     }
     case 'cancel_booking':
       return typeof result?.message === 'string' ? result.message : 'Cancellation processed.';
