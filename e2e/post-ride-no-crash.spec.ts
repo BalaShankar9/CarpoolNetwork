@@ -40,7 +40,8 @@ test.describe('Post Ride stability', () => {
       await expect(inlineError).toBeVisible();
     } else {
       // Otherwise, expect navigation or success banner
-      await expect(page.locator('text=Ride posted successfully').or(page.locator('text=Redirecting to your rides'))).toBeVisible({ timeout: 10000 });
+      const successBanner = page.locator('text=Ride posted successfully').or(page.locator('text=Redirecting to your rides'));
+      await expect(successBanner.first()).toBeVisible({ timeout: 10000 });
     }
 
     expect(pageErrors, 'No uncaught errors should hit the ErrorBoundary').toHaveLength(0);
