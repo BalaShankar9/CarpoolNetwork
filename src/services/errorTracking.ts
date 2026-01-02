@@ -45,10 +45,11 @@ export async function logClientError(
   error: unknown,
   info?: { componentStack?: string },
   context?: ErrorContext
-): Promise<void> {
+): Promise<string | undefined> {
   const ctx = normalizeContext(context);
   const message = error instanceof Error ? error.message : String(error);
   const stack = error instanceof Error ? error.stack : undefined;
+  const errorId = ctx.errorId || `err-${Date.now().toString(36)}`;
   await enqueue({
     errorType: 'client_error',
     errorMessage: message,
@@ -57,12 +58,13 @@ export async function logClientError(
     endpoint: ctx.route || null,
     metadata: {
       ...ctx.extra,
-      errorId: ctx.errorId,
+      errorId,
       componentStack: info?.componentStack,
       role: ctx.role,
       userId: ctx.userId,
     },
   });
+  return errorId;
 }
 
 export async function logApiError(
@@ -84,24 +86,26 @@ export async function logApiError(
 }
 
 export async function reportUserBug(params: {
+  summary: string;
+  details: string;
   errorId?: string;
   route?: string;
   userId?: string | null;
   role?: 'user' | 'admin' | 'guest';
-  userComment?: string;
-  extra?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
 }): Promise<{ success: boolean; bugId?: string; message?: string }> {
   try {
+    const meta = { ...(params.metadata || {}), role: params.role };
     const { data, error } = await supabase
       .from('bug_reports')
       .insert({
+        summary: params.summary || 'Bug report',
+        details: params.details,
         error_id: params.errorId || null,
         route: params.route || currentRoute() || null,
         user_id: params.userId || null,
-        role: params.role || 'guest',
-        user_comment: params.userComment || null,
-        status: 'open',
-        meta: params.extra || {},
+        status: 'new',
+        metadata: meta,
       })
       .select('id')
       .single();
@@ -110,6 +114,13 @@ export async function reportUserBug(params: {
     return { success: true, bugId: data?.id, message: 'Bug reported' };
   } catch (err: any) {
     console.error('Failed to report user bug:', err);
+    await logApiError('reportUserBug', err, {
+      errorId: params.errorId,
+      route: params.route,
+      userId: params.userId,
+      role: params.role,
+      extra: params.metadata,
+    });
     return { success: false, message: err?.message || 'Failed to report bug' };
   }
 }

@@ -3,12 +3,14 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRealtime } from '../../contexts/RealtimeContext';
 import Logo from '../shared/Logo';
-import NotificationCenter from '../shared/NotificationCenter';
+import { NotificationsBell } from '../notifications/NotificationsBell';
+import { NotificationsPanel } from '../notifications/NotificationsPanel';
 import ClickableUserProfile from '../shared/ClickableUserProfile';
 import { useNavigate } from 'react-router-dom';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { user, profile, signOut, isAdmin } = useAuth();
   useRealtime();
   const navigate = useNavigate();
@@ -37,7 +39,13 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-4">
             {user ? (
               <>
-                <NotificationCenter />
+                <div className="relative">
+                  <NotificationsBell onClick={() => setNotificationsOpen(!notificationsOpen)} />
+                  <NotificationsPanel
+                    isOpen={notificationsOpen}
+                    onClose={() => setNotificationsOpen(false)}
+                  />
+                </div>
                 <button className="p-2 text-gray-600 hover:text-blue-600 transition-colors relative" title="Messages">
                   <MessageSquare className="w-6 h-6" />
                 </button>

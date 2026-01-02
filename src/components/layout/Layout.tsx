@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Home, Search, PlusCircle, Calendar, MessageSquare, User, LogOut, MessageCircle, LayoutDashboard, UserCheck, Activity, Bug, MapPin, Settings, Users } from 'lucide-react';
+import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import Logo from '../shared/Logo';
 import AiAssistantWidget from '../shared/AIChatbot';
@@ -9,10 +10,15 @@ import FeedbackButton from '../shared/FeedbackButton';
 import ProfilePictureBanner from '../shared/ProfilePictureBanner';
 import ProfileCompletionBanner from '../shared/ProfileCompletionBanner';
 import ToastContainer from '../shared/ToastContainer';
+import { NotificationsBell } from '../notifications/NotificationsBell';
+import { NotificationsPanel } from '../notifications/NotificationsPanel';
+import { useRealtime } from '../../contexts/RealtimeContext';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const { unreadNotifications } = useRealtime();
 
   const handleSignOut = async () => {
     try {
@@ -62,6 +68,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <p className="text-sm font-medium text-gray-900">{profile?.full_name}</p>
                 <p className="text-xs text-gray-500">Rating {profile?.average_rating?.toFixed(1) || '0.0'}</p>
               </div>
+              <div className="relative hidden sm:block">
+                <NotificationsBell onClick={() => setNotificationsOpen((open) => !open)} />
+                <NotificationsPanel
+                  isOpen={notificationsOpen}
+                  onClose={() => setNotificationsOpen(false)}
+                />
+              </div>
               <button
                 onClick={() => navigate('/community')}
                 aria-label="Community"
@@ -103,6 +116,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <span>{item.label}</span>
               </NavLink>
             ))}
+            <button
+              onClick={() => setNotificationsOpen((open) => !open)}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-700 hover:bg-gray-50 w-full"
+              aria-label="Notifications"
+            >
+              <div className="relative">
+                <Bell className="w-5 h-5" />
+                {unreadNotifications > 0 && (
+                  <span
+                    data-testid="notification-badge"
+                    className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center"
+                  >
+                    {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                  </span>
+                )}
+              </div>
+              <span>Notifications</span>
+            </button>
 
             {isAdmin && (
               <>
@@ -131,7 +162,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
 
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto p-6 pb-32 md:pb-10">
+          <div
+            className="max-w-7xl mx-auto p-6 pb-10"
+            style={{ paddingBottom: 'calc(var(--app-bottom-nav-height) + 48px)' }}
+          >
             {children}
           </div>
         </main>
@@ -140,63 +174,59 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <AiAssistantWidget />
       <FeedbackButton />
 
-      <nav className="md:hidden bg-white/95 backdrop-blur border-t border-gray-200 fixed bottom-0 left-0 right-0 z-50 shadow-lg">
-        <div className="grid grid-cols-5 gap-1 p-2">
-          <NavLink
-            to="/"
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
-                isActive ? 'text-blue-600' : 'text-gray-600'
-              }`
-            }
+      <nav
+        className="md:hidden bg-white/95 backdrop-blur border-t border-gray-200 fixed bottom-0 left-0 right-0 z-50 shadow-lg"
+        style={{ height: 'var(--app-bottom-nav-height)', paddingBottom: 'var(--safe-area-inset-bottom)' }}
+      >
+        <div className="grid grid-cols-5 h-full">
+          {[
+            { to: '/', icon: Home, label: 'Home' },
+            { to: '/find-rides', icon: Search, label: 'Find' },
+            { to: '/post-ride', icon: PlusCircle, label: 'Post' },
+            { to: '/messages', icon: MessageSquare, label: 'Messages' },
+            { to: '/profile', icon: User, label: 'Profile' },
+          ].map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `flex flex-col items-center justify-center gap-1 transition-colors ${
+                  isActive ? 'text-blue-600' : 'text-gray-600'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <div
+                    className={`w-11 h-11 flex items-center justify-center rounded-2xl ${
+                      isActive ? 'bg-blue-50 text-blue-600 shadow-sm border border-blue-100' : 'text-gray-600'
+                    }`}
+                  >
+                    <item.icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-medium">{item.label}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
+          <button
+            onClick={() => setNotificationsOpen((open) => !open)}
+            className="flex flex-col items-center justify-center gap-1 text-gray-600 hover:text-blue-600 transition-colors relative"
+            aria-label="Notifications"
           >
-            <Home className="w-5 h-5" />
-            <span className="text-xs">Home</span>
-          </NavLink>
-          <NavLink
-            to="/find-rides"
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
-                isActive ? 'text-blue-600' : 'text-gray-600'
-              }`
-            }
-          >
-            <Search className="w-5 h-5" />
-            <span className="text-xs">Find</span>
-          </NavLink>
-          <NavLink
-            to="/post-ride"
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
-                isActive ? 'text-blue-600' : 'text-gray-600'
-              }`
-            }
-          >
-            <PlusCircle className="w-6 h-6" />
-            <span className="text-xs">Post</span>
-          </NavLink>
-          <NavLink
-            to="/messages"
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
-                isActive ? 'text-blue-600' : 'text-gray-600'
-              }`
-            }
-          >
-            <MessageSquare className="w-5 h-5" />
-            <span className="text-xs">Messages</span>
-          </NavLink>
-          <NavLink
-            to="/profile"
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-1 py-2 rounded-lg transition-colors ${
-                isActive ? 'text-blue-600' : 'text-gray-600'
-              }`
-            }
-          >
-            <User className="w-5 h-5" />
-            <span className="text-xs">Profile</span>
-          </NavLink>
+            <div className="w-11 h-11 flex items-center justify-center rounded-2xl text-gray-600">
+              <Bell className="w-5 h-5" />
+            </div>
+            <span className="text-xs font-medium">Alerts</span>
+            {unreadNotifications > 0 && (
+              <span
+                data-testid="notification-badge"
+                className="absolute top-1 right-5 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center"
+              >
+                {unreadNotifications > 99 ? '99+' : unreadNotifications}
+              </span>
+            )}
+          </button>
         </div>
       </nav>
     </div>

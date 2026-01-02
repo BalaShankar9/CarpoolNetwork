@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Bug, X, Send, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { reportUserBug, logApiError } from '../../services/errorTracking';
 
 export default function FeedbackButton() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [feedback, setFeedback] = useState('');
+  const [summary, setSummary] = useState('');
+  const [details, setDetails] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -27,24 +28,30 @@ export default function FeedbackButton() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!feedback.trim()) return;
+    if (!summary.trim() || !details.trim()) {
+      setError('Please add a summary and details.');
+      return;
+    }
 
     setLoading(true);
     setError('');
 
     try {
-      const { error: submitError } = await supabase
-        .from('bug_reports')
-        .insert([{
-          user_id: user.id,
-          text: feedback.trim(),
-          page: window.location.pathname,
-        }]);
+      const result = await reportUserBug({
+        summary: summary.trim(),
+        details: details.trim(),
+        route: window.location.pathname,
+        userId: user.id,
+        role: 'user',
+      });
 
-      if (submitError) throw submitError;
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to submit feedback');
+      }
 
       setSuccess(true);
-      setFeedback('');
+      setSummary('');
+      setDetails('');
       setTimeout(() => {
         setSuccess(false);
         setIsOpen(false);
@@ -52,14 +59,24 @@ export default function FeedbackButton() {
     } catch (err: any) {
       console.error('Failed to submit feedback:', err);
       setError(err?.message || 'Failed to submit feedback. Please try again.');
+      await logApiError('reportUserBug-client', err, {
+        route: window.location.pathname,
+        userId: user?.id ?? null,
+        role: 'user',
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  const bottomOffset = 'calc(var(--app-bottom-nav-height) + 80px + var(--safe-area-inset-bottom))';
+
   return (
     <>
-      <div className="fixed bottom-[180px] md:bottom-24 right-4 md:right-6 z-[85]">
+      <div
+        className="fixed right-4 md:right-6 z-[85]"
+        style={{ bottom: bottomOffset }}
+      >
         <button
           onClick={() => setIsOpen(true)}
           onKeyDown={(e) => {
@@ -106,13 +123,25 @@ export default function FeedbackButton() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="p-4 space-y-4">
-                <div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Summary
+                    </label>
+                    <input
+                      value={summary}
+                      onChange={(e) => setSummary(e.target.value)}
+                      placeholder="Crash while posting a ride"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Describe the problem
                   </label>
                   <textarea
-                    value={feedback}
-                    onChange={(e) => setFeedback(e.target.value)}
+                    value={details}
+                    onChange={(e) => setDetails(e.target.value)}
                     placeholder="Describe what went wrong, steps to reproduce, expected behavior..."
                     rows={4}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
@@ -141,7 +170,7 @@ export default function FeedbackButton() {
                   </button>
                   <button
                     type="submit"
-                    disabled={loading || !feedback.trim()}
+                    disabled={loading || !summary.trim() || !details.trim()}
                     className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                   >
                     <Send className="w-4 h-4" />

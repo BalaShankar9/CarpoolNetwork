@@ -108,7 +108,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/sign-in');
+      navigate('/signin');
       return;
     }
     if (profile) {
@@ -576,7 +576,7 @@ export default function Profile() {
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Please sign in</h2>
           <p className="text-gray-600 mb-4">You need to be signed in to view your profile.</p>
           <button
-            onClick={() => navigate('/sign-in')}
+            onClick={() => navigate('/signin')}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Go to Sign In

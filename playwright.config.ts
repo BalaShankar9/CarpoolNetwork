@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import 'dotenv/config';
 
 const usePreview = process.env.E2E_USE_PREVIEW === 'true';
 const webServerCommand = usePreview ? 'npm run preview -- --port 5173 --strictPort' : 'npm run dev';

@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { checkRateLimit, recordRateLimitAction } from '../../lib/rateLimiting';
 import { Send, Search, MoreVertical, Check, CheckCheck, Phone, MessageSquare, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { getUserProfilePath } from '../../utils/profileNavigation';
+import { NotificationsService } from '../../services/notificationsService';
 
 interface Profile {
   id: string;
@@ -30,7 +31,7 @@ interface MessageListProps {
 }
 
 export default function MessageList({ initialUserId }: MessageListProps) {
-  const { user, isEmailVerified } = useAuth();
+  const { user, profile, isEmailVerified } = useAuth();
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<Map<string, Message[]>>(new Map());
   const [selectedUserId, setSelectedUserId] = useState<string | null>(initialUserId || null);
@@ -196,6 +197,22 @@ export default function MessageList({ initialUserId }: MessageListProps) {
 
       if (error) throw error;
 
+      // Create notification for recipient
+      try {
+        await NotificationsService.createNotification(
+          selectedUserId,
+          'NEW_MESSAGE',
+          {
+            sender_name: profile?.full_name || 'Someone',
+            conversation_id: user.id,
+            preview: newMessage.trim().substring(0, 50) + (newMessage.length > 50 ? '...' : '')
+          }
+        );
+      } catch (notifError) {
+        console.error('Error creating notification:', notifError);
+        // Don't fail the message send if notification fails
+      }
+
       await recordRateLimitAction(user.id, user.id, 'message');
       setNewMessage('');
       scrollToBottom();
@@ -318,9 +335,8 @@ export default function MessageList({ initialUserId }: MessageListProps) {
                 <button
                   key={userId}
                   onClick={() => setSelectedUserId(userId)}
-                  className={`w-full p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors text-left ${
-                    selectedUserId === userId ? 'bg-green-50' : ''
-                  }`}
+                  className={`w-full p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors text-left ${selectedUserId === userId ? 'bg-green-50' : ''
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative">
@@ -431,11 +447,10 @@ export default function MessageList({ initialUserId }: MessageListProps) {
                     )}
                     <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
                       <div
-                        className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                          isOwnMessage
+                        className={`max-w-[70%] rounded-lg px-4 py-2 ${isOwnMessage
                             ? 'bg-green-500 text-white'
                             : 'bg-white text-gray-900 shadow-sm'
-                        }`}
+                          }`}
                       >
                         <p className="break-words">{message.content}</p>
                         <div className={`flex items-center justify-end gap-1 mt-1 ${isOwnMessage ? 'text-white' : 'text-gray-500'}`}>

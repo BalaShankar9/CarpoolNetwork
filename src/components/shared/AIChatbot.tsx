@@ -88,6 +88,7 @@ export default function AiAssistantWidget() {
       },
     },
   ];
+  const bottomOffset = 'calc(var(--app-bottom-nav-height) + 16px + var(--safe-area-inset-bottom))';
 
   const loadChatHistory = async () => {
     if (!user) return;
@@ -248,9 +249,9 @@ export default function AiAssistantWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-[100px] md:bottom-6 right-4 md:right-6 z-[90] p-3 md:p-4 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-full shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300 group"
+          className="fixed right-4 md:right-6 z-[90] p-3 md:p-4 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-full shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300 group"
           aria-label="Open AI chat"
-          style={{ pointerEvents: 'auto' }}
+          style={{ pointerEvents: 'auto', bottom: bottomOffset }}
         >
           <MessageCircle className="w-5 h-5 md:w-6 md:h-6" />
           <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
@@ -258,7 +259,10 @@ export default function AiAssistantWidget() {
       )}
 
       {isOpen && (
-        <div className="fixed bottom-[100px] md:bottom-6 right-4 md:right-6 z-[90] w-96 max-w-[calc(100vw-2rem)] h-[500px] max-h-[calc(100vh-15rem)] md:h-[600px] md:max-h-[calc(100vh-2rem)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
+        <div
+          className="fixed right-4 md:right-6 z-[90] w-96 max-w-[calc(100vw-2rem)] h-[500px] max-h-[calc(100vh-15rem)] md:h-[600px] md:max-h-[calc(100vh-2rem)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200"
+          style={{ bottom: bottomOffset }}
+        >
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">

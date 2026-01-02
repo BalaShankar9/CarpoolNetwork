@@ -21,6 +21,9 @@ interface State {
   reporting?: boolean;
   reportSuccess?: boolean;
   userComment?: string;
+  summary?: string;
+  includeMeta?: boolean;
+  reportError?: string | null;
 }
 
 export class ProductionErrorBoundary extends Component<Props, State> {
@@ -36,6 +39,9 @@ export class ProductionErrorBoundary extends Component<Props, State> {
       reporting: false,
       reportSuccess: false,
       userComment: '',
+      summary: '',
+      includeMeta: true,
+      reportError: null,
     };
   }
 
@@ -47,7 +53,8 @@ export class ProductionErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
-    const errorId = `err-${Date.now().toString(36)}`;
+    const fallbackId = `err-${Date.now().toString(36)}`;
+    const errorId = this.props.context?.errorId || fallbackId;
     this.setState((prevState) => ({
       errorInfo,
       errorCount: prevState.errorCount + 1,
@@ -63,7 +70,11 @@ export class ProductionErrorBoundary extends Component<Props, State> {
           ...(this.props.context || {}),
           errorId,
         }
-      );
+      ).then((id) => {
+        if (id && !this.state.errorId) {
+          this.setState({ errorId: id });
+        }
+      });
     }
 
     if (this.props.onError) {
@@ -84,6 +95,9 @@ export class ProductionErrorBoundary extends Component<Props, State> {
       reporting: false,
       reportSuccess: false,
       userComment: '',
+      summary: '',
+      includeMeta: true,
+      reportError: null,
     });
   };
 
@@ -96,19 +110,33 @@ export class ProductionErrorBoundary extends Component<Props, State> {
   };
 
   handleReportBug = async () => {
-    this.setState({ reporting: true, reportSuccess: false });
+    if (!this.state.summary?.trim()) {
+      this.setState({ reportError: 'Please add a short summary.' });
+      return;
+    }
+    this.setState({ reporting: true, reportSuccess: false, reportError: null });
+    const metadata =
+      this.state.includeMeta === false
+        ? {}
+        : {
+            componentStack: this.state.errorInfo?.componentStack,
+            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+            stack: this.state.error?.stack,
+          };
     const result = await reportUserBug({
+      summary: this.state.summary || `Crash on ${this.props.context?.route || 'app'}`,
+      details: this.state.userComment || 'No additional details provided.',
       errorId: this.state.errorId,
       route: this.props.context?.route,
       userId: this.props.context?.userId,
       role: this.props.context?.role,
-      userComment: this.state.userComment || undefined,
-      extra: {
-        componentStack: this.state.errorInfo?.componentStack,
-        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
-      },
+      metadata,
     });
-    this.setState({ reporting: false, reportSuccess: result.success });
+    this.setState({
+      reporting: false,
+      reportSuccess: result.success,
+      reportError: result.success ? null : result.message || 'Failed to submit bug report.',
+    });
   };
 
   render() {
@@ -215,14 +243,30 @@ export class ProductionErrorBoundary extends Component<Props, State> {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs text-gray-600">Add a note (optional)</label>
+                  <label className="text-xs text-gray-600">Short summary</label>
+                  <input
+                    className="w-full border border-gray-200 rounded-lg p-2 text-sm"
+                    value={this.state.summary}
+                    onChange={(e) => this.setState({ summary: e.target.value })}
+                    placeholder="Crash while posting a ride"
+                  />
+                  <label className="text-xs text-gray-600">What were you doing?</label>
                   <textarea
                     className="w-full border border-gray-200 rounded-lg p-2 text-sm"
-                    rows={2}
+                    rows={3}
                     value={this.state.userComment}
                     onChange={(e) => this.setState({ userComment: e.target.value })}
-                    placeholder="What were you doing when this happened?"
+                    placeholder="Steps to reproduce or extra details"
                   />
+                  <label className="inline-flex items-center gap-2 text-xs text-gray-600">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300"
+                      checked={this.state.includeMeta}
+                      onChange={(e) => this.setState({ includeMeta: e.target.checked })}
+                    />
+                    Include technical info (route, browser, stack)
+                  </label>
                   <button
                     onClick={this.handleReportBug}
                     className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors font-medium disabled:opacity-60"
@@ -231,6 +275,9 @@ export class ProductionErrorBoundary extends Component<Props, State> {
                     <Bug className="w-4 h-4" />
                     {this.state.reporting ? 'Sending...' : this.state.reportSuccess ? 'Bug Logged' : 'Report Bug'}
                   </button>
+                  {this.state.reportError && (
+                    <p className="text-xs text-red-600">{this.state.reportError}</p>
+                  )}
                   {this.state.reportSuccess && (
                     <p className="text-xs text-green-600">Thanks! Your report was submitted.</p>
                   )}

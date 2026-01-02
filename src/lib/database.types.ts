@@ -613,31 +613,28 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
-          type: 'ride-match' | 'booking-request' | 'booking-confirmed' | 'booking-cancelled' | 'message' | 'review' | 'safety-alert' | 'system';
-          title: string;
-          message: string;
+          type: 'NEW_MESSAGE' | 'FRIEND_REQUEST' | 'FRIEND_REQUEST_ACCEPTED' | 'FORUM_REPLY' | 'FORUM_MENTION' | 'RIDE_MATCH' | 'BOOKING_REQUEST' | 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'REVIEW' | 'SAFETY_ALERT' | 'SYSTEM';
           data: Json | null;
-          is_read: boolean;
+          read_at: string | null;
+          is_read?: boolean | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
-          type: 'ride-match' | 'booking-request' | 'booking-confirmed' | 'booking-cancelled' | 'message' | 'review' | 'safety-alert' | 'system';
-          title: string;
-          message: string;
+          type: 'NEW_MESSAGE' | 'FRIEND_REQUEST' | 'FRIEND_REQUEST_ACCEPTED' | 'FORUM_REPLY' | 'FORUM_MENTION' | 'RIDE_MATCH' | 'BOOKING_REQUEST' | 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'REVIEW' | 'SAFETY_ALERT' | 'SYSTEM';
           data?: Json | null;
-          is_read?: boolean;
+          read_at?: string | null;
+          is_read?: boolean | null;
           created_at?: string;
         };
         Update: {
           id?: string;
           user_id?: string;
-          type?: 'ride-match' | 'booking-request' | 'booking-confirmed' | 'booking-cancelled' | 'message' | 'review' | 'safety-alert' | 'system';
-          title?: string;
-          message?: string;
+          type?: 'NEW_MESSAGE' | 'FRIEND_REQUEST' | 'FRIEND_REQUEST_ACCEPTED' | 'FORUM_REPLY' | 'FORUM_MENTION' | 'RIDE_MATCH' | 'BOOKING_REQUEST' | 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'REVIEW' | 'SAFETY_ALERT' | 'SYSTEM';
           data?: Json | null;
-          is_read?: boolean;
+          read_at?: string | null;
+          is_read?: boolean | null;
           created_at?: string;
         };
       };

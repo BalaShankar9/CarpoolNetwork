@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import UserAvatar from '../components/shared/UserAvatar';
 import VerificationBadges from '../components/profile/VerificationBadges';
 import ReportUserModal from '../components/shared/ReportUserModal';
+import { NotificationsService } from '../services/notificationsService';
 
 interface Profile {
   id: string;
@@ -205,6 +206,20 @@ export default function PublicProfile() {
         .rpc('send_friend_request', { p_to_user_id: userId });
 
       if (error) throw error;
+
+      // Create notification for the recipient
+      try {
+        await NotificationsService.createNotification(
+          userId,
+          'FRIEND_REQUEST',
+          {
+            sender_name: user?.user_metadata?.full_name || profile?.full_name || 'Someone'
+          }
+        );
+      } catch (notifError) {
+        console.error('Error creating friend request notification:', notifError);
+      }
+
       await loadFriendStatus();
     } catch (err) {
       console.error('Error sending friend request:', err);
@@ -218,10 +233,34 @@ export default function PublicProfile() {
     if (!friendRequestId) return;
     try {
       setFriendActionLoading(true);
+
+      // Get the friend request details to know who sent it
+      const { data: requestData, error: requestError } = await supabase
+        .from('friend_requests')
+        .select('from_user_id, profiles!friend_requests_from_user_id_fkey(full_name)')
+        .eq('id', friendRequestId)
+        .single();
+
+      if (requestError) throw requestError;
+
       const { error } = await supabase
         .rpc('accept_friend_request', { p_request_id: friendRequestId });
 
       if (error) throw error;
+
+      // Create notification for the original requester
+      try {
+        await NotificationsService.createNotification(
+          requestData.from_user_id,
+          'FRIEND_REQUEST_ACCEPTED',
+          {
+            sender_name: profile?.full_name || 'Someone'
+          }
+        );
+      } catch (notifError) {
+        console.error('Error creating friend accepted notification:', notifError);
+      }
+
       await loadFriendStatus();
     } catch (err) {
       console.error('Error accepting friend request:', err);
@@ -460,11 +499,10 @@ export default function PublicProfile() {
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star
                         key={star}
-                        className={`w-5 h-5 ${
-                          star <= stats.averageRating
+                        className={`w-5 h-5 ${star <= stats.averageRating
                             ? 'fill-yellow-400 text-yellow-400'
                             : 'text-gray-300'
-                        }`}
+                          }`}
                       />
                     ))}
                   </div>
@@ -550,31 +588,28 @@ export default function PublicProfile() {
             <div className="flex gap-2">
               <button
                 onClick={() => setReviewFilter('all')}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                  reviewFilter === 'all'
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${reviewFilter === 'all'
                     ? 'bg-green-100 text-green-700'
                     : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 All
               </button>
               <button
                 onClick={() => setReviewFilter('driver')}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                  reviewFilter === 'driver'
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${reviewFilter === 'driver'
                     ? 'bg-green-100 text-green-700'
                     : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 As Driver
               </button>
               <button
                 onClick={() => setReviewFilter('passenger')}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                  reviewFilter === 'passenger'
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${reviewFilter === 'passenger'
                     ? 'bg-green-100 text-green-700'
                     : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 As Passenger
               </button>
@@ -600,11 +635,10 @@ export default function PublicProfile() {
                         {[1, 2, 3, 4, 5].map((star) => (
                           <Star
                             key={star}
-                            className={`w-4 h-4 ${
-                              star <= review.rating
+                            className={`w-4 h-4 ${star <= review.rating
                                 ? 'fill-yellow-400 text-yellow-400'
                                 : 'text-gray-300'
-                            }`}
+                              }`}
                           />
                         ))}
                       </div>

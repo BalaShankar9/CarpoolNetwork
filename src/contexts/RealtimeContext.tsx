@@ -2,21 +2,13 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
-
-interface Notification {
-  id: string;
-  user_id: string;
-  type: string;
-  title: string;
-  message: string;
-  data: any;
-  is_read: boolean;
-  created_at: string;
-}
+import { Notification } from '../types/notifications';
+import { NotificationsService, normalizeNotification } from '../services/notificationsService';
 
 interface RealtimeContextType {
   unreadNotifications: number;
   notifications: Notification[];
+  loading: boolean;
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
@@ -28,6 +20,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [notificationChannel, setNotificationChannel] = useState<RealtimeChannel | null>(null);
   const [bookingChannel, setBookingChannel] = useState<RealtimeChannel | null>(null);
   const [messageChannel, setMessageChannel] = useState<RealtimeChannel | null>(null);
@@ -36,56 +29,54 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-
-      setNotifications(data || []);
-      setUnreadNotifications(data?.filter(n => !n.is_read).length || 0);
+      setLoading(true);
+      const data = await NotificationsService.getNotifications(user.id);
+      setNotifications(data);
+      setUnreadNotifications(data.filter(n => !n.read_at).length || 0);
     } catch (error) {
       console.error('Error loading notifications:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const markAsRead = async (notificationId: string) => {
-    try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', notificationId);
+    const timestamp = new Date().toISOString();
+    let wasUnread = false;
 
-      if (error) throw error;
-
-      setNotifications(prev =>
-        prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
-      );
+    setNotifications(prev =>
+      prev.map(n => {
+        if (n.id === notificationId && !n.read_at) {
+          wasUnread = true;
+          return { ...n, read_at: timestamp };
+        }
+        return n;
+      })
+    );
+    if (wasUnread) {
       setUnreadNotifications(prev => Math.max(0, prev - 1));
+    }
+
+    try {
+      await NotificationsService.markAsRead(notificationId);
     } catch (error) {
       console.error('Error marking notification as read:', error);
+      loadNotifications();
     }
   };
 
   const markAllAsRead = async () => {
     if (!user) return;
 
+    const timestamp = new Date().toISOString();
+    setNotifications(prev => prev.map(n => ({ ...n, read_at: timestamp })));
+    setUnreadNotifications(0);
+
     try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
-
-      if (error) throw error;
-
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-      setUnreadNotifications(0);
+      await NotificationsService.markAllAsRead(user.id);
     } catch (error) {
       console.error('Error marking all as read:', error);
+      loadNotifications();
     }
   };
 
@@ -117,34 +108,42 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          const newNotification = payload.new as Notification;
-          setNotifications(prev => [newNotification, ...prev]);
-          setUnreadNotifications(prev => prev + 1);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          const updatedNotification = payload.new as Notification;
-          setNotifications(prev =>
-            prev.map(n => n.id === updatedNotification.id ? updatedNotification : n)
-          );
-          if (updatedNotification.is_read) {
-            setUnreadNotifications(prev => Math.max(0, prev - 1));
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`
+      },
+      (payload) => {
+        const newNotification = normalizeNotification(payload.new);
+        setNotifications(prev => [newNotification, ...prev]);
+        setUnreadNotifications(prev => prev + (newNotification.read_at ? 0 : 1));
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`
+      },
+      (payload) => {
+        const updatedNotification = normalizeNotification(payload.new);
+        setNotifications(prev => {
+          let wasUnread = false;
+          const next = prev.map(n => {
+            if (n.id === updatedNotification.id) {
+              wasUnread = !n.read_at;
+              return updatedNotification;
+            }
+            return n;
+          });
+          if (wasUnread && updatedNotification.read_at) {
+            setUnreadNotifications(prevCount => Math.max(0, prevCount - 1));
           }
-        }
-      )
-      .subscribe();
+          return next;
+        });
+      }
+    )
+    .subscribe();
 
     const bookingChan = supabase
       .channel('bookings-channel')
@@ -193,6 +192,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       value={{
         unreadNotifications,
         notifications,
+        loading,
         markAsRead,
         markAllAsRead,
         refreshNotifications: loadNotifications
