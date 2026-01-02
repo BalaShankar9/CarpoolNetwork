@@ -27,7 +27,12 @@ test.describe('Post Ride stability', () => {
     await page.getByRole('button', { name: /Post Ride/i }).click();
 
     // Expect either success toast/state or inline validation, but no crash screen
-    await expect(page.locator('text=Something Went Wrong')).toBeHidden({ timeout: 10000 });
+    const crashScreen = page.locator('text=Something Went Wrong');
+    if (await crashScreen.isVisible({ timeout: 10000 }).catch(() => false)) {
+      const lastError = await page.evaluate('window.__lastError');
+      console.log('Captured last error from window.__lastError', lastError);
+    }
+    await expect(crashScreen).toBeHidden({ timeout: 10000 });
 
     // If error message is shown, it should be the inline validation (not crash)
     const inlineError = page.locator('text=Failed to post ride').or(page.locator('text=Please add a vehicle'));
