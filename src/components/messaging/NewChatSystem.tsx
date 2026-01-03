@@ -1,9 +1,10 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { Send, Search, ArrowLeft, AlertTriangle, MessageSquare } from 'lucide-react';
 import ClickableUserProfile from '../shared/ClickableUserProfile';
+import { toast } from '../../lib/toast';
 
 interface Profile {
   id: string;
@@ -25,6 +26,7 @@ interface ChatMessage {
   body: string;
   created_at: string;
   sender?: Profile;
+  client_generated_id?: string | null;
 }
 
 interface Conversation {
@@ -44,7 +46,7 @@ interface NewChatSystemProps {
 }
 
 export default function NewChatSystem({ initialConversationId }: NewChatSystemProps) {
-  const { user, isEmailVerified } = useAuth();
+  const { user, isEmailVerified, session } = useAuth();
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(
@@ -55,6 +57,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -160,6 +163,76 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
     }
   }, []);
 
+  const updateConversationPreview = useCallback(
+    (conversationId: string, message: ChatMessage, shouldIncrementUnread: boolean) => {
+      setConversations((prev) => {
+        const index = prev.findIndex((conv) => conv.id === conversationId);
+        if (index === -1) return prev;
+
+        const current = prev[index];
+        const unreadCount = shouldIncrementUnread
+          ? current.unread_count + 1
+          : current.unread_count;
+        const updated: Conversation = {
+          ...current,
+          latest_message: message,
+          unread_count: unreadCount,
+          updated_at: message.created_at,
+        };
+
+        const next = [...prev];
+        next.splice(index, 1);
+        next.unshift(updated);
+        return next;
+      });
+    },
+    []
+  );
+
+  const upsertMessage = useCallback((incoming: ChatMessage) => {
+    setMessages((prev) => {
+      const byIdIndex = prev.findIndex((msg) => msg.id === incoming.id);
+      if (byIdIndex !== -1) {
+        const next = [...prev];
+        next[byIdIndex] = { ...prev[byIdIndex], ...incoming };
+        return next;
+      }
+
+      if (incoming.client_generated_id) {
+        const byClientIndex = prev.findIndex(
+          (msg) => msg.client_generated_id && msg.client_generated_id === incoming.client_generated_id
+        );
+        if (byClientIndex !== -1) {
+          const next = [...prev];
+          next[byClientIndex] = { ...prev[byClientIndex], ...incoming };
+          return next;
+        }
+      }
+
+      return [...prev, incoming];
+    });
+  }, []);
+
+  const markMessageAsRead = useCallback(
+    async (messageId: string) => {
+      if (!user) return;
+      try {
+        await supabase
+          .from('message_reads')
+          .upsert(
+            {
+              message_id: messageId,
+              user_id: user.id,
+            },
+            { onConflict: 'message_id,user_id', ignoreDuplicates: true }
+          );
+      } catch (error) {
+        console.error('Error marking message as read:', error);
+      }
+    },
+    [user]
+  );
+
   // Mark all messages as read when viewing conversation
   const markConversationAsRead = useCallback(
     async (conversationId: string) => {
@@ -197,44 +270,41 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
     [user, loadConversations]
   );
 
-  // Real-time subscription for new messages
+  const conversationFilter = useMemo(() => {
+    if (!conversations.length) return null;
+    const ids = conversations.map((conv) => conv.id).join(',');
+    return ids ? `conversation_id=in.(${ids})` : null;
+  }, [conversations]);
+
+  // Real-time subscription for new messages + read receipts
   useEffect(() => {
-    if (!user) return;
+    if (!user || !session?.access_token || !conversationFilter) return;
 
     const channel = supabase
-      .channel('chat-realtime')
+      .channel(`chat-realtime:${user.id}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'chat_messages',
+          filter: conversationFilter,
         },
         (payload) => {
           const newMsg = payload.new as ChatMessage;
+          const isSelected = selectedConversation === newMsg.conversation_id;
+          const isOwn = newMsg.sender_id === user.id;
 
-          // If message is in current conversation, add it
-          if (selectedConversation === newMsg.conversation_id) {
-            loadMessages(newMsg.conversation_id);
-
-            // Auto-mark as read if conversation is open
-            if (newMsg.sender_id !== user.id) {
-              setTimeout(() => {
-                supabase
-                  .from('message_reads')
-                  .upsert(
-                    {
-                      message_id: newMsg.id,
-                      user_id: user.id,
-                    },
-                    { onConflict: 'message_id,user_id', ignoreDuplicates: true }
-                  );
-              }, 500);
-            }
+          if (isSelected) {
+            upsertMessage(newMsg);
           }
+          updateConversationPreview(newMsg.conversation_id, newMsg, !isSelected && !isOwn);
 
-          // Reload conversations to update latest message and unread counts
-          loadConversations();
+          if (isSelected && !isOwn) {
+            setTimeout(() => {
+              markMessageAsRead(newMsg.id);
+            }, 400);
+          }
         }
       )
       .on(
@@ -254,7 +324,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, selectedConversation, loadMessages, loadConversations]);
+  }, [user, session?.access_token, selectedConversation, conversationFilter, loadConversations, markMessageAsRead, updateConversationPreview, upsertMessage]);
 
   // Load initial data
   useEffect(() => {
@@ -271,6 +341,13 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
     }
   }, [selectedConversation, loadMessages, markConversationAsRead]);
 
+  const generateClientId = () => {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+      return crypto.randomUUID();
+    }
+    return `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  };
+
   // Send message
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -279,21 +356,45 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
     }
 
     setSending(true);
+    setSendError(null);
+    const clientGeneratedId = generateClientId();
+    const optimisticMessage: ChatMessage = {
+      id: `temp-${clientGeneratedId}`,
+      conversation_id: selectedConversation,
+      sender_id: user.id,
+      body: newMessage.trim(),
+      created_at: new Date().toISOString(),
+      client_generated_id: clientGeneratedId,
+    };
+    upsertMessage(optimisticMessage);
+    updateConversationPreview(selectedConversation, optimisticMessage, false);
+    setNewMessage('');
     try {
-      const { error } = await supabase.from('chat_messages').insert({
-        conversation_id: selectedConversation,
-        sender_id: user.id,
-        body: newMessage.trim(),
-        type: 'TEXT',
-      });
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert({
+          conversation_id: selectedConversation,
+          sender_id: user.id,
+          body: optimisticMessage.body,
+          type: 'TEXT',
+          client_generated_id: clientGeneratedId,
+        })
+        .select('*, sender:profiles(id, full_name, avatar_url, profile_photo_url)')
+        .single();
 
       if (error) throw error;
 
-      setNewMessage('');
+      if (data) {
+        upsertMessage(data as ChatMessage);
+        updateConversationPreview(selectedConversation, data as ChatMessage, false);
+      }
       scrollToBottom();
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('Failed to send message. Please try again.');
+      setMessages((prev) => prev.filter((msg) => msg.id !== optimisticMessage.id));
+      const message = 'Failed to send message. Please try again.';
+      setSendError(message);
+      toast.error(message);
     } finally {
       setSending(false);
     }
@@ -368,7 +469,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto" data-testid="conversation-list">
           {filteredConversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-500 p-6">
               <MessageSquare className="w-16 h-16 mb-4 text-gray-300" />
@@ -387,6 +488,9 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                   className={`w-full p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors text-left ${
                     selectedConversation === conv.id ? 'bg-green-50' : ''
                   }`}
+                  data-testid="conversation-item"
+                  data-action="open-thread"
+                  data-conversation-id={conv.id}
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative" onClick={(e) => {
@@ -409,7 +513,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                         </div>
                       )}
                       {conv.unread_count > 0 && (
-                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold" data-testid="unread-badge">
                           {conv.unread_count}
                         </div>
                       )}
@@ -493,11 +597,18 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
               ref={messagesContainerRef}
               className="flex-1 overflow-y-auto p-4 space-y-4"
               style={{ paddingBottom: 'env(safe-area-inset-bottom, 20px)' }}
+              data-testid="message-list"
             >
               {messages.map((message) => {
                 const isOwn = message.sender_id === user?.id;
                 return (
-                  <div key={message.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                  <div
+                    key={message.id}
+                    className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
+                    data-testid="message-item"
+                    data-message-id={message.id}
+                    data-client-generated-id={message.client_generated_id || undefined}
+                  >
                     <div
                       className={`max-w-[70%] rounded-lg px-4 py-2 ${
                         isOwn ? 'bg-green-500 text-white' : 'bg-white text-gray-900 shadow-sm'
@@ -526,6 +637,11 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                   <span>Verify your email to send messages</span>
                 </div>
               )}
+              {sendError && (
+                <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {sendError}
+                </div>
+              )}
               <form onSubmit={sendMessage} className="flex items-center gap-2">
                 <input
                   type="text"
@@ -535,11 +651,13 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                   disabled={!isEmailVerified || sending}
                   className="flex-1 px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100"
                   style={{ fontSize: '16px' }} // Prevents zoom on iOS
+                  data-testid="message-input"
                 />
                 <button
                   type="submit"
                   disabled={!newMessage.trim() || !isEmailVerified || sending}
                   className="p-3 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                  data-testid="send-message-button"
                 >
                   <Send className="w-5 h-5" />
                 </button>

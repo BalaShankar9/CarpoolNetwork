@@ -36,6 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.access_token) {
+        supabase.realtime.setAuth(session.access_token);
+      }
       if (session?.user) {
         loadProfile(session.user);
       } else {
@@ -46,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      supabase.realtime.setAuth(session?.access_token || '');
       if (session?.user) {
         loadProfile(session.user);
       } else {
