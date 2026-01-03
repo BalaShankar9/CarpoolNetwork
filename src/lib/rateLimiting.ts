@@ -8,6 +8,7 @@ interface RateLimitConfig {
 const RATE_LIMITS: Record<string, RateLimitConfig> = {
   signup: { maxRequests: 5, windowMinutes: 60 },
   message: { maxRequests: 30, windowMinutes: 1 },
+  conversation: { maxRequests: 15, windowMinutes: 60 },
   feedback: { maxRequests: 10, windowMinutes: 60 },
 };
 

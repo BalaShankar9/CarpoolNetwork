@@ -3,7 +3,9 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, MessageCircle, Star, Calendar, Share2, Flag, Phone, UserPlus, UserCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { notify } from '../lib/toast';
+import { checkRateLimit, recordRateLimitAction } from '../lib/rateLimiting';
 import { supabase } from '../lib/supabase';
+import { getOrCreateFriendsDM } from '../lib/chatHelpers';
 import UserAvatar from '../components/shared/UserAvatar';
 import VerificationBadges from '../components/profile/VerificationBadges';
 import ReportUserModal from '../components/shared/ReportUserModal';
@@ -306,8 +308,8 @@ export default function PublicProfile() {
     }
   };
 
-  const handleMessageUser = () => {
-    if (!profile) return;
+  const handleMessageUser = async () => {
+    if (!profile || !userId || !user?.id) return;
 
     const canMessageInApp = profile.allow_inhouse_chat !== false
       && (
@@ -321,7 +323,23 @@ export default function PublicProfile() {
       return;
     }
 
-    navigate('/messages', { state: { userId } });
+    try {
+      const rateLimitCheck = await checkRateLimit(user.id, 'conversation');
+      if (!rateLimitCheck.allowed) {
+        notify(rateLimitCheck.error || 'Too many new conversations. Please wait.', 'warning');
+        return;
+      }
+      const conversationId = await getOrCreateFriendsDM(user.id, userId);
+      if (!conversationId) {
+        notify('Unable to start this conversation. The user may have blocked messages.', 'error');
+        return;
+      }
+      await recordRateLimitAction(user.id, user.id, 'conversation');
+      navigate('/messages', { state: { conversationId } });
+    } catch (error) {
+      console.error('Unable to start conversation:', error);
+      notify('Unable to start this conversation. The user may have blocked messages.', 'error');
+    }
   };
 
   const handleWhatsApp = () => {
@@ -662,4 +680,3 @@ export default function PublicProfile() {
     </div>
   );
 }
-

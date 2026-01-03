@@ -83,7 +83,8 @@ class OfflineManager {
           return await supabase.from('bookings').insert(action.action_data);
 
         case 'send_message':
-          return await supabase.from('messages').insert(action.action_data);
+        case 'send_chat_message':
+          return await supabase.from('chat_messages').insert(action.action_data);
 
         case 'update_profile':
           return await supabase

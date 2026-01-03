@@ -42,7 +42,8 @@ export default function NotificationCenter() {
       navigate(`/bookings/${notification.data?.booking_id || notification.data?.bookingId}`);
       setIsOpen(false);
     } else if (notification.type === 'NEW_MESSAGE') {
-      navigate('/messages');
+      const conversationId = notification.data?.conversation_id;
+      navigate('/messages', conversationId ? { state: { conversationId } } : undefined);
       setIsOpen(false);
     }
   };

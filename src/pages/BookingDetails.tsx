@@ -16,6 +16,9 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { toast } from '../lib/toast';
+import { checkRateLimit, recordRateLimitAction } from '../lib/rateLimiting';
+import { getOrCreateRideConversation } from '../lib/chatHelpers';
 import { useAuth } from '../contexts/AuthContext';
 import RideDetailsMap from '../components/rides/RideDetailsMap';
 import ReviewSubmission from '../components/rides/ReviewSubmission';
@@ -239,9 +242,25 @@ export default function BookingDetails() {
   };
 
   const messageDriver = async () => {
-    if (!booking?.ride) return;
+    if (!booking?.ride || !booking.ride.driver?.id || !booking.passenger_id || !user?.id) return;
+    const rateLimitCheck = await checkRateLimit(user.id, 'conversation');
+    if (!rateLimitCheck.allowed) {
+      toast.error(rateLimitCheck.error || 'Too many new conversations. Please wait.');
+      return;
+    }
+    const conversationId = await getOrCreateRideConversation(
+      booking.ride.id,
+      booking.ride.driver.id,
+      booking.passenger_id
+    );
+    if (!conversationId) {
+      toast.error('Unable to start this conversation.');
+      return;
+    }
+    await recordRateLimitAction(user.id, user.id, 'conversation');
     navigate('/messages', {
       state: {
+        conversationId,
         rideId: booking.ride.id,
         driverId: booking.ride.driver.id
       }

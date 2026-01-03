@@ -18,7 +18,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const { unreadNotifications } = useRealtime();
+  const { unreadNotifications, unreadMessages } = useRealtime();
 
   const handleSignOut = async () => {
     try {
@@ -112,7 +112,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   }`
                 }
               >
-                <item.icon className="w-5 h-5" />
+                <div className="relative">
+                  <item.icon className="w-5 h-5" />
+                  {item.to === '/messages' && unreadMessages > 0 && (
+                    <span
+                      data-testid="messages-badge"
+                      className="absolute -top-2 -right-2 bg-green-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center"
+                    >
+                      {unreadMessages > 99 ? '99+' : unreadMessages}
+                    </span>
+                  )}
+                </div>
                 <span>{item.label}</span>
               </NavLink>
             ))}
@@ -202,7 +212,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       isActive ? 'bg-blue-50 text-blue-600 shadow-sm border border-blue-100' : 'text-gray-600'
                     }`}
                   >
-                    <item.icon className="w-5 h-5" />
+                    <div className="relative">
+                      <item.icon className="w-5 h-5" />
+                      {item.to === '/messages' && unreadMessages > 0 && (
+                        <span
+                          data-testid="messages-badge"
+                          className="absolute -top-2 -right-2 bg-green-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center"
+                        >
+                          {unreadMessages > 9 ? '9+' : unreadMessages}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <span className="text-xs font-medium">{item.label}</span>
                 </>
@@ -232,7 +252,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
 
 
 

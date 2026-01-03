@@ -248,15 +248,15 @@ export class MessagingHelper {
     await this.page.goto('/messages');
     await this.page.waitForLoadState('networkidle');
 
-    const conversationItem = this.page.locator(`[data-conversation-id="${recipientId}"], [data-testid="conversation-item"]`).first();
+    const conversationItem = this.page.locator(`[data-conversation-id="${recipientId}"], [data-testid="conversationRow"]`).first();
     if (await conversationItem.isVisible({ timeout: 5000 }).catch(() => false)) {
       await conversationItem.click();
     }
 
-    const messageInput = this.page.locator('input[placeholder*="message"], textarea[placeholder*="message"]').first();
+    const messageInput = this.page.locator('[data-testid="messageInput"]').first();
     await messageInput.fill(message);
 
-    const sendBtn = this.page.locator('button[type="submit"], button:has-text("Send")').first();
+    const sendBtn = this.page.locator('[data-testid="sendButton"]').first();
     await sendBtn.click();
 
     await this.page.waitForTimeout(1000);

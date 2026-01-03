@@ -29,18 +29,22 @@ const getNotificationText = (notification: Notification) => {
     return formatNotification(notification);
 };
 
-const getNotificationLink = (notification: Notification) => {
+const getNotificationTarget = (notification: Notification) => {
     const data = notification.data || {};
 
     switch (notification.type) {
         case 'NEW_MESSAGE':
-            return data.conversation_id ? `/messages?user=${data.conversation_id}` : '/messages';
+            return data.conversation_id
+                ? { path: '/messages', state: { conversationId: data.conversation_id } }
+                : { path: '/messages' };
         case 'FRIEND_REQUEST':
         case 'FRIEND_REQUEST_ACCEPTED':
-            return '/social/friends';
+            return { path: '/social/friends' };
         case 'FORUM_REPLY':
         case 'FORUM_MENTION':
-            return data.thread_id ? `/community/thread/${data.thread_id}` : '/community';
+            return data.thread_id
+                ? { path: `/community/thread/${data.thread_id}` }
+                : { path: '/community' };
         default:
             return null;
     }
@@ -59,9 +63,9 @@ export function NotificationsPanel({ isOpen, onClose }: NotificationsPanelProps)
             await markAsRead(notification.id);
         }
 
-        const link = getNotificationLink(notification);
-        if (link) {
-            navigate(link);
+        const target = getNotificationTarget(notification);
+        if (target) {
+            navigate(target.path, { state: target.state });
             onClose();
         }
     };

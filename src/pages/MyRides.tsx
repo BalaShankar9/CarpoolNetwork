@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Car, Calendar, MapPin, Users, Edit2, Trash2, Eye, AlertCircle, XCircle, CheckCircle, Star, Shield, MessageSquare, Phone, Navigation } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { toast } from '../lib/toast';
+import { checkRateLimit, recordRateLimitAction } from '../lib/rateLimiting';
+import { getOrCreateRideConversation } from '../lib/chatHelpers';
 import { useAuth } from '../contexts/AuthContext';
 import RecurringRidesManager from '../components/rides/RecurringRidesManager';
 import EditRideModal from '../components/rides/EditRideModal';
@@ -1019,8 +1022,24 @@ export default function MyRides() {
 
                       <div className="flex gap-3">
                         <button
-                          onClick={() => {
-                            navigate('/messages', { state: { userId: passenger.passenger.id, userName: passenger.passenger.full_name } });
+                          onClick={async () => {
+                            if (!user?.id) return;
+                            const rateLimitCheck = await checkRateLimit(user.id, 'conversation');
+                            if (!rateLimitCheck.allowed) {
+                              toast.error(rateLimitCheck.error || 'Too many new conversations. Please wait.');
+                              return;
+                            }
+                            const conversationId = await getOrCreateRideConversation(
+                              passenger.ride.id,
+                              user.id,
+                              passenger.passenger.id
+                            );
+                            if (!conversationId) {
+                              toast.error('Unable to start this conversation.');
+                              return;
+                            }
+                            await recordRateLimitAction(user.id, user.id, 'conversation');
+                            navigate('/messages', { state: { conversationId } });
                           }}
                           className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
                         >
@@ -1361,8 +1380,24 @@ export default function MyRides() {
 
                       <div className="flex gap-3">
                         <button
-                          onClick={() => {
-                            navigate('/messages', { state: { userId: match.passenger_id, userName: match.passenger_name } });
+                          onClick={async () => {
+                            if (!user?.id) return;
+                            const rateLimitCheck = await checkRateLimit(user.id, 'conversation');
+                            if (!rateLimitCheck.allowed) {
+                              toast.error(rateLimitCheck.error || 'Too many new conversations. Please wait.');
+                              return;
+                            }
+                            const conversationId = await getOrCreateRideConversation(
+                              match.ride_id,
+                              user.id,
+                              match.passenger_id
+                            );
+                            if (!conversationId) {
+                              toast.error('Unable to start this conversation.');
+                              return;
+                            }
+                            await recordRateLimitAction(user.id, user.id, 'conversation');
+                            navigate('/messages', { state: { conversationId } });
                           }}
                           className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
                         >

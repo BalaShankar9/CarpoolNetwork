@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, Calendar, Star, Car, MessageCircle, ArrowLeft, Navigation, Phone, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { toast } from '../lib/toast';
+import { checkRateLimit, recordRateLimitAction } from '../lib/rateLimiting';
+import { getOrCreateRideConversation } from '../lib/chatHelpers';
 import { useAuth } from '../contexts/AuthContext';
 import EnhancedRideMap from '../components/rides/EnhancedRideMap';
 import TripInsights from '../components/rides/TripInsights';
@@ -227,15 +230,26 @@ export default function RideDetails() {
     }
   };
 
-  const sendMessage = () => {
-    if (ride?.driver && ride?.id) {
-      navigate('/messages', {
-        state: {
-          rideId: ride.id,
-          driverId: ride.driver.id
-        }
-      });
+  const sendMessage = async () => {
+    if (!user || !ride?.driver || !ride?.id) return;
+    const rateLimitCheck = await checkRateLimit(user.id, 'conversation');
+    if (!rateLimitCheck.allowed) {
+      toast.error(rateLimitCheck.error || 'Too many new conversations. Please wait.');
+      return;
     }
+    const conversationId = await getOrCreateRideConversation(ride.id, ride.driver.id, user.id);
+    if (!conversationId) {
+      toast.error('Unable to start this conversation.');
+      return;
+    }
+    await recordRateLimitAction(user.id, user.id, 'conversation');
+    navigate('/messages', {
+      state: {
+        conversationId,
+        rideId: ride.id,
+        driverId: ride.driver.id
+      }
+    });
   };
 
   const formatDateTime = (dateString: string) => {
@@ -698,5 +712,3 @@ export default function RideDetails() {
     </div>
   );
 }
-
-

@@ -11,6 +11,8 @@ interface ReportUserModalProps {
     id: string;
     full_name: string;
   };
+  initialTitle?: string;
+  initialDescription?: string;
 }
 
 const INCIDENT_OPTIONS = [
@@ -27,7 +29,13 @@ const SEVERITY_OPTIONS = [
   { value: 'critical', label: 'Critical' },
 ] as const;
 
-export default function ReportUserModal({ isOpen, onClose, reportedUser }: ReportUserModalProps) {
+export default function ReportUserModal({
+  isOpen,
+  onClose,
+  reportedUser,
+  initialTitle,
+  initialDescription,
+}: ReportUserModalProps) {
   const { user, profile } = useAuth();
   const [incidentType, setIncidentType] = useState<typeof INCIDENT_OPTIONS[number]['value']>('harassment');
   const [severity, setSeverity] = useState<typeof SEVERITY_OPTIONS[number]['value']>('medium');
@@ -43,13 +51,13 @@ export default function ReportUserModal({ isOpen, onClose, reportedUser }: Repor
     if (!isOpen) return;
     setIncidentType('harassment');
     setSeverity('medium');
-    setTitle('');
-    setDescription('');
+    setTitle(initialTitle || '');
+    setDescription(initialDescription || '');
     setIncidentDate('');
     setIncidentLocation('');
     setAnonymous(false);
     setError(null);
-  }, [isOpen, reportedUser.id]);
+  }, [isOpen, reportedUser.id, initialTitle, initialDescription]);
 
   if (!isOpen) return null;
 

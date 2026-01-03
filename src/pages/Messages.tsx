@@ -2,18 +2,24 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { checkRateLimit, recordRateLimitAction } from '../lib/rateLimiting';
 import NewChatSystem from '../components/messaging/NewChatSystem';
 import { getOrCreateFriendsDM, getOrCreateRideConversation } from '../lib/chatHelpers';
 
 export default function Messages() {
   const location = useLocation();
   const { user } = useAuth();
-  const { conversationId, userId, rideId, driverId } = (location.state as {
+  const state = (location.state as {
     conversationId?: string;
     userId?: string;
     rideId?: string;
     driverId?: string;
   }) || {};
+  const searchParams = new URLSearchParams(location.search);
+  const conversationId = state.conversationId || searchParams.get('conversationId') || undefined;
+  const userId = state.userId;
+  const rideId = state.rideId;
+  const driverId = state.driverId;
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [retryToken, setRetryToken] = useState(0);
@@ -57,9 +63,16 @@ export default function Messages() {
       }
 
       if (userId) {
+        const rateLimitCheck = await checkRateLimit(user.id, 'conversation');
+        if (!rateLimitCheck.allowed) {
+          setInitError(rateLimitCheck.error || 'Too many new conversations. Please wait.');
+          setLoading(false);
+          return;
+        }
         const convId = await getOrCreateFriendsDM(user.id, userId);
         if (convId) {
           setActiveConversationId(convId);
+          await recordRateLimitAction(user.id, user.id, 'conversation');
         } else {
           setInitError('Unable to start this conversation. Please try again.');
         }
@@ -69,6 +82,12 @@ export default function Messages() {
       }
 
       if (rideId) {
+        const rateLimitCheck = await checkRateLimit(user.id, 'conversation');
+        if (!rateLimitCheck.allowed) {
+          setInitError(rateLimitCheck.error || 'Too many new conversations. Please wait.');
+          setLoading(false);
+          return;
+        }
         let resolvedDriverId = driverId;
         if (!resolvedDriverId) {
           resolvedDriverId = await resolveRideDriverId();
@@ -83,6 +102,7 @@ export default function Messages() {
         const convId = await getOrCreateRideConversation(rideId, resolvedDriverId, user.id);
         if (convId) {
           setActiveConversationId(convId);
+          await recordRateLimitAction(user.id, user.id, 'conversation');
         } else {
           setInitError('Unable to start this ride chat. Please try again.');
         }

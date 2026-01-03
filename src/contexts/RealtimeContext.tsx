@@ -7,11 +7,13 @@ import { NotificationsService, normalizeNotification } from '../services/notific
 
 interface RealtimeContextType {
   unreadNotifications: number;
+  unreadMessages: number;
   notifications: Notification[];
   loading: boolean;
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
+  refreshUnreadMessages: () => Promise<void>;
 }
 
 const RealtimeContext = createContext<RealtimeContextType | undefined>(undefined);
@@ -20,10 +22,22 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [loading, setLoading] = useState(false);
   const [notificationChannel, setNotificationChannel] = useState<RealtimeChannel | null>(null);
   const [bookingChannel, setBookingChannel] = useState<RealtimeChannel | null>(null);
   const [messageChannel, setMessageChannel] = useState<RealtimeChannel | null>(null);
+
+  const loadUnreadMessages = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase.rpc('get_total_unread_messages');
+      if (error) throw error;
+      setUnreadMessages(Number(data || 0));
+    } catch (error) {
+      console.error('Error loading unread messages:', error);
+    }
+  };
 
   const loadNotifications = async () => {
     if (!user) return;
@@ -96,10 +110,12 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       }
       setNotifications([]);
       setUnreadNotifications(0);
+      setUnreadMessages(0);
       return;
     }
 
     loadNotifications();
+    loadUnreadMessages();
 
     const notifChannel = supabase
       .channel('notifications-channel')
@@ -108,42 +124,42 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         {
           event: 'INSERT',
           schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${user.id}`
-      },
-      (payload) => {
-        const newNotification = normalizeNotification(payload.new);
-        setNotifications(prev => [newNotification, ...prev]);
-        setUnreadNotifications(prev => prev + (newNotification.read_at ? 0 : 1));
-      }
-    )
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${user.id}`
-      },
-      (payload) => {
-        const updatedNotification = normalizeNotification(payload.new);
-        setNotifications(prev => {
-          let wasUnread = false;
-          const next = prev.map(n => {
-            if (n.id === updatedNotification.id) {
-              wasUnread = !n.read_at;
-              return updatedNotification;
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const newNotification = normalizeNotification(payload.new);
+          setNotifications(prev => [newNotification, ...prev]);
+          setUnreadNotifications(prev => prev + (newNotification.read_at ? 0 : 1));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const updatedNotification = normalizeNotification(payload.new);
+          setNotifications(prev => {
+            let wasUnread = false;
+            const next = prev.map(n => {
+              if (n.id === updatedNotification.id) {
+                wasUnread = !n.read_at;
+                return updatedNotification;
+              }
+              return n;
+            });
+            if (wasUnread && updatedNotification.read_at) {
+              setUnreadNotifications(prevCount => Math.max(0, prevCount - 1));
             }
-            return n;
+            return next;
           });
-          if (wasUnread && updatedNotification.read_at) {
-            setUnreadNotifications(prevCount => Math.max(0, prevCount - 1));
-          }
-          return next;
-        });
-      }
-    )
-    .subscribe();
+        }
+      )
+      .subscribe();
 
     const bookingChan = supabase
       .channel('bookings-channel')
@@ -161,17 +177,29 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       .subscribe();
 
     const messageChan = supabase
-      .channel('messages-channel')
+      .channel(`chat-messages:${user.id}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'messages',
-          filter: `recipient_id=eq.${user.id}`
+          table: 'chat_messages'
         },
         () => {
           window.dispatchEvent(new CustomEvent('message-received'));
+          loadUnreadMessages();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'message_reads',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          loadUnreadMessages();
         }
       )
       .subscribe();
@@ -191,11 +219,13 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     <RealtimeContext.Provider
       value={{
         unreadNotifications,
+        unreadMessages,
         notifications,
         loading,
         markAsRead,
         markAllAsRead,
-        refreshNotifications: loadNotifications
+        refreshNotifications: loadNotifications,
+        refreshUnreadMessages: loadUnreadMessages
       }}
     >
       {children}

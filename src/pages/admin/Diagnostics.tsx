@@ -274,7 +274,7 @@ export default function Diagnostics() {
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('rides').select('id', { count: 'exact', head: true }),
         supabase.from('ride_bookings').select('id', { count: 'exact', head: true }),
-        supabase.from('messages').select('id', { count: 'exact', head: true }),
+        supabase.from('chat_messages').select('id', { count: 'exact', head: true }),
         supabase.from('vehicles').select('id', { count: 'exact', head: true }),
         supabase.from('bug_reports').select('id', { count: 'exact', head: true }),
       ]);

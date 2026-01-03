@@ -16,7 +16,7 @@ test.describe('Messaging', () => {
       await page.waitForTimeout(3000);
 
       const emptyState = page.locator('text=/no message|no conversation|start a conversation/i');
-      const conversations = page.locator('[data-testid="conversation-item"], [class*="conversation"]');
+      const conversations = page.locator('[data-testid="conversationRow"], [class*="conversation"]');
 
       const hasEmptyState = await emptyState.isVisible({ timeout: 3000 }).catch(() => false);
       const conversationCount = await conversations.count();
@@ -29,7 +29,7 @@ test.describe('Messaging', () => {
       await page.goto('/messages');
       await page.waitForTimeout(3000);
 
-      const conversationList = page.locator('[data-testid="conversation-list"], [class*="conversation"], [class*="chat-list"]');
+      const conversationList = page.locator('[data-testid="conversationList"], [class*="conversation"], [class*="chat-list"]');
       await expect(conversationList.first()).toBeVisible({ timeout: 5000 }).catch(() => {});
     });
   });
@@ -40,12 +40,12 @@ test.describe('Messaging', () => {
       await page.goto('/messages');
       await page.waitForTimeout(3000);
 
-      const conversation = page.locator('[data-testid="conversation-item"], [class*="conversation"]').first();
+      const conversation = page.locator('[data-testid="conversationRow"], [class*="conversation"]').first();
       if (await conversation.isVisible({ timeout: 3000 }).catch(() => false)) {
         await conversation.click();
         await page.waitForTimeout(1000);
 
-        const messageInput = page.locator('input[placeholder*="message"], textarea[placeholder*="message"], input[type="text"]').last();
+        const messageInput = page.locator('[data-testid="messageInput"]').last();
         const isInputVisible = await messageInput.isVisible({ timeout: 3000 }).catch(() => false);
         expect(isInputVisible || true).toBeTruthy();
       }
@@ -56,18 +56,18 @@ test.describe('Messaging', () => {
       await page.goto('/messages');
       await page.waitForTimeout(3000);
 
-      const conversation = page.locator('[data-testid="conversation-item"], [class*="conversation"]').first();
+      const conversation = page.locator('[data-testid="conversationRow"], [class*="conversation"]').first();
       if (await conversation.isVisible({ timeout: 3000 }).catch(() => false)) {
         await conversation.click();
         await page.waitForTimeout(1000);
 
         const testMessage = `E2E Test Message ${Date.now()}`;
-        const messageInput = page.locator('input[placeholder*="message"], textarea[placeholder*="message"], input[type="text"]').last();
+        const messageInput = page.locator('[data-testid="messageInput"]').last();
 
         if (await messageInput.isVisible({ timeout: 3000 }).catch(() => false)) {
           await messageInput.fill(testMessage);
 
-          const sendBtn = page.locator('button[type="submit"], button:has-text("Send"), button svg[class*="send"]').first();
+          const sendBtn = page.locator('[data-testid="sendButton"]').first();
           if (await sendBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
             await sendBtn.click();
           } else {
@@ -92,7 +92,7 @@ test.describe('Messaging', () => {
       const messagesNav = page.locator('a[href="/messages"], button:has-text("Messages")').first();
       await expect(messagesNav).toBeVisible();
 
-      const unreadBadge = page.locator('[data-testid="unread-badge"], .badge, [class*="notification"]');
+      const unreadBadge = page.locator('[data-testid="messages-badge"], .badge, [class*="notification"]');
       const count = await unreadBadge.count();
       expect(count).toBeGreaterThanOrEqual(0);
     });
@@ -104,7 +104,7 @@ test.describe('Messaging', () => {
       await page.goto('/messages');
       await page.waitForTimeout(5000);
 
-      const conversationsAfter = page.locator('[data-testid="conversation-item"], [class*="conversation"]');
+      const conversationsAfter = page.locator('[data-testid="conversationRow"], [class*="conversation"]');
       await page.waitForTimeout(3000);
       const countAfter = await conversationsAfter.count();
       expect(countAfter).toBeGreaterThanOrEqual(0);
