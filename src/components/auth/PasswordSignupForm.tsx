@@ -10,6 +10,7 @@ interface PasswordSignupFormProps {
 export default function PasswordSignupForm({ onSubmit, disabled = false }: PasswordSignupFormProps) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [confirmEmail, setConfirmEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -59,13 +60,14 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
     { label: 'One symbol', met: passwordRequirements.symbol },
   ];
 
+  const emailsMatch = email && confirmEmail && email.toLowerCase() === confirmEmail.toLowerCase();
   const passwordsMatch = password && confirmPassword && password === confirmPassword;
   const passwordValid = Object.values(passwordRequirements).every(Boolean);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim() || !fullName.trim() || !phone.trim()) return;
-    if (!passwordValid || !passwordsMatch) return;
+    if (!email.trim() || !confirmEmail.trim() || !password.trim() || !fullName.trim() || !phone.trim()) return;
+    if (!emailsMatch || !passwordValid || !passwordsMatch) return;
 
     setLoading(true);
     try {
@@ -139,6 +141,39 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
         {emailValid === true && (
           <p className="mt-1 text-xs text-green-600">
             Email is valid
+          </p>
+        )}
+        <p className="mt-1 text-xs text-gray-600">
+          Please double-check your email address to avoid typos
+        </p>
+      </div>
+
+      <div>
+        <label htmlFor="confirmEmail" className="block text-sm font-medium text-gray-700 mb-2">
+          Confirm Email Address
+        </label>
+        <div className="relative">
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            id="confirmEmail"
+            type="email"
+            value={confirmEmail}
+            onChange={(e) => setConfirmEmail(e.target.value)}
+            placeholder="Confirm your email"
+            required
+            disabled={disabled || loading}
+            className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed ${
+              confirmEmail && !emailsMatch ? 'border-red-300 bg-red-50' : confirmEmail && emailsMatch ? 'border-green-300 bg-green-50' : 'border-gray-300'
+            }`}
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            {confirmEmail && emailsMatch && <CheckCircle className="w-5 h-5 text-green-600" />}
+            {confirmEmail && !emailsMatch && <XCircle className="w-5 h-5 text-red-600" />}
+          </div>
+        </div>
+        {confirmEmail && (
+          <p className={`mt-1 text-xs ${emailsMatch ? 'text-green-600' : 'text-red-600'}`}>
+            {emailsMatch ? 'Email addresses match' : 'Email addresses do not match'}
           </p>
         )}
       </div>
@@ -239,7 +274,7 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
 
       <button
         type="submit"
-        disabled={disabled || loading || !passwordValid || !passwordsMatch}
+        disabled={disabled || loading || !emailsMatch || !passwordValid || !passwordsMatch}
         className="w-full bg-gradient-to-r from-red-600 to-orange-500 text-white py-3 rounded-xl font-semibold hover:from-red-700 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-red-500/30"
       >
         {loading ? (

@@ -256,7 +256,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const isEmailVerified = !!user?.email_confirmed_at;
+  // Skip email verification in development if configured
+  const skipEmailVerification = import.meta.env.VITE_SKIP_EMAIL_VERIFICATION === 'true';
+  const isEmailVerified = skipEmailVerification || !!user?.email_confirmed_at;
   const isAdmin = profile?.is_admin === true;
 
   const value = {
