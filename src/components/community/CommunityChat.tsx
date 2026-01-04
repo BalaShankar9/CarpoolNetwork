@@ -64,7 +64,10 @@ export default function CommunityChat() {
       return;
     }
 
-    const ordered = (data || []).slice().reverse() as CommunityChatMessage[];
+    const ordered = ((data || []) as any[]).map(msg => ({
+      ...msg,
+      sender: Array.isArray(msg.sender) ? msg.sender[0] : msg.sender
+    })).slice().reverse() as CommunityChatMessage[];
     setMessages(ordered);
     setLoading(false);
     setTimeout(scrollToBottom, 50);

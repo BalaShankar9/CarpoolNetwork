@@ -213,7 +213,7 @@ export default function Community() {
 
     let results = (data || []) as CommunityPost[];
 
-    if (options?.ensurePost && !results.some((post) => post.id === options.ensurePost.id)) {
+    if (options?.ensurePost && !results.some((post) => post.id === options.ensurePost!.id)) {
       results = [options.ensurePost, ...results];
     }
 
@@ -244,7 +244,7 @@ export default function Community() {
       });
       setVoteMap(nextMap);
     } else if (options?.ensurePost) {
-      setVoteMap((prev) => ({ ...prev, [options.ensurePost.id]: 0 }));
+      setVoteMap((prev) => ({ ...prev, [options.ensurePost!.id]: 0 }));
     } else {
       setVoteMap({});
     }
@@ -385,7 +385,7 @@ export default function Community() {
                 New Post
               </button>
               <button
-                onClick={loadPosts}
+                onClick={() => loadPosts()}
                 className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
                 title="Refresh"
               >

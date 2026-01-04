@@ -13,6 +13,8 @@ dist-ssr
 playwright-report/
 test-results/
 .netlify/
+trace_tmp*/
+.claude/
 
 .vscode/*
 !.vscode/extensions.json

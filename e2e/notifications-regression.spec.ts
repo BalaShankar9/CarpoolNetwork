@@ -88,13 +88,13 @@ test.describe('Notifications regression', () => {
     const notificationItem = page.locator('[data-testid="notification-item"]', { hasText: uniqueMessage }).first();
     await expect(notificationItem).toBeVisible({ timeout: 10000 });
 
-    await notificationItem.locator('[data-testid=\"panel-mark-read-button\"], [data-testid=\"mark-read-button\"]').first().click();
+    await notificationItem.locator('[data-testid="panel-mark-read-button"], [data-testid="mark-read-button"]').first().click();
     await expect(badge).toBeVisible({ timeout: 5000 });
     const afterCount = parseInt((await badge.innerText()).replace('+', ''), 10) || 0;
     expect(afterCount).toBeLessThan(beforeCount);
     expect(afterCount).toBeGreaterThanOrEqual(1);
 
     await page.getByTestId('panel-mark-all-read').click();
-    await expect(page.locator('[data-testid=\"notification-badge\"]')).toBeHidden({ timeout: 5000 });
+    await expect(page.locator('[data-testid="notification-badge"]')).toBeHidden({ timeout: 5000 });
   });
 });

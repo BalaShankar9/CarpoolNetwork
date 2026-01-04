@@ -107,11 +107,12 @@ export default function CommunityPostPage() {
 
       if (basePost) {
         const score = (basePost.votes || []).reduce((sum: number, vote: any) => sum + (vote.vote || 0), 0);
+        const author = Array.isArray(basePost.author) ? basePost.author[0] : basePost.author;
         resolvedPost = {
           id: basePost.id,
           author_id: basePost.author_id,
-          author_name: basePost.author?.full_name || 'Community Member',
-          author_avatar_url: basePost.author?.avatar_url ?? null,
+          author_name: author?.full_name || 'Community Member',
+          author_avatar_url: author?.avatar_url ?? null,
           title: basePost.title,
           body: basePost.body,
           category: basePost.category,
@@ -143,7 +144,10 @@ export default function CommunityPostPage() {
       console.error('Failed to load comments', commentError);
       setError('Unable to load comments.');
     } else {
-      setComments((commentData || []) as CommunityComment[]);
+      setComments(((commentData || []) as any[]).map(comment => ({
+        ...comment,
+        author: Array.isArray(comment.author) ? comment.author[0] : comment.author
+      })) as CommunityComment[]);
     }
 
     if (user) {

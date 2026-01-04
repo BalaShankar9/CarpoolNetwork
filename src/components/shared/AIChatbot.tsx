@@ -57,7 +57,6 @@ export default function AiAssistantWidget() {
     if (user && isOpen) {
       loadChatHistory();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isOpen]);
 
   const role: UserRole = useMemo(() => {
