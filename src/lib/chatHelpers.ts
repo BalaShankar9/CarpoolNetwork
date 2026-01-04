@@ -95,6 +95,12 @@ export async function getOrCreateRideConversation(
 ): Promise<string | null> {
   const attemptRpc = async (driverIdToUse: string) => {
     try {
+      if (import.meta.env.DEV) {
+        console.log('[DEV] getOrCreateRideConversation - Calling RPC:', {
+          rpc: 'get_or_create_ride_conversation',
+          params: { p_ride_id: rideId, p_driver_id: driverIdToUse, p_rider_id: riderId },
+        });
+      }
       const { data, error } = await supabase.rpc('get_or_create_ride_conversation', {
         p_ride_id: rideId,
         p_driver_id: driverIdToUse,
@@ -102,11 +108,25 @@ export async function getOrCreateRideConversation(
       });
 
       if (error) {
+        if (import.meta.env.DEV) {
+          console.error('[DEV] getOrCreateRideConversation - RPC Error:', {
+            rpc: 'get_or_create_ride_conversation',
+            code: (error as any)?.code,
+            message: error.message,
+            details: (error as any)?.details,
+            hint: (error as any)?.hint,
+            fullError: error,
+          });
+        }
         console.error('Error using get_or_create_ride_conversation:', error);
         return null;
       }
 
-      return normalizeConversationId(data);
+      const convId = normalizeConversationId(data);
+      if (import.meta.env.DEV) {
+        console.log('[DEV] getOrCreateRideConversation - Success, conversation ID:', convId);
+      }
+      return convId;
     } catch (error) {
       console.error('Error using get_or_create_ride_conversation:', error);
       return null;
@@ -173,19 +193,38 @@ export async function getOrCreateFriendsDM(
   }
 
   try {
+    if (import.meta.env.DEV) {
+      console.log('[DEV] getOrCreateFriendsDM - Calling RPC:', {
+        rpc: 'get_or_create_friends_conversation',
+        params: { p_user_id_1: userId1, p_user_id_2: userId2 },
+      });
+    }
     const { data, error } = await supabase.rpc('get_or_create_friends_conversation', {
       p_user_id_1: userId1,
       p_user_id_2: userId2,
     });
 
     if (error) {
+      if (import.meta.env.DEV) {
+        console.error('[DEV] getOrCreateFriendsDM - RPC Error:', {
+          rpc: 'get_or_create_friends_conversation',
+          code: (error as any)?.code,
+          message: error.message,
+          details: (error as any)?.details,
+          hint: (error as any)?.hint,
+          fullError: error,
+        });
+      }
       throw error;
     }
 
     const conversationId = normalizeConversationId(data);
-  if (conversationId) {
-    return conversationId;
-  }
+    if (import.meta.env.DEV) {
+      console.log('[DEV] getOrCreateFriendsDM - Success, conversation ID:', conversationId);
+    }
+    if (conversationId) {
+      return conversationId;
+    }
   } catch (error) {
     console.error('Error using get_or_create_friends_conversation:', error);
   }

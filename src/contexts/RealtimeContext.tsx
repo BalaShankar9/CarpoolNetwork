@@ -176,6 +176,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       )
       .subscribe();
 
+    // Keep unread counts in sync for new messages and read updates.
     const messageChan = supabase
       .channel(`chat-messages:${user.id}`)
       .on(
@@ -186,7 +187,6 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
           table: 'chat_messages'
         },
         () => {
-          window.dispatchEvent(new CustomEvent('message-received'));
           loadUnreadMessages();
         }
       )

@@ -9,6 +9,7 @@ import {
   Edit,
   FileText,
   Flag,
+  Loader,
   MapPin,
   Mic,
   MoreVertical,
@@ -218,7 +219,9 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [conversationsError, setConversationsError] = useState<string | null>(null);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [messageQuery, setMessageQuery] = useState('');
@@ -364,9 +367,28 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
 
   const loadConversations = async () => {
     if (!user) return;
+    setConversationsError(null);
     try {
+      if (import.meta.env.DEV) {
+        console.log('[DEV] loadConversations - Calling RPC: get_conversations_overview');
+      }
       const { data, error } = await supabase.rpc('get_conversations_overview');
-      if (error) throw error;
+      if (error) {
+        if (import.meta.env.DEV) {
+          console.error('[DEV] loadConversations - RPC Error:', {
+            rpc: 'get_conversations_overview',
+            code: (error as any)?.code,
+            message: error.message,
+            details: (error as any)?.details,
+            hint: (error as any)?.hint,
+            fullError: error,
+          });
+        }
+        throw error;
+      }
+      if (import.meta.env.DEV) {
+        console.log('[DEV] loadConversations - Success, conversations:', data?.length || 0);
+      }
       const normalized = (data || []).map((conv: any) => ({
         ...conv,
         pinned: Boolean(conv.pinned),
@@ -376,9 +398,18 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
         members: conv.members || [],
       }));
       setConversations(normalized);
-    } catch (error) {
+      setConversationsError(null);
+    } catch (error: any) {
       console.error('Error loading conversations:', error);
-      toast.error('Unable to load conversations.');
+      const errorMsg = error?.message || 'Failed to load conversations';
+      const errorCode = error?.code || 'UNKNOWN';
+      setConversationsError(`${errorMsg} (${errorCode})`);
+
+      if (import.meta.env.DEV) {
+        toast.error(`Unable to load conversations. Error: ${errorCode}`);
+      } else {
+        toast.error('Unable to load conversations. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -406,7 +437,20 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
   const loadMessages = async (conversationId: string, reset = true) => {
     if (messagesLoading) return;
     setMessagesLoading(true);
+    setMessagesError(null);
     try {
+      if (import.meta.env.DEV) {
+        console.log('[DEV] loadMessages - Query:', {
+          table: 'chat_messages',
+          select: '*, sender:profiles(...), reply_to:chat_messages(...), reactions:message_reactions(...)',
+          filters: {
+            conversation_id: conversationId,
+            order: 'created_at DESC',
+            limit: MESSAGE_PAGE_SIZE,
+            reset,
+          },
+        });
+      }
       let query = supabase
         .from('chat_messages')
         .select(
@@ -422,7 +466,23 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        if (import.meta.env.DEV) {
+          console.error('[DEV] loadMessages - Query Error:', {
+            table: 'chat_messages',
+            code: (error as any)?.code,
+            message: error.message,
+            details: (error as any)?.details,
+            hint: (error as any)?.hint,
+            fullError: error,
+          });
+        }
+        throw error;
+      }
+
+      if (import.meta.env.DEV) {
+        console.log('[DEV] loadMessages - Success, messages:', data?.length || 0);
+      }
 
       let next = (data || []).reverse() as ChatMessage[];
       if (user && next.length) {
@@ -442,9 +502,18 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
       } else {
         setMessages((prev) => dedupeMessages([...next, ...prev]));
       }
-    } catch (error) {
+      setMessagesError(null);
+    } catch (error: any) {
       console.error('Error loading messages:', error);
-      toast.error('Unable to load messages.');
+      const errorMsg = error?.message || 'Failed to load messages';
+      const errorCode = error?.code || 'UNKNOWN';
+      setMessagesError(`${errorMsg} (${errorCode})`);
+
+      if (import.meta.env.DEV) {
+        toast.error(`Unable to load messages. Error: ${errorCode}`);
+      } else {
+        toast.error('Unable to load messages. Please try again.');
+      }
     } finally {
       setMessagesLoading(false);
     }
@@ -506,13 +575,20 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
     });
   };
 
+  // Helper function to sort messages by created_at
+  const sortMessages = (messages: ChatMessage[]) => {
+    return [...messages].sort((a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+  };
+
   const upsertMessage = (incoming: ChatMessage) => {
     setMessages((prev) => {
       const byId = prev.findIndex((msg) => msg.id === incoming.id);
       if (byId !== -1) {
         const next = [...prev];
         next[byId] = { ...prev[byId], ...incoming };
-        return next;
+        return sortMessages(next); // Sort after update
       }
       if (incoming.client_generated_id) {
         const byClient = prev.findIndex(
@@ -521,10 +597,11 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
         if (byClient !== -1) {
           const next = [...prev];
           next[byClient] = { ...prev[byClient], ...incoming };
-          return next;
+          return sortMessages(next); // Sort after update
         }
       }
-      return [...prev, incoming];
+      // Sort after appending new message
+      return sortMessages([...prev, incoming]);
     });
   };
 
@@ -694,9 +771,17 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
           loadReadState(conversationId);
         }
       )
-      .subscribe(async (status) => {
+      .subscribe(async (status, err) => {
         if (status === 'SUBSCRIBED') {
           await channel.track({ user_id: user.id, last_active: new Date().toISOString() });
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('[Realtime] Channel error:', err);
+          toast.error('Connection lost. Retrying...');
+          // Retry after 3 seconds
+          setTimeout(() => setupConversationChannel(conversationId), 3000);
+        } else if (status === 'TIMED_OUT') {
+          console.error('[Realtime] Subscription timeout');
+          toast.warning('Slow connection detected');
         }
       });
 
@@ -1467,7 +1552,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
         supabase.removeChannel(conversationChannelRef.current);
       }
     };
-  }, [selectedConversationId, user, selectedConversation]);
+  }, [selectedConversationId, user, selectedConversation, session?.access_token]);
 
   useEffect(() => {
     if (!messages.length || !selectedConversationId) return;
@@ -1575,10 +1660,33 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
         </div>
 
         <div className="flex-1 overflow-y-auto" data-testid="conversationList">
-          {filteredConversations.length === 0 ? (
+          {conversationsError ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-700 p-6">
+              <XCircle className="w-16 h-16 mb-4 text-red-400" />
+              <p className="text-center font-semibold mb-2">Failed to Load Conversations</p>
+              <p className="text-sm text-gray-500 text-center mb-4 max-w-md">{conversationsError}</p>
+              <button
+                onClick={() => {
+                  setLoading(true);
+                  loadConversations();
+                }}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              >
+                Retry
+              </button>
+              {import.meta.env.DEV && (
+                <p className="text-xs text-gray-400 mt-4 font-mono">
+                  Check console for detailed error logs
+                </p>
+              )}
+            </div>
+          ) : filteredConversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-500 p-6">
               <Search className="w-16 h-16 mb-4 text-gray-300" />
               <p className="text-center">No conversations yet</p>
+              <p className="text-sm text-gray-400 text-center mt-2">
+                Start a conversation from a ride or user profile
+              </p>
             </div>
           ) : (
             filteredConversations.map((conv) => {
@@ -1699,8 +1807,34 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
             </div>
 
             <div className="flex-1 overflow-y-auto" ref={messagesContainerRef} data-testid="messageList">
-              <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
-                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              {messagesError ? (
+                <div className="flex flex-col items-center justify-center h-full text-gray-700 p-6">
+                  <XCircle className="w-16 h-16 mb-4 text-red-400" />
+                  <p className="text-center font-semibold mb-2">Failed to Load Messages</p>
+                  <p className="text-sm text-gray-500 text-center mb-4 max-w-md">{messagesError}</p>
+                  <button
+                    onClick={() => {
+                      if (selectedConversationId) {
+                        loadMessages(selectedConversationId, true);
+                      }
+                    }}
+                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                  >
+                    Retry
+                  </button>
+                  {import.meta.env.DEV && (
+                    <p className="text-xs text-gray-400 mt-4 font-mono">
+                      Check console for detailed error logs
+                    </p>
+                  )}
+                </div>
+              ) : messagesLoading && messages.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              ) : (
+                <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
+                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                   const item = renderedItems[virtualRow.index];
                   if (!item) return null;
                   return (
@@ -1767,7 +1901,8 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                     </div>
                   );
                 })}
-              </div>
+                </div>
+              )}
             </div>
 
             {Object.keys(typingUsers).length > 0 && (
@@ -2032,14 +2167,38 @@ function MessageBubble({
   const delivered = otherMembers.some((member) => presenceMap[member.user_id]);
 
   const effectiveStatus = status || (queueItem?.status === 'failed' ? 'failed' : queueItem?.status === 'scheduled' ? 'scheduled' : queueItem?.status === 'queued' ? 'queued' : undefined);
+
+  // Enhanced visual state with opacity and loading animations
+  const messageOpacity = effectiveStatus === 'sending' ? 0.6 : 1.0;
+
   const statusIcon = () => {
-    if (effectiveStatus === 'failed') return <XCircle className="w-4 h-4 text-red-500" />;
-    if (effectiveStatus === 'scheduled') return <Clock className="w-4 h-4 text-amber-500" />;
-    if (effectiveStatus === 'queued') return <Clock className="w-4 h-4 text-gray-500" />;
-    if (effectiveStatus === 'sending') return <Clock className="w-4 h-4 text-gray-400" />;
-    if (readByOthers) return <CheckCheck className="w-4 h-4 text-blue-500" />;
-    if (delivered) return <CheckCheck className="w-4 h-4 text-gray-500" />;
-    return <Check className="w-4 h-4 text-gray-400" />;
+    if (effectiveStatus === 'failed') {
+      return <XCircle className="w-4 h-4 text-red-500" data-testid="failed-icon" />;
+    }
+    if (effectiveStatus === 'scheduled') {
+      return <Clock className="w-4 h-4 text-amber-500" data-testid="scheduled-icon" />;
+    }
+    if (effectiveStatus === 'queued') {
+      return <Clock className="w-4 h-4 text-gray-500" data-testid="queued-icon" />;
+    }
+    if (effectiveStatus === 'sending') {
+      return <Loader className="w-4 h-4 text-gray-400 animate-spin" data-testid="sending-icon" />;
+    }
+    // Read receipts - blue double check means read
+    if (readByOthers) {
+      return <CheckCheck className="w-4 h-4 text-blue-500" data-testid="check-check-icon" title="Read" />;
+    }
+    // Delivered - gray double check means delivered (message exists in DB with real ID)
+    const isDelivered = !message.id.startsWith('temp-');
+    if (isDelivered && delivered) {
+      return <CheckCheck className="w-4 h-4 text-gray-400" data-testid="check-check-icon" title="Delivered" />;
+    }
+    // Sent - single check means sent to server
+    if (isDelivered) {
+      return <Check className="w-4 h-4 text-gray-400" data-testid="check-icon" title="Sent" />;
+    }
+    // Default for temp messages
+    return <Clock className="w-4 h-4 text-gray-400" data-testid="sending-icon" />;
   };
 
   return (
@@ -2047,7 +2206,7 @@ function MessageBubble({
       <div
         className={`max-w-[75%] rounded-2xl px-4 py-2 relative ${
           isOwn ? 'bg-green-500 text-white' : 'bg-white text-gray-900 shadow-sm'
-        }`}
+        } ${effectiveStatus === 'sending' ? 'opacity-60' : 'opacity-100'}`}
         data-testid="messageBubble"
         data-message-id={message.id}
       >
