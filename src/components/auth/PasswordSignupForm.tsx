@@ -71,18 +71,23 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
 
     setLoading(true);
     try {
-      if (emailValid !== true) {
-        setEmailValidating(true);
-        const result = await validateEmail(email);
-        setEmailValid(result.valid);
-        setEmailError(result.error || '');
-        setEmailValidating(false);
+      // STRICT: Always validate email before signup
+      setEmailValidating(true);
+      const result = await validateEmail(email);
+      setEmailValid(result.valid);
+      setEmailError(result.error || 'This email address is invalid or cannot receive emails');
+      setEmailValidating(false);
 
-        if (!result.valid) {
-          return;
-        }
+      // BLOCK signup if email is invalid
+      if (!result.valid) {
+        setLoading(false);
+        return;
       }
+
       await onSubmit(email, password, fullName, phone);
+    } catch (error) {
+      setEmailError('Failed to validate email. Please try again.');
+      setLoading(false);
     } finally {
       setLoading(false);
     }
@@ -134,18 +139,20 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
           </div>
         </div>
         {emailError && (
-          <p className="mt-1 text-xs text-red-600">
-            {emailError}
+          <p className="mt-1 text-xs text-red-600 font-medium">
+            ⚠️ {emailError}
           </p>
         )}
         {emailValid === true && (
-          <p className="mt-1 text-xs text-green-600">
-            Email is valid
+          <p className="mt-1 text-xs text-green-600 font-medium">
+            ✓ Email verified and can receive messages
           </p>
         )}
-        <p className="mt-1 text-xs text-gray-600">
-          Please double-check your email address to avoid typos
-        </p>
+        {!emailError && emailValid === null && (
+          <p className="mt-1 text-xs text-gray-600">
+            We'll verify this email can receive messages
+          </p>
+        )}
       </div>
 
       <div>
@@ -274,7 +281,7 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
 
       <button
         type="submit"
-        disabled={disabled || loading || !emailsMatch || !passwordValid || !passwordsMatch}
+        disabled={disabled || loading || emailValidating || !emailsMatch || !passwordValid || !passwordsMatch || emailValid === false}
         className="w-full bg-gradient-to-r from-red-600 to-orange-500 text-white py-3 rounded-xl font-semibold hover:from-red-700 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-red-500/30"
       >
         {loading ? (
