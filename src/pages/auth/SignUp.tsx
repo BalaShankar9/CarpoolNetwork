@@ -11,12 +11,24 @@ export default function SignUp() {
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const { signUp, signInWithGoogle } = useAuth();
+  const { signUp, signInWithGoogle, signInWithGitHub } = useAuth();
 
   const handleGoogleSignIn = async () => {
     setError('');
     try {
       const { error } = await signInWithGoogle();
+      if (error) {
+        setError(error.message);
+      }
+    } catch {
+      setError('An unexpected error occurred');
+    }
+  };
+
+  const handleGitHubSignIn = async () => {
+    setError('');
+    try {
+      const { error } = await signInWithGitHub();
       if (error) {
         setError(error.message);
       }
@@ -91,6 +103,7 @@ export default function SignUp() {
             <div className="space-y-4">
               <SocialAuthButtons
                 onGoogleSignIn={handleGoogleSignIn}
+                onGitHubSignIn={handleGitHubSignIn}
               />
 
               <div className="relative my-8">

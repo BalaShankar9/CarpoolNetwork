@@ -14,13 +14,24 @@ export default function SignIn() {
   const navigate = useNavigate();
   const [authMode, setAuthMode] = useState<AuthMode>('password');
   const [error, setError] = useState('');
-  const { signIn, signInWithGoogle, signInWithOTP } = useAuth();
-
+  const { signIn, signInWithGoogle, signInWithGitHub, signInWithOTP } = useAuth();
 
   const handleGoogleSignIn = async () => {
     setError('');
     try {
       const { error } = await signInWithGoogle();
+      if (error) {
+        setError(error.message);
+      }
+    } catch {
+      setError('An unexpected error occurred');
+    }
+  };
+
+  const handleGitHubSignIn = async () => {
+    setError('');
+    try {
+      const { error } = await signInWithGitHub();
       if (error) {
         setError(error.message);
       }
@@ -106,6 +117,7 @@ export default function SignIn() {
         <div className="space-y-4">
           <SocialAuthButtons
             onGoogleSignIn={handleGoogleSignIn}
+            onGitHubSignIn={handleGitHubSignIn}
           />
 
           <div className="relative my-8">
