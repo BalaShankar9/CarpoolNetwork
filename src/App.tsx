@@ -60,7 +60,7 @@ const LoadingScreen = () => (
 );
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, isEmailVerified } = useAuth();
 
   if (loading) {
     return <LoadingScreen />;
@@ -68,6 +68,11 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (!user) {
     return <Navigate to="/signin" replace />;
+  }
+
+  // Require email verification to access protected routes
+  if (!isEmailVerified) {
+    return <Navigate to="/verify-email" replace />;
   }
 
   return <>{children}</>;
