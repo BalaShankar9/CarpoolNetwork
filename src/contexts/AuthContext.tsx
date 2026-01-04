@@ -195,6 +195,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isPhone) {
         const { error } = await supabase.auth.signInWithOtp({
           phone: emailOrPhone,
+          options: {
+            shouldCreateUser: false,
+          },
         });
         return { error };
       } else {
