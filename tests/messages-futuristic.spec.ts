@@ -189,7 +189,7 @@ test.describe('Futuristic Messaging', () => {
     const filePath = path.join(process.cwd(), 'e2e', 'fixtures', 'temp-attachment.png');
     writeTempImage(filePath);
 
-    await page.setInputFiles('[data-testid="attachmentButton"] input[type=\"file\"]', filePath);
+    await page.setInputFiles('[data-testid="attachmentButton"] input[type="file"]', filePath);
     await page.locator('[data-testid="sendButton"]').click();
 
     const messageList = page.locator('[data-testid="messageList"]');

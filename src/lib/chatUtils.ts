@@ -1,12 +1,13 @@
 export type ChatMessageLite = {
   id?: string;
+  conversation_id?: string;
   client_generated_id?: string | null;
   created_at: string;
   sender_id: string;
   body?: string | null;
   message_type?: string | null;
   deleted_at?: string | null;
-  attachments?: Array<{ filename?: string }>;
+  attachments?: unknown[];
 };
 
 export const extractUrls = (text: string): string[] => {
@@ -26,8 +27,10 @@ export const formatMessagePreview = (message: ChatMessageLite): string => {
       return 'Video';
     case 'VOICE':
       return 'Voice note';
-    case 'FILE':
-      return message.attachments?.[0]?.filename || 'File';
+    case 'FILE': {
+      const firstAttachment = message.attachments?.[0] as { filename?: string } | undefined;
+      return firstAttachment?.filename || 'File';
+    }
     case 'RIDE_CARD':
       return 'Ride shared';
     case 'BOOKING_CARD':

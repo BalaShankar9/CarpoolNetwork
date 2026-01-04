@@ -26,6 +26,7 @@ import ClickableUserProfile from '../components/shared/ClickableUserProfile';
 
 interface BookingDetails {
   id: string;
+  passenger_id: string;
   pickup_location: string;
   dropoff_location: string;
   seats_requested: number;

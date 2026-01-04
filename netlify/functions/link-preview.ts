@@ -9,7 +9,7 @@ type LinkPreview = {
 
 const extractMeta = (html: string, name: string) => {
   const regex = new RegExp(
-    `<meta[^>]+(?:property|name)=[\"']${name}[\"'][^>]+content=[\"']([^\"']+)[\"'][^>]*>`,
+    `<meta[^>]+(?:property|name)=["']${name}["'][^>]+content=["']([^"']+)["'][^>]*>`,
     'i'
   );
   const match = html.match(regex);

@@ -24,7 +24,7 @@ import {
   VolumeX,
   XCircle,
 } from 'lucide-react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useVirtualizer, VirtualItem } from '@tanstack/react-virtual';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRealtime } from '../../contexts/RealtimeContext';
 import { supabase } from '../../lib/supabase';
@@ -341,7 +341,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
         items.push({ type: 'date', id: `date-${day}`, date: formatDay(message.created_at) });
         lastDate = day;
       }
-      items.push({ type: 'message', id: message.id, message });
+      items.push({ type: 'message', id: message.id || message.client_generated_id || `temp-${Date.now()}`, message });
     }
     return items;
   }, [combinedMessages]);
@@ -360,9 +360,9 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
   };
 
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-    if (!rowVirtualizer.getScrollElement()) return;
+    if (!messagesContainerRef.current) return;
     if (renderedItems.length === 0) return;
-    rowVirtualizer.scrollToIndex(renderedItems.length - 1, { align: 'end', behavior });
+    rowVirtualizer.scrollToIndex(renderedItems.length - 1, { align: 'end', behavior: behavior as 'smooth' | 'auto' });
   };
 
   const loadConversations = async () => {
@@ -1834,7 +1834,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                 </div>
               ) : (
                 <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
-                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  {rowVirtualizer.getVirtualItems().map((virtualRow: VirtualItem) => {
                   const item = renderedItems[virtualRow.index];
                   if (!item) return null;
                   return (
@@ -2186,16 +2186,16 @@ function MessageBubble({
     }
     // Read receipts - blue double check means read
     if (readByOthers) {
-      return <CheckCheck className="w-4 h-4 text-blue-500" data-testid="check-check-icon" title="Read" />;
+      return <span title="Read"><CheckCheck className="w-4 h-4 text-blue-500" data-testid="check-check-icon" /></span>;
     }
     // Delivered - gray double check means delivered (message exists in DB with real ID)
     const isDelivered = !message.id.startsWith('temp-');
     if (isDelivered && delivered) {
-      return <CheckCheck className="w-4 h-4 text-gray-400" data-testid="check-check-icon" title="Delivered" />;
+      return <span title="Delivered"><CheckCheck className="w-4 h-4 text-gray-400" data-testid="check-check-icon" /></span>;
     }
     // Sent - single check means sent to server
     if (isDelivered) {
-      return <Check className="w-4 h-4 text-gray-400" data-testid="check-icon" title="Sent" />;
+      return <span title="Sent"><Check className="w-4 h-4 text-gray-400" data-testid="check-icon" /></span>;
     }
     // Default for temp messages
     return <Clock className="w-4 h-4 text-gray-400" data-testid="sending-icon" />;
