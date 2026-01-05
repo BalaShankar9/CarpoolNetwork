@@ -55,13 +55,12 @@ function ServiceGatingModal({ isOpen, onClose, onCompleteSetup }: ServiceGatingM
 }
 
 export function useServiceGating() {
-  const { profile } = useAuth();
+  const { profile, isProfileComplete: authProfileComplete } = useAuth();
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
 
   const isProfileComplete = () => {
-    if (!profile) return false;
-    return !!(profile.profile_photo_path || profile.avatar_url || profile.profile_photo_url);
+    return authProfileComplete;
   };
 
   const checkAccess = (action: 'post-ride' | 'request-ride' | 'book-ride' | 'send-offer' | 'message'): boolean => {
@@ -75,7 +74,7 @@ export function useServiceGating() {
 
   const handleCompleteSetup = () => {
     setShowModal(false);
-    navigate('/profile');
+    navigate('/onboarding/profile');
   };
 
   const ServiceGatingModalComponent = () => (

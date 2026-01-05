@@ -50,6 +50,8 @@ const PerformanceMonitor = lazy(() => import('./pages/admin/PerformanceMonitor')
 const Leaderboards = lazy(() => import('./pages/Leaderboards'));
 const Challenges = lazy(() => import('./pages/Challenges'));
 const Settings = lazy(() => import('./pages/Settings'));
+const Friends = lazy(() => import('./pages/Friends'));
+const HelpHub = lazy(() => import('./pages/HelpHub'));
 
 const LoadingScreen = () => (
   <div className="min-h-screen bg-white flex items-center justify-center">
@@ -209,9 +211,7 @@ function AppContent() {
           } />
           <Route path="/onboarding/profile" element={
             <ProtectedRoute>
-              <Layout>
-                <ProfileOnboarding />
-              </Layout>
+              <ProfileOnboarding />
             </ProtectedRoute>
           } />
           <Route path="/user/:userId" element={
@@ -264,6 +264,20 @@ function AppContent() {
             <ProtectedRoute>
               <Layout>
                 <BookingDetails />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/friends" element={
+            <ProtectedRoute>
+              <Layout>
+                <Friends />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/help" element={
+            <ProtectedRoute>
+              <Layout>
+                <HelpHub />
               </Layout>
             </ProtectedRoute>
           } />

@@ -446,7 +446,7 @@ export default function PublicProfile() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-start gap-6">
-            <UserAvatar user={profile} size="2xl" verified={profile.photo_verified} />
+            <UserAvatar user={profile} size="2xl" verified={profile.photo_verified ?? undefined} />
 
             <div className="flex-1">
               <div className="flex items-start justify-between mb-2">
@@ -463,10 +463,10 @@ export default function PublicProfile() {
 
               <VerificationBadges
                 profileId={profile.id}
-                photoVerified={profile.photo_verified}
-                idVerified={profile.id_verified}
-                phoneVerified={profile.phone_verified}
-                emailVerified={profile.email_verified}
+                photoVerified={profile.photo_verified ?? undefined}
+                idVerified={profile.id_verified ?? undefined}
+                phoneVerified={profile.phone_verified ?? undefined}
+                emailVerified={profile.email_verified ?? undefined}
                 includeDocuments={false}
                 readOnly
               />

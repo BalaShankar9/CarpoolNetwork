@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Search, PlusCircle, Calendar, MessageSquare, User, LogOut, MessageCircle, LayoutDashboard, UserCheck, Activity, Bug, MapPin, Settings, Users, Bell } from 'lucide-react';
+import { Home, Search, PlusCircle, Calendar, MessageSquare, User, LogOut, MessageCircle, LayoutDashboard, UserCheck, Activity, Bug, MapPin, Settings, Users, Bell, UserPlus, HelpCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import Logo from '../shared/Logo';
@@ -39,7 +39,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: '/request-ride', icon: MapPin, label: 'Request Ride' },
     { to: '/my-rides', icon: Calendar, label: 'My Rides' },
     { to: '/messages', icon: MessageSquare, label: 'Messages' },
+    { to: '/friends', icon: UserPlus, label: 'Friends' },
     { to: '/community', icon: Users, label: 'Community' },
+    { to: '/help', icon: HelpCircle, label: 'Help' },
     { to: '/profile', icon: User, label: 'Profile' },
     { to: '/settings', icon: Settings, label: 'Settings' },
   ];

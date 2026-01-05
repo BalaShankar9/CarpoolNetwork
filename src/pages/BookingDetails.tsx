@@ -256,7 +256,7 @@ export default function BookingDetails() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const message = `EMERGENCY: I need help!\n\nBooking ID: ${bookingId}\nDriver: ${booking?.ride.driver.full_name}\nMy Location: https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}\n\nThis is an automated emergency alert.`;
+          const message = `EMERGENCY: I need help!\n\nBooking ID: ${bookingId}\nDriver: ${booking?.ride.driver?.full_name ?? 'Unknown'}\nMy Location: https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}\n\nThis is an automated emergency alert.`;
 
           alert('SOS Activated!\n\n' + message + '\n\nIn a real emergency:\n1. Call emergency services (911)\n2. Contact driver\n3. Share your live location with trusted contacts');
 
