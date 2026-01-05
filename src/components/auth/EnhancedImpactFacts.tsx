@@ -55,7 +55,7 @@ export default function EnhancedImpactFacts({
 
   return (
     <div className="mt-6 pt-6 border-t border-gray-200">
-      <div className={`transition-opacity duration-200 ${fade ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`transition-opacity duration-200 min-h-[80px] ${fade ? 'opacity-100' : 'opacity-0'}`}>
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0 mt-0.5">
             <Lightbulb className="w-5 h-5 text-blue-600" />
