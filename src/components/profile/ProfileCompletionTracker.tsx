@@ -38,9 +38,9 @@ export default function ProfileCompletionTracker() {
     {
       id: 'phone',
       label: 'Phone Number',
-      completed: !!profile.phone,
+      completed: !!profile.phone_e164 && !!profile.phone_verified,
       icon: Phone,
-      description: 'Add your contact phone number',
+      description: 'Add and verify your phone number',
       link: '#edit-profile',
       benefit: '+15% visibility'
     },

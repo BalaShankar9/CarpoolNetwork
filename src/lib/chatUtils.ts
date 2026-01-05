@@ -10,6 +10,16 @@ export type ChatMessageLite = {
   attachments?: unknown[];
 };
 
+export type ConversationSummaryLite = {
+  id: string;
+  pinned?: boolean;
+  last_message_at?: string | null;
+  updated_at?: string | null;
+  unread_count?: number;
+  last_message_preview?: string | null;
+  last_sender_id?: string | null;
+};
+
 export const extractUrls = (text: string): string[] => {
   if (!text) return [];
   const regex = /(https?:\/\/[^\s]+)/gim;
@@ -78,4 +88,58 @@ export const dedupeMessages = <T extends ChatMessageLite>(messages: T[]): T[] =>
     merged.push(msg);
   }
   return merged;
+};
+
+const getConversationTime = (value?: string | null): number => {
+  if (!value) return 0;
+  return new Date(value).getTime();
+};
+
+export const sortConversations = <T extends ConversationSummaryLite>(items: T[]): T[] => {
+  return [...items].sort((a, b) => {
+    const aPinned = Boolean(a.pinned);
+    const bPinned = Boolean(b.pinned);
+    if (aPinned !== bPinned) return aPinned ? -1 : 1;
+
+    const aPrimary = getConversationTime(a.last_message_at) || getConversationTime(a.updated_at);
+    const bPrimary = getConversationTime(b.last_message_at) || getConversationTime(b.updated_at);
+    if (aPrimary !== bPrimary) return bPrimary - aPrimary;
+
+    return getConversationTime(b.updated_at) - getConversationTime(a.updated_at);
+  });
+};
+
+export const applyIncomingMessageToConversations = <T extends ConversationSummaryLite>(
+  conversations: T[],
+  message: ChatMessageLite,
+  options: { incrementUnread?: boolean } = {}
+): T[] => {
+  const index = conversations.findIndex((conv) => conv.id === message.conversation_id);
+  if (index === -1) return conversations;
+
+  const current = conversations[index];
+  const unreadCount = Number(current.unread_count || 0);
+  const updated: T = {
+    ...current,
+    last_message_at: message.created_at,
+    last_message_preview: formatMessagePreview(message),
+    last_sender_id: message.sender_id,
+    unread_count: options.incrementUnread ? unreadCount + 1 : unreadCount,
+  };
+
+  const next = [...conversations];
+  next[index] = updated;
+  return sortConversations(next);
+};
+
+export const markConversationRead = <T extends ConversationSummaryLite>(
+  conversations: T[],
+  conversationId: string
+): T[] => {
+  const index = conversations.findIndex((conv) => conv.id === conversationId);
+  if (index === -1) return conversations;
+
+  const next = [...conversations];
+  next[index] = { ...next[index], unread_count: 0 };
+  return next;
 };

@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import SmartRecommendations from '../components/shared/SmartRecommendations';
 import ClickableUserProfile from '../components/shared/ClickableUserProfile';
+import { fetchPublicProfilesByIds, PublicProfile } from '../services/publicProfiles';
 
 interface Stats {
   totalRidesOffered: number;
@@ -19,13 +20,8 @@ interface RecentRide {
   destination: string;
   departure_time: string;
   available_seats: number;
-  driver: {
-    id: string;
-    full_name: string;
-    average_rating: number;
-    avatar_url?: string | null;
-    profile_photo_url?: string | null;
-  } | null;
+  driver_id: string;
+  driver: PublicProfile | null;
 }
 
 export default function Home() {
@@ -90,7 +86,7 @@ export default function Home() {
           destination,
           departure_time,
           available_seats,
-          driver:profiles!rides_driver_id_fkey(id, full_name, average_rating, avatar_url, profile_photo_url)
+          driver_id
         `)
         .eq('status', 'active')
         .gt('available_seats', 0)
@@ -105,9 +101,15 @@ export default function Home() {
         activeRides: activeRidesData?.length || 0,
       });
 
-      const filteredRides = ((recentRidesData as any) || []).filter(
-        (ride: RecentRide) => ride.available_seats > 0
-      );
+      const rides = (recentRidesData as RecentRide[]) || [];
+      const driverIds = rides.map((ride) => ride.driver_id);
+      const driversById = await fetchPublicProfilesByIds(driverIds);
+      const filteredRides = rides
+        .filter((ride) => ride.available_seats > 0)
+        .map((ride) => ({
+          ...ride,
+          driver: driversById[ride.driver_id] || null,
+        }));
       setRecentRides(filteredRides);
     } catch (error) {
       console.error('Error loading dashboard data:', error);

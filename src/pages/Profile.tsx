@@ -66,7 +66,7 @@ function isDateExpired(dateString?: string): boolean {
 }
 
 export default function Profile() {
-  const { user, profile, updateProfile, loading: authLoading } = useAuth();
+  const { user, profile, updateProfile, loading: authLoading, isProfileComplete, profileMissingFields } = useAuth();
   const navigate = useNavigate();
   const [showVehicleForm, setShowVehicleForm] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -90,7 +90,9 @@ export default function Profile() {
   const [uploadErrors, setUploadErrors] = useState<{ [key: string]: string | null }>({});
   const [editForm, setEditForm] = useState({
     full_name: '',
-    phone: '',
+    phone_e164: '',
+    country: '',
+    city: '',
     bio: '',
     whatsapp_number: '',
     preferred_contact_method: 'both' as 'in_app' | 'whatsapp' | 'both',
@@ -105,6 +107,7 @@ export default function Profile() {
   });
   const [preferencesLoading, setPreferencesLoading] = useState(false);
   const [preferencesSaving, setPreferencesSaving] = useState(false);
+  const displayName = profile?.full_name || 'Unnamed';
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -116,7 +119,9 @@ export default function Profile() {
       loadPreferences();
       setEditForm({
         full_name: profile.full_name || '',
-        phone: profile.phone || '',
+        phone_e164: profile.phone_e164 || profile.phone || '',
+        country: profile.country || profile.country_of_residence || '',
+        city: profile.city || '',
         bio: profile.bio || '',
         whatsapp_number: (profile as any).whatsapp_number || '',
         preferred_contact_method: (profile as any).preferred_contact_method || 'both',
@@ -361,7 +366,20 @@ export default function Profile() {
     setSaving(true);
 
     try {
-      const { error } = await updateProfile(editForm);
+      const phoneE164 = editForm.phone_e164.trim() || null;
+      const updates = {
+        full_name: editForm.full_name,
+        phone_e164: phoneE164,
+        phone: phoneE164,
+        phone_number: phoneE164,
+        country: editForm.country || null,
+        country_of_residence: editForm.country || null,
+        city: editForm.city || null,
+        bio: editForm.bio,
+        whatsapp_number: editForm.whatsapp_number || null,
+        preferred_contact_method: editForm.preferred_contact_method,
+      };
+      const { error } = await updateProfile(updates);
       if (error) {
         setError(error.message);
       } else {
@@ -620,10 +638,10 @@ export default function Profile() {
           <div className="relative w-24 h-24 flex-shrink-0">
             <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200">
               {profilePhotoUrl ? (
-                <img src={profilePhotoUrl} alt={profile.full_name} className="w-24 h-24 rounded-full object-cover" />
+                <img src={profilePhotoUrl} alt={displayName} className="w-24 h-24 rounded-full object-cover" />
               ) : (
                 <span className="text-3xl font-bold text-blue-600">
-                  {profile.full_name.charAt(0).toUpperCase()}
+                  {displayName.charAt(0).toUpperCase()}
                 </span>
               )}
             </div>
@@ -660,7 +678,12 @@ export default function Profile() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-3 mb-2">
-              <h2 className="text-2xl font-bold text-gray-900">{profile.full_name}</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{displayName}</h2>
+              {!isProfileComplete && (
+                <span className="px-2 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-medium">
+                  Incomplete
+                </span>
+              )}
               {profile.profile_verified && (
                 <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium flex items-center gap-1">
                   <CheckCircle className="w-3 h-3" />
@@ -722,13 +745,13 @@ export default function Profile() {
             <p className="text-gray-900">{profile.email}</p>
           </div>
 
-          {profile.phone && (
+          {(profile.phone_e164 || profile.phone) && (
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                 <Phone className="w-4 h-4" />
                 Phone
               </label>
-              <p className="text-gray-900">{profile.phone}</p>
+              <p className="text-gray-900">{profile.phone_e164 || profile.phone}</p>
             </div>
           )}
 
@@ -974,7 +997,7 @@ export default function Profile() {
             <form onSubmit={handleUpdateProfile} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name
+                  Full Name *
                 </label>
                 <input
                   type="text"
@@ -987,12 +1010,38 @@ export default function Profile() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number
+                  Phone Number (E.164) *
                 </label>
                 <input
                   type="tel"
-                  value={editForm.phone}
-                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  value={editForm.phone_e164}
+                  onChange={(e) => setEditForm({ ...editForm, phone_e164: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="+447700900000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Country of Residence *
+                </label>
+                <input
+                  type="text"
+                  value={editForm.country}
+                  onChange={(e) => setEditForm({ ...editForm, country: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="GB or United Kingdom"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  City (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={editForm.city}
+                  onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>

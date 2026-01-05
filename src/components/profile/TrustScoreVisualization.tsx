@@ -87,13 +87,13 @@ export default function TrustScoreVisualization() {
       description: 'Verified email address',
       status: profile.is_verified ? 'complete' : 'missing'
     },
-    {
-      category: 'Phone Verification',
-      earned: profile.phone ? 10 : 0,
-      possible: 10,
-      description: 'Phone number added',
-      status: profile.phone ? 'complete' : 'missing'
-    },
+      {
+        category: 'Phone Verification',
+        earned: profile.phone_e164 && profile.phone_verified ? 10 : 0,
+        possible: 10,
+        description: 'Phone verified',
+        status: profile.phone_e164 && profile.phone_verified ? 'complete' : 'missing'
+      },
     {
       category: 'Profile Photo',
       earned: (profile as any).profile_verified ? 15 : 0,

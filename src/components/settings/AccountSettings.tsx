@@ -13,7 +13,7 @@ export default function AccountSettings() {
   const [formData, setFormData] = useState({
     full_name: '',
     bio: '',
-    phone: '',
+    phone_e164: '',
     whatsapp_number: '',
     date_of_birth: '',
     gender: '',
@@ -28,7 +28,7 @@ export default function AccountSettings() {
       setFormData({
         full_name: profile.full_name || '',
         bio: profile.bio || '',
-        phone: profile.phone || '',
+        phone_e164: profile.phone_e164 || profile.phone || '',
         whatsapp_number: profile.whatsapp_number || '',
         date_of_birth: profile.date_of_birth || '',
         gender: profile.gender || '',
@@ -46,9 +46,15 @@ export default function AccountSettings() {
       setError('');
       setSuccess('');
 
+      const phoneE164 = formData.phone_e164.trim() || null;
       const { error: updateError } = await supabase
         .from('profiles')
-        .update(formData)
+        .update({
+          ...formData,
+          phone_e164: phoneE164,
+          phone: phoneE164,
+          phone_number: phoneE164,
+        })
         .eq('id', profile?.id);
 
       if (updateError) throw updateError;
@@ -100,7 +106,7 @@ export default function AccountSettings() {
                     setFormData({
                       full_name: profile.full_name || '',
                       bio: profile.bio || '',
-                      phone: profile.phone || '',
+                      phone_e164: profile.phone_e164 || profile.phone || '',
                       whatsapp_number: profile.whatsapp_number || '',
                       date_of_birth: profile.date_of_birth || '',
                       gender: profile.gender || '',
@@ -160,18 +166,18 @@ export default function AccountSettings() {
               <Phone className="w-4 h-4" />
               Phone Number
             </label>
-            {isEditing ? (
-              <input
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="+44 7XXX XXXXXX"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            ) : (
-              <p className="text-gray-900">{formData.phone || 'Not set'}</p>
-            )}
-          </div>
+              {isEditing ? (
+                <input
+                  type="tel"
+                  value={formData.phone_e164}
+                  onChange={(e) => setFormData({ ...formData, phone_e164: e.target.value })}
+                  placeholder="+44 7XXX XXXXXX"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              ) : (
+                <p className="text-gray-900">{formData.phone_e164 || 'Not set'}</p>
+              )}
+            </div>
 
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">

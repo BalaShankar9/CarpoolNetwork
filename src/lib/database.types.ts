@@ -9,116 +9,143 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          id: string;
-          email: string;
-          full_name: string;
-          avatar_url: string | null;
-          phone: string | null;
-          phone_number: string | null;
-          bio: string | null;
-          city: string | null;
-          country: string | null;
-          date_of_birth: string | null;
-          gender: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | null;
-          is_verified: boolean;
-          email_verified: boolean | null;
-          phone_verified: boolean | null;
-          photo_verified: boolean | null;
-          id_verified: boolean | null;
-          verification_badge: 'email' | 'phone' | 'id' | 'background-check' | null;
-          total_rides_offered: number;
-          total_rides_taken: number;
-          average_rating: number;
-          created_at: string;
-          updated_at: string;
-          trust_score: number;
-          profile_photo_path: string | null;
-          profile_photo_url: string | null;
-          profile_verified: boolean;
-          reliability_score: number;
-          is_admin: boolean;
-          whatsapp_number: string | null;
-          preferred_contact_method: 'in_app' | 'whatsapp' | 'both' | null;
-          language: string | null;
-          timezone: string | null;
-          profile_completion_percentage: number | null;
-          onboarding_completed: boolean;
+        profiles: {
+          Row: {
+            id: string;
+            email: string;
+            full_name: string;
+            avatar_url: string | null;
+            phone: string | null;
+            phone_number: string | null;
+            phone_e164: string | null;
+            bio: string | null;
+            city: string | null;
+            country: string | null;
+            country_of_residence: string | null;
+            languages: string[] | null;
+            date_of_birth: string | null;
+            gender: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | null;
+            is_verified: boolean;
+            email_verified: boolean | null;
+            phone_verified: boolean | null;
+            photo_verified: boolean | null;
+            id_verified: boolean | null;
+            verification_badge: 'email' | 'phone' | 'id' | 'background-check' | null;
+            total_rides_offered: number;
+            total_rides_taken: number;
+            average_rating: number;
+            created_at: string;
+            updated_at: string;
+            trust_score: number;
+            profile_photo_path: string | null;
+            profile_photo_url: string | null;
+            profile_verified: boolean;
+            reliability_score: number;
+            is_admin: boolean;
+            whatsapp_number: string | null;
+            whatsapp_e164: string | null;
+            phone_visibility: 'none' | 'friends' | 'ride_only' | 'anyone';
+            whatsapp_visibility: 'none' | 'friends' | 'ride_only' | 'anyone';
+            preferred_contact_method: 'in_app' | 'whatsapp' | 'both' | null;
+            language: string | null;
+            timezone: string | null;
+            profile_completion_percentage: number | null;
+            onboarding_completed: boolean;
+            ethnicity: string | null;
+            ethnicity_consent: boolean;
+            ethnicity_visibility: 'none' | 'friends' | 'anyone';
+          };
+          Insert: {
+            id: string;
+            email: string;
+            full_name: string;
+            avatar_url?: string | null;
+            phone?: string | null;
+            phone_number?: string | null;
+            phone_e164?: string | null;
+            bio?: string | null;
+            city?: string | null;
+            country?: string | null;
+            country_of_residence?: string | null;
+            languages?: string[] | null;
+            date_of_birth?: string | null;
+            gender?: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | null;
+            is_verified?: boolean;
+            email_verified?: boolean | null;
+            phone_verified?: boolean | null;
+            photo_verified?: boolean | null;
+            id_verified?: boolean | null;
+            verification_badge?: 'email' | 'phone' | 'id' | 'background-check' | null;
+            total_rides_offered?: number;
+            total_rides_taken?: number;
+            average_rating?: number;
+            created_at?: string;
+            updated_at?: string;
+            trust_score?: number;
+            profile_photo_path?: string | null;
+            profile_photo_url?: string | null;
+            profile_verified?: boolean;
+            reliability_score?: number;
+            is_admin?: boolean;
+            whatsapp_number?: string | null;
+            whatsapp_e164?: string | null;
+            phone_visibility?: 'none' | 'friends' | 'ride_only' | 'anyone';
+            whatsapp_visibility?: 'none' | 'friends' | 'ride_only' | 'anyone';
+            preferred_contact_method?: 'in_app' | 'whatsapp' | 'both' | null;
+            language?: string | null;
+            timezone?: string | null;
+            profile_completion_percentage?: number | null;
+            onboarding_completed?: boolean;
+            ethnicity?: string | null;
+            ethnicity_consent?: boolean;
+            ethnicity_visibility?: 'none' | 'friends' | 'anyone';
+          };
+          Update: {
+            id?: string;
+            email?: string;
+            full_name?: string;
+            avatar_url?: string | null;
+            phone?: string | null;
+            phone_number?: string | null;
+            phone_e164?: string | null;
+            bio?: string | null;
+            city?: string | null;
+            country?: string | null;
+            country_of_residence?: string | null;
+            languages?: string[] | null;
+            date_of_birth?: string | null;
+            gender?: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | null;
+            is_verified?: boolean;
+            email_verified?: boolean | null;
+            phone_verified?: boolean | null;
+            photo_verified?: boolean | null;
+            id_verified?: boolean | null;
+            verification_badge?: 'email' | 'phone' | 'id' | 'background-check' | null;
+            total_rides_offered?: number;
+            total_rides_taken?: number;
+            average_rating?: number;
+            created_at?: string;
+            updated_at?: string;
+            trust_score?: number;
+            profile_photo_path?: string | null;
+            profile_photo_url?: string | null;
+            profile_verified?: boolean;
+            reliability_score?: number;
+            is_admin?: boolean;
+            whatsapp_number?: string | null;
+            whatsapp_e164?: string | null;
+            phone_visibility?: 'none' | 'friends' | 'ride_only' | 'anyone';
+            whatsapp_visibility?: 'none' | 'friends' | 'ride_only' | 'anyone';
+            preferred_contact_method?: 'in_app' | 'whatsapp' | 'both' | null;
+            language?: string | null;
+            timezone?: string | null;
+            profile_completion_percentage?: number | null;
+            onboarding_completed?: boolean;
+            ethnicity?: string | null;
+            ethnicity_consent?: boolean;
+            ethnicity_visibility?: 'none' | 'friends' | 'anyone';
+          };
         };
-        Insert: {
-          id: string;
-          email: string;
-          full_name: string;
-          avatar_url?: string | null;
-          phone?: string | null;
-          phone_number?: string | null;
-          bio?: string | null;
-          city?: string | null;
-          country?: string | null;
-          date_of_birth?: string | null;
-          gender?: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | null;
-          is_verified?: boolean;
-          email_verified?: boolean | null;
-          phone_verified?: boolean | null;
-          photo_verified?: boolean | null;
-          id_verified?: boolean | null;
-          verification_badge?: 'email' | 'phone' | 'id' | 'background-check' | null;
-          total_rides_offered?: number;
-          total_rides_taken?: number;
-          average_rating?: number;
-          created_at?: string;
-          updated_at?: string;
-          trust_score?: number;
-          profile_photo_path?: string | null;
-          profile_photo_url?: string | null;
-          profile_verified?: boolean;
-          reliability_score?: number;
-          is_admin?: boolean;
-          whatsapp_number?: string | null;
-          preferred_contact_method?: 'in_app' | 'whatsapp' | 'both' | null;
-          language?: string | null;
-          timezone?: string | null;
-          profile_completion_percentage?: number | null;
-          onboarding_completed?: boolean;
-        };
-        Update: {
-          id?: string;
-          email?: string;
-          full_name?: string;
-          avatar_url?: string | null;
-          phone?: string | null;
-          phone_number?: string | null;
-          bio?: string | null;
-          city?: string | null;
-          country?: string | null;
-          date_of_birth?: string | null;
-          gender?: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | null;
-          is_verified?: boolean;
-          email_verified?: boolean | null;
-          phone_verified?: boolean | null;
-          photo_verified?: boolean | null;
-          id_verified?: boolean | null;
-          verification_badge?: 'email' | 'phone' | 'id' | 'background-check' | null;
-          total_rides_offered?: number;
-          total_rides_taken?: number;
-          average_rating?: number;
-          created_at?: string;
-          updated_at?: string;
-          trust_score?: number;
-          profile_photo_path?: string | null;
-          profile_photo_url?: string | null;
-          profile_verified?: boolean;
-          reliability_score?: number;
-          is_admin?: boolean;
-          whatsapp_number?: string | null;
-          preferred_contact_method?: 'in_app' | 'whatsapp' | 'both' | null;
-          language?: string | null;
-          timezone?: string | null;
-          profile_completion_percentage?: number | null;
-          onboarding_completed?: boolean;
-        };
-      };
       user_preferences: {
         Row: {
           user_id: string;
@@ -894,38 +921,79 @@ export type Database = {
           updated_at?: string;
         };
       };
-    };
-    Views: {
-      [_ in never]: never;
-    };
-    Functions: {
-      calculate_compatibility_score: {
-        Args: {
-          p_driver_id: string;
-          p_passenger_id: string;
-          p_ride_id?: string;
-        };
-        Returns: Json;
       };
-      get_filtered_rides_with_scores: {
-        Args: {
-          p_user_id: string;
-          p_filter_settings?: Json;
+      Views: {
+        profile_public_v: {
+          Row: {
+            id: string;
+            full_name: string;
+            avatar_url: string | null;
+            profile_photo_url: string | null;
+            created_at: string;
+            country_of_residence: string | null;
+            country: string | null;
+            city: string | null;
+            bio: string | null;
+            languages: string[] | null;
+            phone_verified: boolean | null;
+            email_verified: boolean | null;
+            photo_verified: boolean | null;
+            id_verified: boolean | null;
+            profile_verified: boolean;
+            preferred_contact_method: string | null;
+            allow_inhouse_chat: boolean | null;
+            allow_whatsapp_chat: boolean | null;
+            trust_score: number;
+            average_rating: number;
+            reliability_score: number;
+            total_rides_offered: number;
+            total_rides_taken: number;
+            phone_visibility: 'none' | 'friends' | 'ride_only' | 'anyone';
+            whatsapp_visibility: 'none' | 'friends' | 'ride_only' | 'anyone';
+          };
         };
-        Returns: {
-          ride_id: string;
-          driver_id: string;
-          origin: string;
-          destination: string;
-          departure_time: string;
-          available_seats: number;
-          compatibility_score: number;
-          compatibility_breakdown: Json;
-          is_preferred_driver: boolean;
-          is_instant_bookable: boolean;
-        }[];
       };
-    };
+      Functions: {
+        can_view_phone: {
+          Args: {
+            p_viewer: string;
+            p_owner: string;
+          };
+          Returns: boolean;
+        };
+        calculate_compatibility_score: {
+          Args: {
+            p_driver_id: string;
+            p_passenger_id: string;
+            p_ride_id?: string;
+          };
+          Returns: Json;
+        };
+        get_filtered_rides_with_scores: {
+          Args: {
+            p_user_id: string;
+            p_filter_settings?: Json;
+          };
+          Returns: {
+            ride_id: string;
+            driver_id: string;
+            origin: string;
+            destination: string;
+            departure_time: string;
+            available_seats: number;
+            compatibility_score: number;
+            compatibility_breakdown: Json;
+            is_preferred_driver: boolean;
+            is_instant_bookable: boolean;
+          }[];
+        };
+        is_profile_complete: {
+          Args: {
+            p_user_id?: string;
+          };
+          Returns: boolean;
+        };
+      };
     Enums: {
       [_ in never]: never;
     };

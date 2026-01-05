@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Search, MapPin, Calendar, Users, Filter } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { fetchPublicProfilesByIds, PublicProfile } from '../../services/publicProfiles';
 import type { Database } from '../../lib/database.types';
 
 type Ride = Database['public']['Tables']['rides']['Row'] & {
-  driver: Database['public']['Tables']['profiles']['Row'];
+  driver_id: string;
+  driver: PublicProfile | null;
   vehicle: Database['public']['Tables']['vehicles']['Row'];
 };
 
@@ -26,7 +28,6 @@ export default function RideSearch() {
         .from('rides')
         .select(`
           *,
-          driver:profiles!rides_driver_id_fkey(*),
           vehicle:vehicles(*)
         `)
         .eq('status', 'active')
@@ -36,7 +37,13 @@ export default function RideSearch() {
         .limit(20);
 
       if (error) throw error;
-      setRides(data as Ride[]);
+      const ridesData = (data || []) as Ride[];
+      const driversById = await fetchPublicProfilesByIds(ridesData.map((ride) => ride.driver_id));
+      const ridesWithDrivers = ridesData.map((ride) => ({
+        ...ride,
+        driver: driversById[ride.driver_id] || null,
+      }));
+      setRides(ridesWithDrivers);
     } catch (error) {
       console.error('Error searching rides:', error);
     } finally {
@@ -197,17 +204,17 @@ export default function RideSearch() {
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
                     <span className="text-2xl font-bold text-blue-600">
-                      {ride.driver.full_name.charAt(0)}
+                      {(ride.driver?.full_name || 'D').charAt(0)}
                     </span>
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">{ride.driver.full_name}</p>
+                    <p className="font-semibold text-gray-900">{ride.driver?.full_name || 'Driver'}</p>
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <span className="flex items-center gap-1">
-                        ⭐ {ride.driver.average_rating.toFixed(1)}
+                        ⭐ {(ride.driver?.average_rating || 0).toFixed(1)}
                       </span>
                       <span>•</span>
-                      <span>{ride.driver.total_rides_offered} rides</span>
+                      <span>{ride.driver?.total_rides_offered || 0} rides</span>
                     </div>
                   </div>
                 </div>

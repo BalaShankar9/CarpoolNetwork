@@ -19,6 +19,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { unreadNotifications, unreadMessages } = useRealtime();
+  const displayName = profile?.full_name || 'Account';
 
   const handleSignOut = async () => {
     try {
@@ -65,7 +66,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-gray-900">{profile?.full_name}</p>
+                <p className="text-sm font-medium text-gray-900">{displayName}</p>
                 <p className="text-xs text-gray-500">Rating {profile?.average_rating?.toFixed(1) || '0.0'}</p>
               </div>
               <div className="relative hidden sm:block">

@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { computeUnreadCount, dedupeMessages, formatMessagePreview } from '../src/lib/chatUtils';
+import {
+  applyIncomingMessageToConversations,
+  computeUnreadCount,
+  dedupeMessages,
+  formatMessagePreview,
+  markConversationRead,
+} from '../src/lib/chatUtils';
 
 describe('chatUtils', () => {
   it('dedupes messages by id or client_generated_id', () => {
@@ -28,5 +34,45 @@ describe('chatUtils', () => {
       message_type: 'VOICE',
     });
     expect(preview).toBe('Voice note');
+  });
+
+  it('updates conversation ordering and unread count on incoming message', () => {
+    const conversations = [
+      {
+        id: 'conv-1',
+        pinned: false,
+        last_message_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        unread_count: 0,
+      },
+      {
+        id: 'conv-2',
+        pinned: false,
+        last_message_at: '2024-01-01T00:10:00Z',
+        updated_at: '2024-01-01T00:10:00Z',
+        unread_count: 0,
+      },
+    ];
+
+    const message = {
+      conversation_id: 'conv-1',
+      created_at: '2024-01-01T00:20:00Z',
+      sender_id: 'u2',
+      body: 'hello',
+    };
+
+    const next = applyIncomingMessageToConversations(conversations, message, { incrementUnread: true });
+    expect(next[0].id).toBe('conv-1');
+    expect(next[0].unread_count).toBe(1);
+  });
+
+  it('resets unread count when marking conversation as read', () => {
+    const conversations = [
+      { id: 'conv-1', unread_count: 3 },
+      { id: 'conv-2', unread_count: 1 },
+    ];
+
+    const next = markConversationRead(conversations, 'conv-1');
+    expect(next.find((conv) => conv.id === 'conv-1')?.unread_count).toBe(0);
   });
 });

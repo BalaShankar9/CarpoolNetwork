@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
+import { getAllowOtpSignups } from '../utils/authOtp';
+import { getProfileMissingFields, isProfileComplete as isProfileCompleteUtil } from '../utils/profileCompleteness';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -12,6 +14,8 @@ interface AuthContextType {
   loading: boolean;
   isEmailVerified: boolean;
   isAdmin: boolean;
+  isProfileComplete: boolean;
+  profileMissingFields: string[];
   signUp: (email: string, password: string, fullName: string, phone: string) => Promise<{ error: AuthError | null; requiresEmailConfirmation?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
@@ -32,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const allowOtpSignups = getAllowOtpSignups();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -84,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: user.id,
             email: fallbackEmail,
             full_name: fallbackName,
+            phone_e164: user.phone || null,
             phone: user.phone || null,
           }])
           .select()
@@ -132,19 +138,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!data.user) return { error: new AuthError('User creation failed'), requiresEmailConfirmation: false };
 
       const requiresEmailConfirmation = !data.session;
-
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([{
-          id: data.user.id,
-          email: data.user.email!,
-          full_name: fullName,
-          phone: phone,
-        }]);
-
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
-      }
 
       return { error: null, requiresEmailConfirmation };
     } catch (error) {
@@ -196,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { error } = await supabase.auth.signInWithOtp({
           phone: emailOrPhone,
           options: {
-            shouldCreateUser: false,
+            shouldCreateUser: allowOtpSignups,
           },
         });
         return { error };
@@ -204,7 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { error } = await supabase.auth.signInWithOtp({
           email: emailOrPhone,
           options: {
-            shouldCreateUser: false,
+            shouldCreateUser: allowOtpSignups,
           },
         });
         return { error };
@@ -280,6 +273,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const skipEmailVerification = import.meta.env.VITE_SKIP_EMAIL_VERIFICATION === 'true';
   const isEmailVerified = skipEmailVerification || !!user?.email_confirmed_at;
   const isAdmin = profile?.is_admin === true;
+  const profileMissingFields = getProfileMissingFields(profile);
+  const isProfileComplete = isProfileCompleteUtil(profile);
 
   const value = {
     user,
@@ -288,6 +283,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     isEmailVerified,
     isAdmin,
+    isProfileComplete,
+    profileMissingFields,
     signUp,
     signIn,
     signInWithGoogle,

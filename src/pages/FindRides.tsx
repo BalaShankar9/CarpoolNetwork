@@ -7,6 +7,7 @@ import LocationAutocomplete from '../components/shared/LocationAutocomplete';
 import { googleMapsService } from '../services/googleMapsService';
 import UserAvatar from '../components/shared/UserAvatar';
 import { getUserProfilePath } from '../utils/profileNavigation';
+import { fetchPublicProfilesByIds, PublicProfile } from '../services/publicProfiles';
 
 interface Ride {
   id: string;
@@ -20,15 +21,8 @@ interface Ride {
   notes: string | null;
   origin_lat: number;
   origin_lng: number;
-  driver: {
-    id: string;
-    full_name: string;
-    avatar_url: string | null;
-    average_rating: number;
-    total_rides_offered: number;
-    email_verified?: boolean | null;
-    phone_verified?: boolean | null;
-  };
+  driver_id: string;
+  driver: PublicProfile | null;
   vehicle: {
     make: string;
     model: string;
@@ -150,7 +144,6 @@ export default function FindRides() {
         .from('rides')
         .select(`
           *,
-          driver:profiles!rides_driver_id_fkey(*),
           vehicle:vehicles(*)
         `)
         .eq('status', 'active')
@@ -162,6 +155,11 @@ export default function FindRides() {
 
       if (error) throw error;
       const ridesData = data || [];
+      const driversById = await fetchPublicProfilesByIds(ridesData.map((ride: Ride) => ride.driver_id));
+      const ridesWithDrivers = ridesData.map((ride: Ride) => ({
+        ...ride,
+        driver: driversById[ride.driver_id] || null,
+      }));
 
       const [bookingsResult, reliabilityResult] = await Promise.all([
         supabase
@@ -178,7 +176,7 @@ export default function FindRides() {
       const bookings = bookingsResult.data || [];
       const reliabilityScores = reliabilityResult.data || [];
 
-      const ridesWithBookings = await Promise.all(ridesData.map(async (ride) => {
+      const ridesWithBookings = await Promise.all(ridesWithDrivers.map(async (ride) => {
         const booking = bookings.find(b => b.ride_id === ride.id);
         const reliability = reliabilityScores.find(r => r.user_id === ride.driver_id);
         let weather = null;
@@ -205,15 +203,15 @@ export default function FindRides() {
       let filteredRides = ridesWithBookings.filter(ride => ride.available_seats > 0);
 
       if (minRating > 0) {
-        filteredRides = filteredRides.filter(ride => ride.driver.average_rating >= minRating);
+        filteredRides = filteredRides.filter(ride => (ride.driver?.average_rating || 0) >= minRating);
       }
 
       if (verifiedOnly) {
-        filteredRides = filteredRides.filter(ride => ride.driver.email_verified && ride.driver.phone_verified);
+        filteredRides = filteredRides.filter(ride => ride.driver?.email_verified && ride.driver?.phone_verified);
       }
 
       if (sortBy === 'rating') {
-        filteredRides.sort((a, b) => b.driver.average_rating - a.driver.average_rating);
+        filteredRides.sort((a, b) => (b.driver?.average_rating || 0) - (a.driver?.average_rating || 0));
       } else if (sortBy === 'match_score' && filteredRides.some(r => r.matchScore)) {
         filteredRides.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
       }
@@ -238,7 +236,6 @@ export default function FindRides() {
         .from('rides')
         .select(`
           *,
-          driver:profiles!rides_driver_id_fkey(*),
           vehicle:vehicles(*)
         `)
         .eq('status', 'active')
@@ -265,6 +262,11 @@ export default function FindRides() {
       if (error) throw error;
 
       const ridesData = data || [];
+      const driversById = await fetchPublicProfilesByIds(ridesData.map((ride: Ride) => ride.driver_id));
+      const ridesWithDrivers = ridesData.map((ride: Ride) => ({
+        ...ride,
+        driver: driversById[ride.driver_id] || null,
+      }));
 
       const { data: bookings } = await supabase
         .from('ride_bookings')
@@ -272,7 +274,7 @@ export default function FindRides() {
         .eq('passenger_id', user.id)
         .in('ride_id', ridesData.map(r => r.id));
 
-      const ridesWithBookings = await Promise.all(ridesData.map(async (ride) => {
+      const ridesWithBookings = await Promise.all(ridesWithDrivers.map(async (ride) => {
         const booking = bookings?.find(b => b.ride_id === ride.id);
         let weather = null;
 
@@ -537,29 +539,29 @@ export default function FindRides() {
                   <div className="flex items-center gap-4">
                     <div onClick={(event) => event.stopPropagation()}>
                       <UserAvatar
-                        user={ride.driver}
+                        user={ride.driver || { id: ride.driver_id, full_name: 'Driver', avatar_url: null }}
                         size="lg"
-                        rating={ride.driver.average_rating}
-                        onClick={() => navigate(getUserProfilePath(ride.driver.id, user?.id))}
+                        rating={ride.driver?.average_rating}
+                        onClick={() => navigate(getUserProfilePath(ride.driver?.id || ride.driver_id, user?.id))}
                       />
                     </div>
                     <div>
                       <p
                         onClick={(event) => {
                           event.stopPropagation();
-                          navigate(getUserProfilePath(ride.driver.id, user?.id));
+                          navigate(getUserProfilePath(ride.driver?.id || ride.driver_id, user?.id));
                         }}
                         className="font-semibold text-gray-900 cursor-pointer hover:text-green-600 transition-colors"
                       >
-                        {ride.driver.full_name}
+                        {ride.driver?.full_name || 'Driver'}
                       </p>
                       <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
                         <span className="flex items-center gap-1">
                           <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                          {ride.driver.average_rating.toFixed(1)}
+                          {(ride.driver?.average_rating || 0).toFixed(1)}
                         </span>
                         <span>•</span>
-                        <span>{ride.driver.total_rides_offered} rides</span>
+                        <span>{ride.driver?.total_rides_offered || 0} rides</span>
                         {ride.reliabilityScore && (
                           <>
                             <span>•</span>

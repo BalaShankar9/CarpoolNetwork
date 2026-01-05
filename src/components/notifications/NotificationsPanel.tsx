@@ -35,7 +35,7 @@ const getNotificationTarget = (notification: Notification) => {
     switch (notification.type) {
         case 'NEW_MESSAGE':
             return data.conversation_id
-                ? { path: '/messages', state: { conversationId: data.conversation_id } }
+                ? { path: `/messages?c=${data.conversation_id}`, state: { conversationId: data.conversation_id } }
                 : { path: '/messages' };
         case 'FRIEND_REQUEST':
         case 'FRIEND_REQUEST_ACCEPTED':

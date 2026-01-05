@@ -24,6 +24,7 @@ const normalizeConversationId = (data: unknown): string | null => {
     const candidates = [
       'id',
       'conversation_id',
+      'get_or_create_dm_conversation',
       'get_or_create_ride_conversation',
       'get_or_create_trip_conversation',
       'get_or_create_friends_conversation',
@@ -194,31 +195,65 @@ export async function getOrCreateFriendsDM(
 
   try {
     if (import.meta.env.DEV) {
+      console.log('[DEV] getOrCreateDmConversation - Calling RPC:', {
+        rpc: 'get_or_create_dm_conversation',
+        params: { target_user_id: userId2 },
+      });
+    }
+    const { data: dmData, error: dmError } = await supabase.rpc('get_or_create_dm_conversation', {
+      target_user_id: userId2,
+    });
+
+    if (!dmError) {
+      const conversationId = normalizeConversationId(dmData);
+      if (import.meta.env.DEV) {
+        console.log('[DEV] getOrCreateDmConversation - Success, conversation ID:', conversationId);
+      }
+      if (conversationId) {
+        return conversationId;
+      }
+    } else {
+      if (import.meta.env.DEV) {
+        console.error('[DEV] getOrCreateDmConversation - RPC Error:', {
+          rpc: 'get_or_create_dm_conversation',
+          code: (dmError as any)?.code,
+          message: dmError.message,
+          details: (dmError as any)?.details,
+          hint: (dmError as any)?.hint,
+          fullError: dmError,
+        });
+      }
+      if ((dmError as any)?.code !== 'PGRST202') {
+        return null;
+      }
+    }
+
+    if (import.meta.env.DEV) {
       console.log('[DEV] getOrCreateFriendsDM - Calling RPC:', {
         rpc: 'get_or_create_friends_conversation',
         params: { p_user_id_1: userId1, p_user_id_2: userId2 },
       });
     }
-    const { data, error } = await supabase.rpc('get_or_create_friends_conversation', {
+    const { data: legacyData, error: legacyError } = await supabase.rpc('get_or_create_friends_conversation', {
       p_user_id_1: userId1,
       p_user_id_2: userId2,
     });
 
-    if (error) {
+    if (legacyError) {
       if (import.meta.env.DEV) {
         console.error('[DEV] getOrCreateFriendsDM - RPC Error:', {
           rpc: 'get_or_create_friends_conversation',
-          code: (error as any)?.code,
-          message: error.message,
-          details: (error as any)?.details,
-          hint: (error as any)?.hint,
-          fullError: error,
+          code: (legacyError as any)?.code,
+          message: legacyError.message,
+          details: (legacyError as any)?.details,
+          hint: (legacyError as any)?.hint,
+          fullError: legacyError,
         });
       }
-      throw error;
+      throw legacyError;
     }
 
-    const conversationId = normalizeConversationId(data);
+    const conversationId = normalizeConversationId(legacyData);
     if (import.meta.env.DEV) {
       console.log('[DEV] getOrCreateFriendsDM - Success, conversation ID:', conversationId);
     }

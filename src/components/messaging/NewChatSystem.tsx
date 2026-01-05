@@ -30,7 +30,13 @@ import { useRealtime } from '../../contexts/RealtimeContext';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';
 import { checkRateLimit, recordRateLimitAction } from '../../lib/rateLimiting';
-import { extractUrls, formatMessagePreview, dedupeMessages } from '../../lib/chatUtils';
+import {
+  applyIncomingMessageToConversations,
+  dedupeMessages,
+  extractUrls,
+  formatMessagePreview,
+  markConversationRead,
+} from '../../lib/chatUtils';
 import { NotificationsService } from '../../services/notificationsService';
 import ClickableUserProfile from '../shared/ClickableUserProfile';
 import ReportUserModal from '../shared/ReportUserModal';
@@ -220,6 +226,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [conversationsError, setConversationsError] = useState<string | null>(null);
+  const [schemaCacheError, setSchemaCacheError] = useState(false);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -368,11 +375,16 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
   const loadConversations = async () => {
     if (!user) return;
     setConversationsError(null);
+    setSchemaCacheError(false);
     try {
       if (import.meta.env.DEV) {
         console.log('[DEV] loadConversations - Calling RPC: get_conversations_overview');
       }
-      const { data, error } = await supabase.rpc('get_conversations_overview');
+      const result = await supabase.rpc('get_conversations_overview');
+      if (!result) {
+        throw new Error('Conversation overview RPC unavailable');
+      }
+      const { data, error } = result;
       if (error) {
         if (import.meta.env.DEV) {
           console.error('[DEV] loadConversations - RPC Error:', {
@@ -399,16 +411,26 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
       }));
       setConversations(normalized);
       setConversationsError(null);
+      setSchemaCacheError(false);
     } catch (error: any) {
       console.error('Error loading conversations:', error);
       const errorMsg = error?.message || 'Failed to load conversations';
       const errorCode = error?.code || 'UNKNOWN';
-      setConversationsError(`${errorMsg} (${errorCode})`);
-
-      if (import.meta.env.DEV) {
-        toast.error(`Unable to load conversations. Error: ${errorCode}`);
+      if (errorCode === 'PGRST202') {
+        console.warn('DB function missing or schema cache not refreshed. Ensure public.get_conversations_overview() exists.');
+        setConversationsError('Messages are updating. Tap Retry.');
+        setSchemaCacheError(true);
       } else {
-        toast.error('Unable to load conversations. Please try again.');
+        setConversationsError(`${errorMsg} (${errorCode})`);
+        setSchemaCacheError(false);
+      }
+
+      if (errorCode !== 'PGRST202') {
+        if (import.meta.env.DEV) {
+          toast.error(`Unable to load conversations. Error: ${errorCode}`);
+        } else {
+          toast.error('Unable to load conversations. Please try again.');
+        }
       }
     } finally {
       setLoading(false);
@@ -528,11 +550,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
         p_last_read_at: latestMessage.created_at,
       });
       setReadStates((prev) => ({ ...prev, [user.id]: latestMessage.created_at }));
-      setConversations((prev) =>
-        prev.map((conv) =>
-          conv.id === conversationId ? { ...conv, unread_count: 0 } : conv
-        )
-      );
+      setConversations((prev) => markConversationRead(prev, conversationId));
       refreshUnreadMessages();
     } catch (error) {
       console.error('Failed to update read receipt:', error);
@@ -553,26 +571,10 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
   };
 
   const updateConversationPreview = (conversationId: string, message: ChatMessage, incrementUnread: boolean) => {
-    setConversations((prev) => {
-      const idx = prev.findIndex((conv) => conv.id === conversationId);
-      if (idx === -1) return prev;
-      const updated: ConversationSummary = {
-        ...prev[idx],
-        last_message_at: message.created_at,
-        last_message_preview: formatMessagePreview(message),
-        last_sender_id: message.sender_id,
-        unread_count: incrementUnread ? prev[idx].unread_count + 1 : prev[idx].unread_count,
-      };
-      const next = [...prev];
-      next[idx] = updated;
-      return next.sort((a, b) => {
-        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-        const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
-        const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
-        if (aTime !== bTime) return bTime - aTime;
-        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-      });
-    });
+    const normalized = { ...message, conversation_id: conversationId };
+    setConversations((prev) =>
+      applyIncomingMessageToConversations(prev, normalized, { incrementUnread })
+    );
   };
 
   // Helper function to sort messages by created_at
@@ -678,6 +680,10 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
     const channel = supabase.channel(`chat:${conversationId}`, {
       config: { presence: { key: user.id } },
     });
+    if (!channel) {
+      console.error('[Realtime] Unable to create conversation channel.');
+      return;
+    }
 
     channel
       .on('presence', { event: 'sync' }, () => {
@@ -789,14 +795,19 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
   };
 
   const setupOverviewChannel = () => {
-    if (!user || !conversationFilter) return;
+    if (!user) return;
     if (overviewChannelRef.current) {
       supabase.removeChannel(overviewChannelRef.current);
     }
 
-    const channel = supabase
-      .channel(`chat-overview:${user.id}`)
-      .on(
+    const channel = supabase.channel(`chat-overview:${user.id}`);
+    if (!channel) {
+      console.error('[Realtime] Unable to create overview channel.');
+      return;
+    }
+
+    if (conversationFilter) {
+      channel.on(
         'postgres_changes',
         {
           event: 'INSERT',
@@ -808,6 +819,32 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
           const newMsg = payload.new as ChatMessage;
           updateConversationPreview(newMsg.conversation_id, newMsg, newMsg.sender_id !== user.id);
           refreshUnreadMessages();
+        }
+      );
+    }
+
+    channel
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conversation_members',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          loadConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conversations',
+        },
+        () => {
+          loadConversations();
         }
       )
       .on(
@@ -827,8 +864,10 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
           event: '*',
           schema: 'public',
           table: 'message_reads',
+          filter: `user_id=eq.${user.id}`,
         },
         () => {
+          loadConversations();
           refreshUnreadMessages();
         }
       )
@@ -1524,7 +1563,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
   }, [initialConversationId]);
 
   useEffect(() => {
-    if (!conversationFilter) return;
+    if (!user) return;
     setupOverviewChannel();
     return () => {
       if (overviewChannelRef.current) {
@@ -1663,8 +1702,12 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
           {conversationsError ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-700 p-6">
               <XCircle className="w-16 h-16 mb-4 text-red-400" />
-              <p className="text-center font-semibold mb-2">Failed to Load Conversations</p>
-              <p className="text-sm text-gray-500 text-center mb-4 max-w-md">{conversationsError}</p>
+              <p className="text-center font-semibold mb-2">
+                {schemaCacheError ? 'Messages are updating' : 'Failed to Load Conversations'}
+              </p>
+              <p className="text-sm text-gray-500 text-center mb-4 max-w-md">
+                {schemaCacheError ? 'Messages are updating. Tap Retry.' : conversationsError}
+              </p>
               <button
                 onClick={() => {
                   setLoading(true);
@@ -1685,7 +1728,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
               <Search className="w-16 h-16 mb-4 text-gray-300" />
               <p className="text-center">No conversations yet</p>
               <p className="text-sm text-gray-400 text-center mt-2">
-                Start a conversation from a ride or user profile
+                Start a chat from a ride / request
               </p>
             </div>
           ) : (

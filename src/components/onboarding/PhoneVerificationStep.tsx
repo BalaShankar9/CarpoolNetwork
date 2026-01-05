@@ -1,16 +1,15 @@
-import { useState, useRef, useEffect } from 'react';
-import { Phone, ChevronDown, CheckCircle, XCircle, Loader2, Search } from 'lucide-react';
-import { countryCodes, CountryCode, defaultCountry } from '../../data/countryCodes';
+import { useEffect, useRef, useState } from 'react';
+import { Phone, ChevronDown, Loader2, Search, CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { getAllowOtpSignups, getOtpErrorMessage } from '../../utils/authOtp';
+import { countryCodes, CountryCode, defaultCountry } from '../../data/countryCodes';
 import { normalizePhoneNumber } from '../../utils/phone';
 
-interface PhoneInputWithOTPProps {
-  onVerified: (phone: string) => void;
+interface PhoneVerificationStepProps {
+  onVerified: (phoneE164: string) => void | Promise<void>;
   disabled?: boolean;
 }
 
-export default function PhoneInputWithOTP({ onVerified, disabled = false }: PhoneInputWithOTPProps) {
+export default function PhoneVerificationStep({ onVerified, disabled = false }: PhoneVerificationStepProps) {
   const [selectedCountry, setSelectedCountry] = useState<CountryCode>(defaultCountry);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
@@ -22,12 +21,10 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState('');
   const [cooldown, setCooldown] = useState(0);
-  const allowOtpSignups = getAllowOtpSignups();
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -39,7 +36,6 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Cooldown timer
   useEffect(() => {
     if (cooldown > 0) {
       const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
@@ -47,7 +43,7 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
     }
   }, [cooldown]);
 
-  const filteredCountries = countryCodes.filter(country =>
+  const filteredCountries = countryCodes.filter((country) =>
     country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     country.dialCode.includes(searchQuery) ||
     country.code.toLowerCase().includes(searchQuery.toLowerCase())
@@ -57,11 +53,9 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
   const fullPhoneNumber =
     phoneNormalization.e164 || `${selectedCountry.dialCode}${phoneNumber.replace(/^0+/, '')}`;
 
-  const isValidPhoneNumber = () => phoneNormalization.isValid;
-
-  const handleSendOTP = async () => {
-    if (!isValidPhoneNumber()) {
-      setError(phoneNormalization.error || 'Please enter a valid phone number');
+  const sendOtp = async () => {
+    if (!phoneNormalization.isValid || !phoneNormalization.e164) {
+      setError(phoneNormalization.error || 'Enter a valid phone number.');
       return;
     }
 
@@ -69,25 +63,51 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
     setError('');
 
     try {
-      const { error: otpError } = await supabase.auth.signInWithOtp({
-        phone: fullPhoneNumber,
-        options: { shouldCreateUser: allowOtpSignups },
+      const { error: updateError } = await supabase.auth.updateUser({
+        phone: phoneNormalization.e164,
       });
 
-      if (otpError) {
-        const friendlyMessage = getOtpErrorMessage(otpError, allowOtpSignups);
-        setError(friendlyMessage || otpError.message || 'Failed to send verification code');
-      } else {
-        setOtpSent(true);
-        setCooldown(60);
-        setOtp(['', '', '', '', '', '']);
-        // Focus first OTP input
-        setTimeout(() => otpInputRefs.current[0]?.focus(), 100);
+      if (updateError) {
+        setError(updateError.message || 'Failed to send verification code.');
+        return;
       }
-    } catch (err) {
+
+      setOtpSent(true);
+      setCooldown(60);
+      setOtp(['', '', '', '', '', '']);
+      setTimeout(() => otpInputRefs.current[0]?.focus(), 100);
+    } catch {
       setError('Failed to send verification code. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const verifyOtp = async (code: string) => {
+    if (!phoneNormalization.e164) return;
+    setVerifying(true);
+    setError('');
+
+    try {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        phone: phoneNormalization.e164,
+        token: code,
+        type: 'phone_change',
+      });
+
+      if (verifyError) {
+        setError('Invalid verification code. Please try again.');
+        setOtp(['', '', '', '', '', '']);
+        otpInputRefs.current[0]?.focus();
+        return;
+      }
+
+      setVerified(true);
+      await onVerified(phoneNormalization.e164);
+    } catch {
+      setError('Verification failed. Please try again.');
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -98,14 +118,12 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
     newOtp[index] = value.slice(-1);
     setOtp(newOtp);
 
-    // Auto-focus next input
     if (value && index < 5) {
       otpInputRefs.current[index + 1]?.focus();
     }
 
-    // Auto-verify when all digits entered
-    if (newOtp.every(digit => digit !== '') && newOtp.join('').length === 6) {
-      verifyOTP(newOtp.join(''));
+    if (newOtp.every((digit) => digit !== '') && newOtp.join('').length === 6) {
+      verifyOtp(newOtp.join(''));
     }
   };
 
@@ -121,39 +139,13 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
     if (pastedData.length === 6) {
       const newOtp = pastedData.split('');
       setOtp(newOtp);
-      verifyOTP(pastedData);
+      verifyOtp(pastedData);
     }
   };
 
-  const verifyOTP = async (code: string) => {
-    setVerifying(true);
-    setError('');
-
-    try {
-      const { error: verifyError } = await supabase.auth.verifyOtp({
-        phone: fullPhoneNumber,
-        token: code,
-        type: 'sms',
-      });
-
-      if (verifyError) {
-        setError('Invalid verification code. Please try again.');
-        setOtp(['', '', '', '', '', '']);
-        otpInputRefs.current[0]?.focus();
-      } else {
-        setVerified(true);
-        onVerified(fullPhoneNumber);
-      }
-    } catch (err) {
-      setError('Verification failed. Please try again.');
-    } finally {
-      setVerifying(false);
-    }
-  };
-
-  const handleResendOTP = () => {
+  const handleResend = () => {
     if (cooldown > 0) return;
-    handleSendOTP();
+    sendOtp();
   };
 
   const handleChangeNumber = () => {
@@ -191,7 +183,6 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
         </label>
 
         <div className="flex gap-2">
-          {/* Country Code Selector */}
           <div className="relative" ref={dropdownRef}>
             <button
               type="button"
@@ -200,6 +191,7 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
               className={`flex items-center gap-1 px-3 py-3 border rounded-xl bg-white hover:bg-gray-50 transition-colors min-w-[100px] ${
                 disabled || otpSent ? 'opacity-50 cursor-not-allowed' : ''
               } ${showCountryDropdown ? 'border-red-500 ring-2 ring-red-500' : 'border-gray-300'}`}
+              data-testid="onboarding-phone-country"
             >
               <span className="text-lg">{selectedCountry.flag}</span>
               <span className="text-sm text-gray-700">{selectedCountry.dialCode}</span>
@@ -248,7 +240,6 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
             )}
           </div>
 
-          {/* Phone Number Input */}
           <div className="flex-1 relative">
             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
@@ -257,6 +248,7 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
               onChange={(e) => setPhoneNumber(e.target.value.replace(/[^\d\s-]/g, ''))}
               placeholder="7700 900000"
               disabled={disabled || otpSent}
+              data-testid="onboarding-phone-input"
               className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed ${
                 error && !otpSent ? 'border-red-300' : 'border-gray-300'
               }`}
@@ -272,8 +264,9 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
 
             <button
               type="button"
-              onClick={handleSendOTP}
-              disabled={disabled || loading || !isValidPhoneNumber()}
+              onClick={sendOtp}
+              disabled={disabled || loading || !phoneNormalization.isValid}
+              data-testid="onboarding-phone-send"
               className="mt-3 w-full bg-gray-100 text-gray-700 py-2.5 px-4 rounded-lg font-medium hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -292,7 +285,6 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
         )}
       </div>
 
-      {/* OTP Verification Section */}
       {otpSent && !verified && (
         <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
           <div>
@@ -304,7 +296,6 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
             </p>
           </div>
 
-          {/* OTP Input */}
           <div className="flex justify-center gap-2">
             {otp.map((digit, index) => (
               <input
@@ -318,6 +309,7 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
                 onKeyDown={(e) => handleOtpKeyDown(index, e)}
                 onPaste={handleOtpPaste}
                 disabled={disabled || verifying}
+                data-testid={`onboarding-phone-otp-${index}`}
                 className={`w-11 h-12 text-center text-xl font-semibold border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:bg-gray-100 ${
                   error ? 'border-red-300 bg-red-50' : 'border-gray-300'
                 }`}
@@ -332,7 +324,6 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
             </div>
           )}
 
-          {/* Resend & Change Number */}
           <div className="flex items-center justify-between text-sm">
             <button
               type="button"
@@ -344,7 +335,7 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
             </button>
             <button
               type="button"
-              onClick={handleResendOTP}
+              onClick={handleResend}
               disabled={disabled || verifying || cooldown > 0}
               className={`font-medium ${
                 cooldown > 0 ? 'text-gray-400' : 'text-red-600 hover:text-red-700'
@@ -356,7 +347,6 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
         </div>
       )}
 
-      {/* Error Message */}
       {error && (
         <div className="flex items-center gap-2 text-sm text-red-600">
           <XCircle className="w-4 h-4 flex-shrink-0" />

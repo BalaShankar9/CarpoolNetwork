@@ -7,7 +7,7 @@ import { uploadProfilePhoto } from '../../services/storageService';
 import { validateProfilePhoto } from '../../services/faceDetection';
 
 export default function ProfilePictureBanner() {
-  const { user, profile } = useAuth();
+  const { user, profile, profileMissingFields } = useAuth();
   const navigate = useNavigate();
   const [dismissed, setDismissed] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -19,7 +19,9 @@ export default function ProfilePictureBanner() {
     }
   }, []);
 
-  if (!user || !profile || profile.avatar_url || dismissed) {
+  const needsPhoto = profileMissingFields.includes('avatar');
+
+  if (!user || !profile || !needsPhoto || dismissed) {
     return null;
   }
 
@@ -29,7 +31,7 @@ export default function ProfilePictureBanner() {
   };
 
   const handleUploadClick = () => {
-    navigate('/profile');
+    navigate('/onboarding/profile');
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -5,12 +5,14 @@ import { AlertCircle } from 'lucide-react';
 import AuthLayout from '../../components/auth/AuthLayout';
 import AuthCard from '../../components/auth/AuthCard';
 import OtpVerifyForm from '../../components/auth/OtpVerifyForm';
+import { getAllowOtpSignups, getOtpErrorMessage } from '../../utils/authOtp';
 
 export default function VerifyOtp() {
   const navigate = useNavigate();
   const location = useLocation();
   const [error, setError] = useState('');
   const { verifyOTP, signInWithOTP } = useAuth();
+  const allowOtpSignups = getAllowOtpSignups();
 
   const { identifier, type, isSignup } = location.state || {};
 
@@ -39,7 +41,8 @@ export default function VerifyOtp() {
     try {
       const { error } = await signInWithOTP(identifier, isPhone);
       if (error) {
-        setError(error.message);
+        const friendlyMessage = getOtpErrorMessage(error, allowOtpSignups);
+        setError(friendlyMessage || error.message);
       }
     } catch {
       setError('Failed to resend code');

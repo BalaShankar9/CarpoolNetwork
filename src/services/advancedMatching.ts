@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { fetchPublicProfilesByIds } from './publicProfiles';
 
 interface Ride {
   id: string;
@@ -227,17 +228,7 @@ export async function getRideRecommendations(
 
     const { data: rides, error } = await supabase
       .from('rides')
-      .select(`
-        *,
-        driver:profiles!rides_driver_id_fkey(
-          id,
-          full_name,
-          average_rating,
-          total_rides_offered,
-          trust_score,
-          profile_verified
-        )
-      `)
+      .select('*')
       .eq('status', 'active')
       .gte('available_seats', 1)
       .order('departure_time', { ascending: true });
@@ -246,8 +237,14 @@ export async function getRideRecommendations(
       throw error;
     }
 
+    const driversById = await fetchPublicProfilesByIds(rides.map((ride) => ride.driver_id));
+    const ridesWithDrivers = rides.map((ride) => ({
+      ...ride,
+      driver: driversById[ride.driver_id] || null,
+    }));
+
     const scoredRides = await Promise.all(
-      rides.map(async (ride) => {
+      ridesWithDrivers.map(async (ride) => {
         const { data: driverPrefs } = await supabase
           .from('user_preferences')
           .select('*')

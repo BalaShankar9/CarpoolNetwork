@@ -4,15 +4,21 @@ import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 
 export default function ProfileCompletionBanner() {
-  const { profile } = useAuth();
+  const { profile, profileMissingFields, isProfileComplete } = useAuth();
   const navigate = useNavigate();
   const [dismissed, setDismissed] = useState(false);
 
-  if (!profile || dismissed) return null;
+  if (!profile || dismissed || isProfileComplete) return null;
 
-  const needsProfilePhoto = !profile.profile_photo_path && !profile.avatar_url && !profile.profile_photo_url;
-
-  if (!needsProfilePhoto) return null;
+  const labelMap: Record<string, string> = {
+    full_name: 'Name',
+    avatar: 'Photo',
+    phone: 'Phone',
+    phone_verified: 'Phone verification',
+    country: 'Country',
+  };
+  const missingLabels = profileMissingFields.map((field) => labelMap[field] || field);
+  const missingText = missingLabels.length > 0 ? `Missing: ${missingLabels.join(', ')}` : '';
 
   return (
     <div className="bg-amber-50 border-b border-amber-200 px-4 py-3">
@@ -26,13 +32,13 @@ export default function ProfileCompletionBanner() {
               Complete your profile to start using all features
             </p>
             <p className="text-xs text-amber-700 mt-0.5">
-              Add a profile picture to post rides, request rides, and book trips
+              {missingText || 'Name, photo, verified phone, and country are required.'}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
-            onClick={() => navigate('/profile')}
+            onClick={() => navigate('/onboarding/profile')}
             className="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-2"
           >
             <Camera className="w-4 h-4" />

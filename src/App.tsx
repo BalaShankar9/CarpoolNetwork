@@ -1,5 +1,5 @@
 ﻿import { Suspense, lazy, ReactNode } from 'react';
-import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { RealtimeProvider } from './contexts/RealtimeContext';
@@ -24,6 +24,7 @@ const Messages = lazy(() => import('./pages/Messages'));
 const Community = lazy(() => import('./pages/Community'));
 const CommunityPost = lazy(() => import('./pages/CommunityPost'));
 const Profile = lazy(() => import('./pages/Profile'));
+const ProfileOnboarding = lazy(() => import('./pages/ProfileOnboarding'));
 const PublicProfile = lazy(() => import('./pages/PublicProfile'));
 const SecuritySettings = lazy(() => import('./pages/SecuritySettings'));
 const Analytics = lazy(() => import('./pages/Analytics'));
@@ -73,6 +74,29 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   // Require email verification to access protected routes
   if (!isEmailVerified) {
     return <Navigate to="/verify-email" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function RequireProfileComplete({ children }: { children: ReactNode }) {
+  const { user, loading, isEmailVerified, isProfileComplete } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (!user) {
+    return <Navigate to="/signin" replace />;
+  }
+
+  if (!isEmailVerified) {
+    return <Navigate to="/verify-email" replace />;
+  }
+
+  if (!isProfileComplete) {
+    return <Navigate to="/onboarding/profile" state={{ from: location.pathname }} replace />;
   }
 
   return <>{children}</>;
@@ -134,20 +158,20 @@ function AppContent() {
               </Layout>
             </ProtectedRoute>
           } />
-          <Route path="/post-ride" element={
-            <ProtectedRoute>
-              <Layout>
-                <PostRide />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/request-ride" element={
-            <ProtectedRoute>
-              <Layout>
-                <RequestRide />
-              </Layout>
-            </ProtectedRoute>
-          } />
+            <Route path="/post-ride" element={
+              <RequireProfileComplete>
+                <Layout>
+                  <PostRide />
+                </Layout>
+              </RequireProfileComplete>
+            } />
+            <Route path="/request-ride" element={
+              <RequireProfileComplete>
+                <Layout>
+                  <RequestRide />
+                </Layout>
+              </RequireProfileComplete>
+            } />
           <Route path="/my-rides" element={
             <ProtectedRoute>
               <Layout>
@@ -180,6 +204,13 @@ function AppContent() {
             <ProtectedRoute>
               <Layout>
                 <Profile />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/onboarding/profile" element={
+            <ProtectedRoute>
+              <Layout>
+                <ProfileOnboarding />
               </Layout>
             </ProtectedRoute>
           } />

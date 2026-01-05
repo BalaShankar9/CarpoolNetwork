@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { fetchPublicProfilesByIds } from './publicProfiles';
 
 interface Recommendation {
   recommendation_id: string;
@@ -137,8 +138,7 @@ export async function createRecommendations(userId: string) {
     const { data: upcomingRides } = await supabase
       .from('rides')
       .select(`
-        *,
-        driver:profiles!rides_driver_id_fkey(*)
+        *
       `)
       .eq('status', 'active')
       .gte('departure_time', new Date().toISOString())
@@ -147,7 +147,13 @@ export async function createRecommendations(userId: string) {
 
     if (!upcomingRides || upcomingRides.length === 0) return;
 
-    const recommendations = upcomingRides.map((ride: any) => {
+    const driversById = await fetchPublicProfilesByIds(upcomingRides.map((ride: any) => ride.driver_id));
+    const ridesWithDrivers = upcomingRides.map((ride: any) => ({
+      ...ride,
+      driver: driversById[ride.driver_id] || null,
+    }));
+
+    const recommendations = ridesWithDrivers.map((ride: any) => {
       let score = 50;
       const reasoning: Record<string, any> = {};
 

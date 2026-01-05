@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Calendar, Star, Car, MessageCircle, ArrowLeft, Navigation, Phone, AlertTriangle } from 'lucide-react';
+import { MapPin, Calendar, Star, Car, MessageCircle, ArrowLeft, Navigation, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from '../lib/toast';
 import { checkRateLimit, recordRateLimitAction } from '../lib/rateLimiting';
@@ -12,9 +12,11 @@ import RideStatusTracker from '../components/rides/RideStatusTracker';
 import { RouteOption, PlaceDetails } from '../services/googleMapsService';
 import UserAvatar from '../components/shared/UserAvatar';
 import { getUserProfilePath } from '../utils/profileNavigation';
+import { fetchPublicProfileById, PublicProfile } from '../services/publicProfiles';
 
 interface RideDetails {
   id: string;
+  driver_id: string;
   origin: string;
   origin_lat: number;
   origin_lng: number;
@@ -28,17 +30,7 @@ interface RideDetails {
   notes: string | null;
   estimated_distance: number | null;
   estimated_duration: number | null;
-  driver: {
-    id: string;
-    full_name: string;
-    avatar_url: string | null;
-    average_rating: number;
-    total_rides_offered: number;
-    bio: string | null;    whatsapp_number?: string;
-    preferred_contact_method?: string;
-    allow_inhouse_chat?: boolean;
-    allow_whatsapp_chat?: boolean;
-  };
+  driver: PublicProfile | null;
   vehicle: {
     make: string;
     model: string;
@@ -107,7 +99,6 @@ export default function RideDetails() {
         .from('rides')
         .select(`
           *,
-          driver:profiles!rides_driver_id_fkey(*),
           vehicle:vehicles(*)
         `)
         .eq('id', rideId)
@@ -124,7 +115,8 @@ export default function RideDetails() {
         setError('This ride is fully booked');
       }
 
-      setRide(data);
+      const driverProfile = await fetchPublicProfileById(data.driver_id);
+      setRide({ ...data, driver: driverProfile });
     } catch (error: any) {
       console.error('Error loading ride:', error);
       setError(error.message || 'Failed to load ride details');
@@ -231,23 +223,24 @@ export default function RideDetails() {
   };
 
   const sendMessage = async () => {
-    if (!user || !ride?.driver || !ride?.id) return;
+    if (!user || !ride?.id) return;
     const rateLimitCheck = await checkRateLimit(user.id, 'conversation');
     if (!rateLimitCheck.allowed) {
       toast.error(rateLimitCheck.error || 'Too many new conversations. Please wait.');
       return;
     }
-    const conversationId = await getOrCreateRideConversation(ride.id, ride.driver.id, user.id);
+    const driverId = ride.driver?.id || ride.driver_id;
+    const conversationId = await getOrCreateRideConversation(ride.id, driverId, user.id);
     if (!conversationId) {
       toast.error('Unable to start this conversation.');
       return;
     }
     await recordRateLimitAction(user.id, user.id, 'conversation');
-    navigate('/messages', {
+    navigate(`/messages?c=${conversationId}`, {
       state: {
         conversationId,
         rideId: ride.id,
-        driverId: ride.driver.id
+        driverId
       }
     });
   };
@@ -312,17 +305,10 @@ export default function RideDetails() {
   const dateTime = formatDateTime(ride.departure_time);
 
   const canInAppChat =
-    ride.driver.allow_inhouse_chat !== false &&
-    (ride.driver.preferred_contact_method === 'in_app' ||
-      ride.driver.preferred_contact_method === 'both' ||
-      !ride.driver.preferred_contact_method);
-
-  const canWhatsApp =
-    ride.driver.allow_whatsapp_chat !== false &&
-    !!ride.driver.whatsapp_number &&
-    (ride.driver.preferred_contact_method === 'whatsapp' ||
-      ride.driver.preferred_contact_method === 'both' ||
-      !ride.driver.preferred_contact_method);
+    ride.driver?.allow_inhouse_chat !== false &&
+    (ride.driver?.preferred_contact_method === 'in_app' ||
+      ride.driver?.preferred_contact_method === 'both' ||
+      !ride.driver?.preferred_contact_method);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -361,32 +347,32 @@ export default function RideDetails() {
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-start gap-4">
             <UserAvatar
-              user={ride.driver}
+              user={ride.driver || { id: ride.driver_id, full_name: 'Driver', avatar_url: null }}
               size="xl"
-              rating={ride.driver.average_rating}
-              onClick={() => navigate(getUserProfilePath(ride.driver.id, user?.id))}
+              rating={ride.driver?.average_rating}
+              onClick={() => navigate(getUserProfilePath(ride.driver?.id || ride.driver_id, user?.id))}
             />
             <div className="flex-1">
               <h2
                 className="text-xl font-bold text-gray-900 cursor-pointer hover:text-green-600 transition-colors"
-                onClick={() => navigate(getUserProfilePath(ride.driver.id, user?.id))}
+                onClick={() => navigate(getUserProfilePath(ride.driver?.id || ride.driver_id, user?.id))}
                 title="Click to view profile"
               >
-                {ride.driver.full_name}
+                {ride.driver?.full_name || 'Driver'}
               </h2>
               <div className="flex items-center gap-3 mt-1">
                 <span className="flex items-center gap-1 text-gray-600">
                   <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                  <span className="font-semibold">{ride.driver.average_rating.toFixed(1)}</span>
+                  <span className="font-semibold">{(ride.driver?.average_rating || 0).toFixed(1)}</span>
                 </span>
                 <span className="text-gray-400">•</span>
-                <span className="text-gray-600">{ride.driver.total_rides_offered} rides completed</span>
+                <span className="text-gray-600">{ride.driver?.total_rides_offered || 0} rides completed</span>
               </div>
-              {ride.driver.bio && (
+              {ride.driver?.bio && (
                 <p className="mt-2 text-gray-600 text-sm">{ride.driver.bio}</p>
               )}
             </div>
-            {ride.driver.id !== user?.id && (
+            {ride.driver_id !== user?.id && (
               <div className="flex gap-2">
                 {canInAppChat ? (
                   <button
@@ -404,18 +390,6 @@ export default function RideDetails() {
                   >
                     <MessageCircle className="w-4 h-4" />
                     Message
-                  </button>
-                )}
-                {canWhatsApp && (
-                  <button
-                    onClick={() => {
-                      const cleanNumber = ride.driver.whatsapp_number!.replace(/[^0-9]/g, '');
-                      window.open(`https://wa.me/${cleanNumber}`, '_blank');
-                    }}
-                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
-                  >
-                    <Phone className="w-4 h-4" />
-                    WhatsApp
                   </button>
                 )}
               </div>
@@ -478,7 +452,7 @@ export default function RideDetails() {
         </div>
 
         <div className="p-6 border-b border-gray-200">
-          <RideStatusTracker rideId={ride.id} isDriver={ride.driver.id === user?.id} />
+          <RideStatusTracker rideId={ride.id} isDriver={ride.driver_id === user?.id} />
         </div>
 
         {userBooking &&
@@ -500,7 +474,7 @@ export default function RideDetails() {
                 <span className="text-sm font-medium text-gray-700">Tracking active - Updates every 30 seconds</span>
               </div>
               <p className="text-sm text-gray-600">
-                Driver: <span className="font-medium">{ride.driver.full_name}</span>
+                Driver: <span className="font-medium">{ride.driver?.full_name || 'Driver'}</span>
               </p>
               <p className="text-sm text-gray-600 mt-1">
                 Your booking: {userBooking.seats_requested} seat{userBooking.seats_requested > 1 ? 's' : ''}
@@ -559,7 +533,7 @@ export default function RideDetails() {
           </div>
         )}
 
-        {ride.driver.id !== user?.id && (
+        {ride.driver_id !== user?.id && (
           <div className="p-6 bg-gray-50">
             {ride.available_seats === 0 && (!userBooking || userBooking.status === 'cancelled') ? (
               <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-6 text-center">

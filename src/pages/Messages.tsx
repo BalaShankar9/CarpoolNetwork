@@ -16,7 +16,8 @@ export default function Messages() {
     driverId?: string;
   }) || {};
   const searchParams = new URLSearchParams(location.search);
-  const conversationId = state.conversationId || searchParams.get('conversationId') || undefined;
+  const conversationId =
+    state.conversationId || searchParams.get('conversationId') || searchParams.get('c') || undefined;
   const userId = state.userId;
   const rideId = state.rideId;
   const driverId = state.driverId;

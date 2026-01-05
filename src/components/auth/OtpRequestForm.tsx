@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Mail, Phone, Loader2 } from 'lucide-react';
 import { getRuntimeConfig } from '../../lib/runtimeConfig';
+import { normalizePhoneNumber } from '../../utils/phone';
 
 interface OtpRequestFormProps {
   onSendOTP: (identifier: string, isPhone: boolean) => Promise<void>;
@@ -114,10 +115,9 @@ export default function OtpRequestForm({ onSendOTP, disabled = false }: OtpReque
   const digitsOnly = trimmedIdentifier.replace(/\D/g, '');
   const hasEmailToken = trimmedIdentifier.includes('@');
   const isPhone = !hasEmailToken && (trimmedIdentifier.startsWith('+') || digitsOnly.length > 0);
-  const normalizedPhone = isPhone
-    ? (trimmedIdentifier.startsWith('+') ? `+${digitsOnly}` : `${countryCode}${digitsOnly}`)
-    : '';
-  const phoneFormatValid = !isPhone || /^\+\d{8,15}$/.test(normalizedPhone);
+  const phoneNormalization = isPhone ? normalizePhoneNumber(trimmedIdentifier, countryCode) : null;
+  const normalizedPhone = phoneNormalization?.e164 || '';
+  const phoneFormatValid = !isPhone || !!phoneNormalization?.isValid;
 
   useEffect(() => {
     if (manualCountryCode) return;
@@ -210,7 +210,7 @@ export default function OtpRequestForm({ onSendOTP, disabled = false }: OtpReque
     if (!trimmedIdentifier || cooldown > 0) return;
 
     if (isPhone && !phoneFormatValid) {
-      setError('Enter a valid phone number with country code (e.g., +44 7700 900000).');
+      setError(phoneNormalization?.error || 'Enter a valid phone number with country code (e.g., +44 7700 900000).');
       return;
     }
 
@@ -287,7 +287,7 @@ export default function OtpRequestForm({ onSendOTP, disabled = false }: OtpReque
             ? 'Include country code (e.g., +44 7700 900000)'
             : "We'll send a one-time code to your email"}
         </p>
-        {isPhone && digitsOnly.length > 0 && (
+        {isPhone && digitsOnly.length > 0 && normalizedPhone && (
           <p className="mt-1 text-xs text-gray-500">
             Sending to: {normalizedPhone}
           </p>

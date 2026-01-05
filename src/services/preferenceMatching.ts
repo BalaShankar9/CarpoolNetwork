@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { fetchPublicProfilesByIds } from './publicProfiles';
 import type { Database } from '../lib/database.types';
 
 type UserPreferences = Database['public']['Tables']['user_preferences']['Row'];
@@ -281,14 +282,6 @@ export class PreferenceMatchingService {
       .from('rides')
       .select(`
         *,
-        driver:profiles!rides_driver_id_fkey(
-          id,
-          full_name,
-          avatar_url,
-          average_rating,
-          is_verified,
-          total_rides_offered
-        ),
         vehicle:vehicles!rides_vehicle_id_fkey(
           make,
           model,
@@ -307,6 +300,12 @@ export class PreferenceMatchingService {
       return [];
     }
 
+    const driversById = await fetchPublicProfilesByIds(rides.map((ride) => ride.driver_id));
+    const ridesWithDrivers = rides.map((ride) => ({
+      ...ride,
+      driver: driversById[ride.driver_id] || null,
+    }));
+
     const { data: blockedUsers } = await supabase
       .from('blocked_users_preferences')
       .select('blocked_user_id')
@@ -322,7 +321,7 @@ export class PreferenceMatchingService {
     const preferredIds = preferredDrivers?.map(p => p.preferred_driver_id) || [];
 
     const filteredRides = await Promise.all(
-      rides
+      ridesWithDrivers
         .filter(ride => !blockedIds.includes(ride.driver_id))
         .map(async (ride) => {
           const compatibility = await this.calculateDetailedCompatibility(

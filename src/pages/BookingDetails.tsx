@@ -23,6 +23,7 @@ import { useAuth } from '../contexts/AuthContext';
 import RideDetailsMap from '../components/rides/RideDetailsMap';
 import ReviewSubmission from '../components/rides/ReviewSubmission';
 import ClickableUserProfile from '../components/shared/ClickableUserProfile';
+import { fetchPublicProfileById, PublicProfile } from '../services/publicProfiles';
 
 interface BookingDetails {
   id: string;
@@ -35,6 +36,7 @@ interface BookingDetails {
   cancellation_reason?: string;
   ride: {
     id: string;
+    driver_id: string;
     origin: string;
     destination: string;
     departure_time: string;
@@ -43,16 +45,7 @@ interface BookingDetails {
     destination_lat: number;
     destination_lng: number;
     notes?: string;
-    driver: {
-      id: string;
-      full_name: string;
-      phone?: string;
-      average_rating: number;
-      total_rides: number;
-      bio?: string;
-      whatsapp_number?: string;
-      preferred_contact_method?: string;
-    };
+    driver: PublicProfile | null;
     vehicle?: {
       make: string;
       model: string;
@@ -61,6 +54,13 @@ interface BookingDetails {
       license_plate: string;
     };
   };
+}
+
+function maskPhone(phone: string): string {
+  if (!phone || phone.length < 8) return phone;
+  const prefix = phone.slice(0, 3);
+  const suffix = phone.slice(-4);
+  return `${prefix}******${suffix}`;
 }
 
 export default function BookingDetails() {
@@ -75,6 +75,18 @@ export default function BookingDetails() {
   const [error, setError] = useState<string | null>(null);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [driverPhone, setDriverPhone] = useState<string | null>(null);
+  const driverProfile = booking?.ride?.driver || null;
+  const driverId = booking?.ride?.driver_id || driverProfile?.id || '';
+  const driverName = driverProfile?.full_name || 'Driver';
+  const driverRating = driverProfile?.average_rating || 0;
+  const driverRides = driverProfile?.total_rides_offered || 0;
+  const maskedDriverPhone = driverPhone ? maskPhone(driverPhone) : null;
+  const canMessageInApp =
+    driverProfile?.allow_inhouse_chat !== false &&
+    (driverProfile?.preferred_contact_method === 'in_app' ||
+      driverProfile?.preferred_contact_method === 'both' ||
+      !driverProfile?.preferred_contact_method);
 
   useEffect(() => {
     if (bookingId && user) {
@@ -105,6 +117,29 @@ export default function BookingDetails() {
     }
   };
 
+  const loadDriverPhone = async (driverId: string) => {
+    if (!user) return;
+    try {
+      const { data: canView, error } = await supabase.rpc('can_view_phone', {
+        p_viewer: user.id,
+        p_owner: driverId,
+      });
+      if (error || !canView) {
+        setDriverPhone(null);
+        return;
+      }
+      const { data } = await supabase
+        .from('profiles')
+        .select('phone_e164')
+        .eq('id', driverId)
+        .maybeSingle();
+      setDriverPhone(data?.phone_e164 || null);
+    } catch (err) {
+      console.error('Error loading driver phone:', err);
+      setDriverPhone(null);
+    }
+  };
+
   const loadBookingDetails = async () => {
     try {
       const { data, error } = await supabase
@@ -113,7 +148,6 @@ export default function BookingDetails() {
           *,
           ride:rides(
             *,
-            driver:profiles!rides_driver_id_fkey(*),
             vehicle:vehicles(*)
           )
         `)
@@ -129,7 +163,17 @@ export default function BookingDetails() {
         return;
       }
 
-      setBooking(data);
+      const driverProfile = await fetchPublicProfileById(data.ride.driver_id);
+      setBooking({
+        ...data,
+        ride: {
+          ...data.ride,
+          driver: driverProfile,
+        },
+      });
+      if (driverProfile) {
+        await loadDriverPhone(data.ride.driver_id);
+      }
       setError(null);
 
       if (data?.ride) {
@@ -235,15 +279,15 @@ export default function BookingDetails() {
   };
 
   const callDriver = () => {
-    if (booking?.ride.driver.phone) {
-      window.location.href = `tel:${booking.ride.driver.phone}`;
+    if (driverPhone) {
+      window.location.href = `tel:${driverPhone}`;
     } else {
       alert('Driver phone number not available');
     }
   };
 
   const messageDriver = async () => {
-    if (!booking?.ride || !booking.ride.driver?.id || !booking.passenger_id || !user?.id) return;
+    if (!booking?.ride || !driverId || !booking.passenger_id || !user?.id) return;
     const rateLimitCheck = await checkRateLimit(user.id, 'conversation');
     if (!rateLimitCheck.allowed) {
       toast.error(rateLimitCheck.error || 'Too many new conversations. Please wait.');
@@ -251,7 +295,7 @@ export default function BookingDetails() {
     }
     const conversationId = await getOrCreateRideConversation(
       booking.ride.id,
-      booking.ride.driver.id,
+      driverId,
       booking.passenger_id
     );
     if (!conversationId) {
@@ -259,11 +303,11 @@ export default function BookingDetails() {
       return;
     }
     await recordRateLimitAction(user.id, user.id, 'conversation');
-    navigate('/messages', {
+    navigate(`/messages?c=${conversationId}`, {
       state: {
         conversationId,
         rideId: booking.ride.id,
-        driverId: booking.ride.driver.id
+        driverId
       }
     });
   };
@@ -455,57 +499,45 @@ export default function BookingDetails() {
           <div className="flex items-start gap-4">
             <ClickableUserProfile
               user={{
-                id: booking.ride.driver.id,
-                full_name: booking.ride.driver.full_name,
-                avatar_url: null
+                id: driverId,
+                full_name: driverName,
+                avatar_url: driverProfile?.avatar_url || driverProfile?.profile_photo_url || null
               }}
               size="xl"
-              rating={booking.ride.driver.average_rating}
+              rating={driverRating}
             />
             <div className="flex-1">
-              <p className="font-semibold text-lg text-gray-900 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => navigate(`/user/${booking.ride.driver.id}`)}>{booking.ride.driver.full_name}</p>
+              <p className="font-semibold text-lg text-gray-900 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => navigate(`/user/${driverId}`)}>{driverName}</p>
               <div className="flex items-center gap-3 mt-1 text-sm text-gray-600">
                 <span className="flex items-center gap-1">
                   <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                  {booking.ride.driver.average_rating.toFixed(1)}
+                  {driverRating.toFixed(1)}
                 </span>
-                <span>{booking.ride.driver.total_rides} rides</span>
+                <span>{driverRides} rides</span>
               </div>
-              {booking.ride.driver.bio && (
-                <p className="mt-2 text-sm text-gray-600">{booking.ride.driver.bio}</p>
+              {driverProfile?.bio && (
+                <p className="mt-2 text-sm text-gray-600">{driverProfile.bio}</p>
               )}
             </div>
           </div>
 
           <div className="flex gap-3 flex-wrap mt-4">
-            {booking.ride.driver.phone && (
+            {driverPhone && (
               <button
                 onClick={callDriver}
                 className="flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               >
                 <Phone className="w-4 h-4" />
-                Call Driver
+                Call {maskedDriverPhone}
               </button>
             )}
-            {(booking.ride.driver.preferred_contact_method === 'in_app' || booking.ride.driver.preferred_contact_method === 'both' || !booking.ride.driver.preferred_contact_method) && (
+            {canMessageInApp && (
               <button
                 onClick={messageDriver}
                 className="flex items-center justify-center gap-2 px-4 py-3 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
               >
                 <MessageCircle className="w-4 h-4" />
                 Message
-              </button>
-            )}
-            {booking.ride.driver.whatsapp_number && (booking.ride.driver.preferred_contact_method === 'whatsapp' || booking.ride.driver.preferred_contact_method === 'both' || !booking.ride.driver.preferred_contact_method) && (
-              <button
-                onClick={() => {
-                  const cleanNumber = booking.ride.driver.whatsapp_number!.replace(/[^0-9]/g, '');
-                  window.open(`https://wa.me/${cleanNumber}`, '_blank');
-                }}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-              >
-                <Phone className="w-4 h-4" />
-                WhatsApp
               </button>
             )}
           </div>
@@ -587,7 +619,7 @@ export default function BookingDetails() {
             Your driver has started the ride. Location updates are being tracked for safety.
           </p>
           <div className="text-sm text-gray-700">
-            <p><strong>Driver:</strong> {booking.ride.driver.full_name}</p>
+            <p><strong>Driver:</strong> {driverName}</p>
             <p><strong>Your seats:</strong> {booking.seats_requested}</p>
           </div>
         </div>
@@ -600,7 +632,7 @@ export default function BookingDetails() {
             How was your ride?
           </h3>
           <p className="text-sm text-gray-600 mb-4">
-            Help other passengers by sharing your experience with {booking.ride.driver.full_name}.
+            Help other passengers by sharing your experience with {driverName}.
           </p>
           <button
             onClick={() => setShowReviewForm(true)}
@@ -615,7 +647,7 @@ export default function BookingDetails() {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <ReviewSubmission
             bookingId={booking.id}
-            revieweeName={booking.ride.driver.full_name}
+            revieweeName={driverName}
             onSubmitted={() => {
               setHasReviewed(true);
               setShowReviewForm(false);

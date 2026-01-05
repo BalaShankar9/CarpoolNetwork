@@ -1,31 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, Star, Calendar, Share2, Flag, Phone, UserPlus, UserCheck } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Star, Calendar, Share2, Flag, UserPlus, UserCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { notify } from '../lib/toast';
 import { checkRateLimit, recordRateLimitAction } from '../lib/rateLimiting';
 import { supabase } from '../lib/supabase';
+import { fetchPublicProfileById, PublicProfile as PublicProfileRow } from '../services/publicProfiles';
 import { getOrCreateFriendsDM } from '../lib/chatHelpers';
 import UserAvatar from '../components/shared/UserAvatar';
 import VerificationBadges from '../components/profile/VerificationBadges';
 import ReportUserModal from '../components/shared/ReportUserModal';
 import { NotificationsService } from '../services/notificationsService';
-
-interface Profile {
-  id: string;
-  full_name: string;
-  avatar_url: string | null;
-  bio: string | null;
-  created_at: string;
-  photo_verified: boolean;
-  id_verified: boolean;
-  phone_verified: boolean;
-  email_verified: boolean;
-  preferred_contact_method?: string;
-  allow_inhouse_chat?: boolean;
-  allow_whatsapp_chat?: boolean;
-  whatsapp_number?: string | null;
-}
 
 interface Review {
   id: string;
@@ -55,7 +40,7 @@ export default function PublicProfile() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<PublicProfileRow | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -90,13 +75,7 @@ export default function PublicProfile() {
       setLoading(true);
       setError(null);
 
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url, bio, created_at, photo_verified, id_verified, phone_verified, email_verified, preferred_contact_method, allow_inhouse_chat, allow_whatsapp_chat, whatsapp_number')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (profileError) throw profileError;
+      const profileData = await fetchPublicProfileById(userId);
 
       if (!profileData) {
         setError('User not found');
@@ -137,19 +116,13 @@ export default function PublicProfile() {
         ? reviewRatings.reduce((a: number, b: number) => a + b, 0) / reviewRatings.length
         : 0;
 
-      const { data: reliabilityData } = await supabase
-        .from('profiles')
-        .select('reliability_score')
-        .eq('id', userId)
-        .maybeSingle();
-
       setStats({
         ridesOffered: driverRideCount ?? 0,
         ridesTaken: passengerBookingCount ?? 0,
         averageRating: avgRating,
         totalReviews: reviewsData?.length || 0,
         responseRate: 95,
-        reliabilityScore: reliabilityData?.reliability_score || 0
+        reliabilityScore: profileData.reliability_score || 0
       });
 
     } catch (err: any) {
@@ -335,17 +308,11 @@ export default function PublicProfile() {
         return;
       }
       await recordRateLimitAction(user.id, user.id, 'conversation');
-      navigate('/messages', { state: { conversationId } });
+      navigate(`/messages?c=${conversationId}`, { state: { conversationId } });
     } catch (error) {
       console.error('Unable to start conversation:', error);
       notify('Unable to start this conversation. The user may have blocked messages.', 'error');
     }
-  };
-
-  const handleWhatsApp = () => {
-    if (!profile?.whatsapp_number) return;
-    const cleanNumber = profile.whatsapp_number.replace(/[^0-9]/g, '');
-    window.open(`https://wa.me/${cleanNumber}`, '_blank');
   };
 
   const handleShare = async () => {
@@ -403,13 +370,6 @@ export default function PublicProfile() {
       profile.preferred_contact_method === 'in_app'
       || profile.preferred_contact_method === 'both'
       || !profile.preferred_contact_method
-    );
-
-  const canWhatsApp = profile.allow_whatsapp_chat !== false
-    && !!profile.whatsapp_number
-    && (
-      profile.preferred_contact_method === 'whatsapp'
-      || profile.preferred_contact_method === 'both'
     );
 
   const renderFriendActions = () => {
@@ -544,15 +504,6 @@ export default function PublicProfile() {
               <MessageCircle className="w-5 h-5" />
               Message
             </button>
-            {canWhatsApp && (
-              <button
-                onClick={handleWhatsApp}
-                className="px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 font-semibold"
-              >
-                <Phone className="w-5 h-5" />
-                WhatsApp
-              </button>
-            )}
             {renderFriendActions()}
             <button
               onClick={handleShare}

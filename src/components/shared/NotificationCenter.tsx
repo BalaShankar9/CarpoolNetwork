@@ -43,7 +43,11 @@ export default function NotificationCenter() {
       setIsOpen(false);
     } else if (notification.type === 'NEW_MESSAGE') {
       const conversationId = notification.data?.conversation_id;
-      navigate('/messages', conversationId ? { state: { conversationId } } : undefined);
+      if (conversationId) {
+        navigate(`/messages?c=${conversationId}`, { state: { conversationId } });
+      } else {
+        navigate('/messages');
+      }
       setIsOpen(false);
     }
   };

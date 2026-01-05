@@ -7,6 +7,7 @@ import AuthCard from '../../components/auth/AuthCard';
 import SocialAuthButtons from '../../components/auth/SocialAuthButtons';
 import PasswordLoginForm from '../../components/auth/PasswordLoginForm';
 import OtpRequestForm from '../../components/auth/OtpRequestForm';
+import { getAllowOtpSignups, getOtpErrorMessage } from '../../utils/authOtp';
 
 type AuthMode = 'password' | 'otp';
 
@@ -15,6 +16,7 @@ export default function SignIn() {
   const [authMode, setAuthMode] = useState<AuthMode>('password');
   const [error, setError] = useState('');
   const { signIn, signInWithGoogle, signInWithGitHub, signInWithOTP } = useAuth();
+  const allowOtpSignups = getAllowOtpSignups();
 
   const handleGoogleSignIn = async () => {
     setError('');
@@ -70,7 +72,8 @@ export default function SignIn() {
     try {
       const { error } = await signInWithOTP(identifier, isPhone);
       if (error) {
-        setError(error.message);
+        const friendlyMessage = getOtpErrorMessage(error, allowOtpSignups);
+        setError(friendlyMessage || error.message);
       } else {
         navigate('/verify-otp', {
           state: {

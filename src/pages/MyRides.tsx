@@ -10,6 +10,16 @@ import RecurringRidesManager from '../components/rides/RecurringRidesManager';
 import EditRideModal from '../components/rides/EditRideModal';
 import RideTracking from '../components/rides/RideTracking';
 import ClickableUserProfile from '../components/shared/ClickableUserProfile';
+import ConfirmDialog from '../components/shared/ConfirmDialog';
+
+type ConfirmAction =
+  | { type: 'delete-ride'; rideId: string }
+  | { type: 'cancel-ride'; rideId: string; hasPassengers?: boolean }
+  | { type: 'accept-booking'; request: BookingRequest }
+  | { type: 'reject-booking'; request: BookingRequest; reason: string }
+  | { type: 'cancel-booking'; bookingId: string; departureTime: string; reason: string }
+  | { type: 'cancel-ride-request'; requestId: string }
+  | null;
 
 interface Ride {
   id: string;
@@ -140,6 +150,8 @@ export default function MyRides() {
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
   const [expandedTrackingRideId, setExpandedTrackingRideId] = useState<string | null>(null);
   const [editingRide, setEditingRide] = useState<Ride | null>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   useEffect(() => {
     loadRides();
@@ -376,11 +388,24 @@ export default function MyRides() {
   };
 
   const deleteRide = async (rideId: string) => {
-    if (!confirm('Are you sure you want to delete this ride? This action cannot be undone.')) {
+    // Check if ride has confirmed bookings
+    const { data: bookings } = await supabase
+      .from('ride_bookings')
+      .select('id')
+      .eq('ride_id', rideId)
+      .eq('status', 'confirmed');
+
+    if (bookings && bookings.length > 0) {
+      toast.error('Cannot delete a ride with confirmed passengers. Cancel the ride instead.');
       return;
     }
 
+    setConfirmAction({ type: 'delete-ride', rideId });
+  };
+
+  const executeDeleteRide = async (rideId: string) => {
     setDeletingId(rideId);
+    setConfirmLoading(true);
     try {
       const { error } = await supabase
         .from('rides')
@@ -390,21 +415,32 @@ export default function MyRides() {
       if (error) throw error;
 
       setOfferedRides(prev => prev.filter(ride => ride.id !== rideId));
-      alert('Ride deleted successfully!');
+      toast.success('Ride deleted successfully!');
     } catch (error) {
       console.error('Error deleting ride:', error);
-      alert('Failed to delete ride. Please try again.');
+      toast.error('Failed to delete ride. Please try again.');
     } finally {
       setDeletingId(null);
+      setConfirmLoading(false);
+      setConfirmAction(null);
     }
   };
 
   const cancelRide = async (rideId: string) => {
-    if (!confirm('Are you sure you want to cancel this ride?')) {
-      return;
-    }
+    // Check if ride has confirmed bookings to show appropriate warning
+    const { data: bookings } = await supabase
+      .from('ride_bookings')
+      .select('id')
+      .eq('ride_id', rideId)
+      .eq('status', 'confirmed');
 
+    const hasPassengers = bookings && bookings.length > 0;
+    setConfirmAction({ type: 'cancel-ride', rideId, hasPassengers } as ConfirmAction);
+  };
+
+  const executeCancelRide = async (rideId: string) => {
     setDeletingId(rideId);
+    setConfirmLoading(true);
     try {
       const { error } = await supabase
         .from('rides')
@@ -414,21 +450,24 @@ export default function MyRides() {
       if (error) throw error;
 
       loadRides();
-      alert('Ride cancelled successfully!');
+      toast.success('Ride cancelled successfully!');
     } catch (error) {
       console.error('Error cancelling ride:', error);
-      alert('Failed to cancel ride. Please try again.');
+      toast.error('Failed to cancel ride. Please try again.');
     } finally {
       setDeletingId(null);
+      setConfirmLoading(false);
+      setConfirmAction(null);
     }
   };
 
   const acceptBookingRequest = async (request: BookingRequest) => {
-    if (!confirm(`Accept booking request from ${request.passenger.full_name}?`)) {
-      return;
-    }
+    setConfirmAction({ type: 'accept-booking', request });
+  };
 
+  const executeAcceptBooking = async (request: BookingRequest) => {
     setProcessingRequestId(request.id);
+    setConfirmLoading(true);
     try {
       const { error } = await supabase.rpc('driver_decide_booking', {
         p_booking_id: request.id,
@@ -437,13 +476,15 @@ export default function MyRides() {
 
       if (error) throw error;
 
-      alert('Booking request accepted!');
+      toast.success('Booking request accepted!');
       loadRides();
     } catch (error: any) {
       console.error('Error accepting request:', error);
-      alert(error.message || 'Failed to accept request. Please try again.');
+      toast.error(error.message || 'Failed to accept request. Please try again.');
     } finally {
       setProcessingRequestId(null);
+      setConfirmLoading(false);
+      setConfirmAction(null);
     }
   };
 
@@ -451,11 +492,12 @@ export default function MyRides() {
     const reason = prompt('Reason for rejecting (optional):');
     if (reason === null) return;
 
-    if (!confirm(`Reject booking request from ${request.passenger.full_name}?`)) {
-      return;
-    }
+    setConfirmAction({ type: 'reject-booking', request, reason: reason || '' });
+  };
 
+  const executeRejectBooking = async (request: BookingRequest) => {
     setProcessingRequestId(request.id);
+    setConfirmLoading(true);
     try {
       const { error } = await supabase.rpc('driver_decide_booking', {
         p_booking_id: request.id,
@@ -464,13 +506,15 @@ export default function MyRides() {
 
       if (error) throw error;
 
-      alert('Booking request rejected.');
+      toast.success('Booking request rejected.');
       loadRides();
     } catch (error: any) {
       console.error('Error rejecting request:', error);
-      alert(error.message || 'Failed to reject request. Please try again.');
+      toast.error(error.message || 'Failed to reject request. Please try again.');
     } finally {
       setProcessingRequestId(null);
+      setConfirmLoading(false);
+      setConfirmAction(null);
     }
   };
 
@@ -487,32 +531,133 @@ export default function MyRides() {
       return;
     }
 
-    if (!confirm('Are you sure you want to cancel this booking?')) {
-      return;
-    }
+    setConfirmAction({ type: 'cancel-booking', bookingId, departureTime, reason: reason || 'No reason provided' });
+  };
 
+  const executeCancelBooking = async (bookingId: string, reason: string) => {
     setDeletingId(bookingId);
+    setConfirmLoading(true);
     try {
       const { error } = await supabase.rpc('cancel_booking', {
         p_booking_id: bookingId,
-        p_reason: reason || 'No reason provided'
+        p_reason: reason
       });
 
       if (error) throw error;
 
       loadRides();
-      alert('Booking cancelled successfully!');
+      toast.success('Booking cancelled successfully!');
     } catch (error: any) {
       console.error('Error cancelling booking:', error);
       const errorMessage = error.message || 'Failed to cancel booking. Please try again.';
 
       if (errorMessage.includes('already cancelled')) {
-        alert('This booking is already cancelled.');
+        toast.error('This booking is already cancelled.');
       } else {
-        alert(errorMessage);
+        toast.error(errorMessage);
       }
     } finally {
       setDeletingId(null);
+      setConfirmLoading(false);
+      setConfirmAction(null);
+    }
+  };
+
+  const executeCancelRideRequest = async (requestId: string) => {
+    setConfirmLoading(true);
+    try {
+      const { error } = await supabase
+        .from('ride_requests')
+        .update({ status: 'cancelled' })
+        .eq('id', requestId);
+
+      if (error) throw error;
+      toast.success('Ride request cancelled.');
+      await loadRides();
+    } catch (error) {
+      console.error('Failed to cancel request:', error);
+      toast.error('Failed to cancel request. Please try again.');
+    } finally {
+      setConfirmLoading(false);
+      setConfirmAction(null);
+    }
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction) return;
+
+    switch (confirmAction.type) {
+      case 'delete-ride':
+        await executeDeleteRide(confirmAction.rideId);
+        break;
+      case 'cancel-ride':
+        await executeCancelRide(confirmAction.rideId);
+        break;
+      case 'accept-booking':
+        await executeAcceptBooking(confirmAction.request);
+        break;
+      case 'reject-booking':
+        await executeRejectBooking(confirmAction.request);
+        break;
+      case 'cancel-booking':
+        await executeCancelBooking(confirmAction.bookingId, confirmAction.reason);
+        break;
+      case 'cancel-ride-request':
+        await executeCancelRideRequest(confirmAction.requestId);
+        break;
+    }
+  };
+
+  const getConfirmDialogProps = () => {
+    if (!confirmAction) return null;
+
+    switch (confirmAction.type) {
+      case 'delete-ride':
+        return {
+          title: 'Delete Ride',
+          message: 'Are you sure you want to delete this ride? This action cannot be undone.',
+          confirmLabel: 'Delete',
+          variant: 'danger' as const,
+        };
+      case 'cancel-ride':
+        return {
+          title: 'Cancel Ride',
+          message: confirmAction.hasPassengers
+            ? 'This ride has confirmed passengers who will be notified about the cancellation. Are you sure you want to cancel?'
+            : 'Are you sure you want to cancel this ride?',
+          confirmLabel: 'Cancel Ride',
+          variant: 'warning' as const,
+        };
+      case 'accept-booking':
+        return {
+          title: 'Accept Booking',
+          message: `Accept booking request from ${confirmAction.request.passenger.full_name}?`,
+          confirmLabel: 'Accept',
+          variant: 'info' as const,
+        };
+      case 'reject-booking':
+        return {
+          title: 'Reject Booking',
+          message: `Reject booking request from ${confirmAction.request.passenger.full_name}?`,
+          confirmLabel: 'Reject',
+          variant: 'danger' as const,
+        };
+      case 'cancel-booking':
+        return {
+          title: 'Cancel Booking',
+          message: 'Are you sure you want to cancel this booking?',
+          confirmLabel: 'Cancel Booking',
+          variant: 'warning' as const,
+        };
+      case 'cancel-ride-request':
+        return {
+          title: 'Cancel Ride Request',
+          message: 'Are you sure you want to cancel this ride request?',
+          confirmLabel: 'Cancel Request',
+          variant: 'warning' as const,
+        };
+      default:
+        return null;
     }
   };
 
@@ -1039,7 +1184,7 @@ export default function MyRides() {
                               return;
                             }
                             await recordRateLimitAction(user.id, user.id, 'conversation');
-                            navigate('/messages', { state: { conversationId } });
+                            navigate(`/messages?c=${conversationId}`, { state: { conversationId } });
                           }}
                           className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
                         >
@@ -1195,22 +1340,7 @@ export default function MyRides() {
                         </div>
                         {!expired && !isCancelled && (
                           <button
-                            onClick={async () => {
-                              if (confirm('Are you sure you want to cancel this ride request?')) {
-                                try {
-                                  const { error } = await supabase
-                                    .from('ride_requests')
-                                    .update({ status: 'cancelled' })
-                                    .eq('id', request.id);
-
-                                  if (error) throw error;
-                                  await loadRides();
-                                } catch (error) {
-                                  console.error('Failed to cancel request:', error);
-                                  alert('Failed to cancel request. Please try again.');
-                                }
-                              }
-                            }}
+                            onClick={() => setConfirmAction({ type: 'cancel-ride-request', requestId: request.id })}
                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Cancel Request"
                           >
@@ -1397,7 +1527,7 @@ export default function MyRides() {
                               return;
                             }
                             await recordRateLimitAction(user.id, user.id, 'conversation');
-                            navigate('/messages', { state: { conversationId } });
+                            navigate(`/messages?c=${conversationId}`, { state: { conversationId } });
                           }}
                           className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
                         >
@@ -1429,6 +1559,19 @@ export default function MyRides() {
       />
 
       <RecurringRidesManager />
+
+      {confirmAction && getConfirmDialogProps() && (
+        <ConfirmDialog
+          isOpen={true}
+          title={getConfirmDialogProps()!.title}
+          message={getConfirmDialogProps()!.message}
+          confirmLabel={getConfirmDialogProps()!.confirmLabel}
+          variant={getConfirmDialogProps()!.variant}
+          onConfirm={handleConfirmAction}
+          onCancel={() => setConfirmAction(null)}
+          loading={confirmLoading}
+        />
+      )}
     </div>
   );
 }
