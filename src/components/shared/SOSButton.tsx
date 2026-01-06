@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AlertTriangle, Phone, MapPin, X, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { toast } from '../../lib/toast';
 
 interface SOSButtonProps {
   rideId?: string;
@@ -58,10 +59,10 @@ export default function SOSButton({ rideId, location, compact = false }: SOSButt
       setSosActive(true);
       setShowConfirm(false);
 
-      alert('Emergency alert activated! Your emergency contacts will be notified.');
+      toast.warning('Emergency alert activated! Your emergency contacts will be notified.', 10000);
     } catch (err: any) {
       console.error('Error activating SOS:', err);
-      alert('Failed to activate emergency alert. Please call emergency services directly.');
+      toast.error('Failed to activate emergency alert. Please call emergency services directly.');
     } finally {
       setActivating(false);
     }
@@ -76,7 +77,7 @@ export default function SOSButton({ rideId, location, compact = false }: SOSButt
         .eq('status', 'active');
 
       setSosActive(false);
-      alert('Emergency alert deactivated.');
+      toast.info('Emergency alert deactivated.');
     } catch (err: any) {
       console.error('Error deactivating SOS:', err);
     }

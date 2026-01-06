@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Camera, X, Upload, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { toast } from '../../lib/toast';
 import { useNavigate } from 'react-router-dom';
 import { uploadProfilePhoto } from '../../services/storageService';
 import { validateProfilePhoto } from '../../services/faceDetection';
@@ -39,12 +40,12 @@ export default function ProfilePictureBanner() {
     if (!file || !user) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+      toast.error('Please select an image file');
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB');
+      toast.error('File size must be less than 10MB');
       return;
     }
 
@@ -59,7 +60,7 @@ export default function ProfilePictureBanner() {
       if (!validation.valid) {
         const errorMsg = validation.error || validation.message || 'Invalid profile photo';
         console.error('Validation failed:', errorMsg);
-        alert(errorMsg);
+        toast.error(errorMsg);
         setUploading(false);
         return;
       }
@@ -93,7 +94,7 @@ export default function ProfilePictureBanner() {
     } catch (error: any) {
       console.error('Error uploading profile picture:', error);
       const errorMessage = error.message || error.toString() || 'Failed to upload profile picture. Please try again.';
-      alert(`Upload failed: ${errorMessage}`);
+      toast.error(`Upload failed: ${errorMessage}`);
     } finally {
       setUploading(false);
     }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, MapPin, Phone, ArrowRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { toast } from '../../lib/toast';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface ProfileStepProps {
@@ -59,7 +60,7 @@ export default function ProfileStep({ onNext }: ProfileStepProps) {
       onNext();
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Failed to update profile. Please try again.');
+      toast.error('Failed to update profile. Please try again.');
     } finally {
       setLoading(false);
     }

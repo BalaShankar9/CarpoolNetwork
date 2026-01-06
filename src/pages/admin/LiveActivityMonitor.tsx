@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AdminLayout from '../../components/admin/AdminLayout';
 import {
-  ArrowLeft,
   Activity,
   Users,
   Car,
@@ -228,7 +228,7 @@ export default function LiveActivityMonitor() {
 
   const playNotificationSound = () => {
     if (audioRef.current) {
-      audioRef.current.play().catch(() => {});
+      audioRef.current.play().catch(() => { });
     }
   };
 
@@ -315,61 +315,36 @@ export default function LiveActivityMonitor() {
   }
 
   return (
-    <div className="space-y-6 pb-8">
-      <audio ref={audioRef} src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS56+OdTgwOUKXh8bllHgU2jdXyzn0vBSh+zPDckjwKElyx6OyrWBQLRp3e8r1nIQYsgc/y2Ik2CBZgsunlm08MDlGl4fG5ZiAFNo/W8tCAMAUrfsrv3I4+ChFbs+jtrVoVDEae3vK8aCAFLIDP8tiKNQcVYbHo5JxPDA5RpuHxuWYgBTaO1vLOf2YgBS6Az/LYizcHE19Z6+SbTgwPUajh8bdnFApGnNzzwW0hBSyA0O+dTwxQvr+" />
-
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/admin')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <Zap className="w-8 h-8 text-blue-600" />
-              Live Activity Monitor
-            </h1>
-            <p className="text-gray-600 mt-1">Real-time platform operations and events</p>
-          </div>
-        </div>
-
+    <AdminLayout
+      title="Live Activity Monitor"
+      subtitle="Real-time platform operations and events"
+      actions={
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className={`p-2 rounded-lg transition-colors ${
-              soundEnabled ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
-            }`}
+            className={`p-2 rounded-lg transition-colors ${soundEnabled ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}
             title={soundEnabled ? 'Disable sound' : 'Enable sound'}
           >
             {soundEnabled ? <Bell className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
           </button>
           <button
             onClick={() => setIsPaused(!isPaused)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isPaused ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${isPaused ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}
           >
             {isPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
             {isPaused ? 'Resume' : 'Pause'}
           </button>
-          <button
-            onClick={loadInitialData}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Refresh"
-          >
+          <button onClick={loadInitialData} className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Refresh">
             <RefreshCw className="w-5 h-5" />
           </button>
-          <button
-            onClick={exportActivities}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-          >
+          <button onClick={exportActivities} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
             <Download className="w-5 h-5" />
             Export
           </button>
         </div>
-      </div>
+      }
+    >
+      <audio ref={audioRef} src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS56+OdTgwOUKXh8bllHgU2jdXyzn0vBSh+zPDckjwKElyx6OyrWBQLRp3e8r1nIQYsgc/y2Ik2CBZgsunlm08MDlGl4fG5ZiAFNo/W8tCAMAUrfsrv3I4+ChFbs+jtrVoVDEae3vK8aCAFLIDP8tiKNQcVYbHo5JxPDA5RpuHxuWYgBTaO1vLOf2YgBS6Az/LYizcHE19Z6+SbTgwPUajh8bdnFApGnNzzwW0hBSyA0O+dTwxQvr+" />
 
       {/* Live Metrics */}
       <div className="grid md:grid-cols-6 gap-4">
@@ -447,11 +422,10 @@ export default function LiveActivityMonitor() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                        alert.severity === 'critical' ? 'bg-red-600 text-white' :
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${alert.severity === 'critical' ? 'bg-red-600 text-white' :
                         alert.severity === 'error' ? 'bg-orange-500 text-white' :
-                        'bg-yellow-500 text-white'
-                      }`}>
+                          'bg-yellow-500 text-white'
+                        }`}>
                         {alert.severity.toUpperCase()}
                       </span>
                       <span className="text-sm text-gray-500">{alert.alert_type}</span>
@@ -603,6 +577,6 @@ export default function LiveActivityMonitor() {
           )}
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 }

@@ -228,9 +228,9 @@ export default function BookingDetails() {
           if (result.restriction_applied) {
             message += '\n\n🚫 Your booking privileges have been temporarily restricted due to reliability concerns.';
           }
-          alert(message);
+          toast.success(message);
         } else {
-          alert(result.message || 'Failed to cancel booking');
+          toast.error(result.message || 'Failed to cancel booking');
           setCancelling(false);
           return;
         }
@@ -242,9 +242,9 @@ export default function BookingDetails() {
       const errorMessage = error.message || 'Failed to cancel booking. Please try again.';
 
       if (errorMessage.includes('already cancelled')) {
-        alert('This booking is already cancelled.');
+        toast.info('This booking is already cancelled.');
       } else {
-        alert(errorMessage);
+        toast.error(errorMessage);
       }
     } finally {
       setCancelling(false);
@@ -258,13 +258,13 @@ export default function BookingDetails() {
         (position) => {
           const message = `EMERGENCY: I need help!\n\nBooking ID: ${bookingId}\nDriver: ${booking?.ride.driver?.full_name ?? 'Unknown'}\nMy Location: https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}\n\nThis is an automated emergency alert.`;
 
-          alert('SOS Activated!\n\n' + message + '\n\nIn a real emergency:\n1. Call emergency services (911)\n2. Contact driver\n3. Share your live location with trusted contacts');
+          toast.warning('SOS Activated! ' + message + ' In a real emergency: 1. Call emergency services (999) 2. Contact driver 3. Share your live location with trusted contacts', 15000);
 
           setSosActive(false);
         },
         (error) => {
           console.error('Location error:', error);
-          alert('Could not get your location. Please call emergency services immediately if you need help.');
+          toast.error('Could not get your location. Please call emergency services immediately if you need help.');
           setSosActive(false);
         }
       );
@@ -282,7 +282,7 @@ export default function BookingDetails() {
     if (driverPhone) {
       window.location.href = `tel:${driverPhone}`;
     } else {
-      alert('Driver phone number not available');
+      toast.warning('Driver phone number not available');
     }
   };
 
@@ -651,7 +651,7 @@ export default function BookingDetails() {
             onSubmitted={() => {
               setHasReviewed(true);
               setShowReviewForm(false);
-              alert('Thank you for your review!');
+              toast.success('Thank you for your review!');
             }}
           />
         </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Settings, ArrowRight, Music, MessageCircle, Wind } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { toast } from '../../lib/toast';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface PreferencesStepProps {
@@ -32,7 +33,7 @@ export default function PreferencesStep({ onNext }: PreferencesStepProps) {
       onNext();
     } catch (error) {
       console.error('Error updating preferences:', error);
-      alert('Failed to update preferences. Please try again.');
+      toast.error('Failed to update preferences. Please try again.');
     } finally {
       setLoading(false);
     }

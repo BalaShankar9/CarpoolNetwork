@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Camera, Car, X, Upload, CheckCircle, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { toast } from '../../lib/toast';
 
 export default function OnboardingModal() {
   const { user, profile } = useAuth();
@@ -33,12 +34,12 @@ export default function OnboardingModal() {
     if (!file || !user) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+      toast.error('Please select an image file');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB');
+      toast.error('File size must be less than 5MB');
       return;
     }
 
@@ -72,7 +73,7 @@ export default function OnboardingModal() {
       }, 1000);
     } catch (error) {
       console.error('Error uploading profile picture:', error);
-      alert('Failed to upload profile picture. Please try again.');
+      toast.error('Failed to upload profile picture. Please try again.');
     } finally {
       setUploadingProfile(false);
     }
@@ -83,12 +84,12 @@ export default function OnboardingModal() {
     if (!file || !user) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+      toast.error('Please select an image file');
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB');
+      toast.error('File size must be less than 10MB');
       return;
     }
 
@@ -130,7 +131,7 @@ export default function OnboardingModal() {
       }, 1000);
     } catch (error) {
       console.error('Error uploading vehicle picture:', error);
-      alert('Failed to upload vehicle picture. Please try again.');
+      toast.error('Failed to upload vehicle picture. Please try again.');
     } finally {
       setUploadingVehicle(false);
     }

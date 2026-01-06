@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AdminLayout from '../../components/admin/AdminLayout';
 import {
   TrendingUp,
   TrendingDown,
@@ -145,19 +146,10 @@ export default function SafetyDashboard() {
     : 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => navigate('/admin')}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold text-gray-900">Safety Metrics</h1>
-          <p className="text-gray-600 mt-1">Comprehensive safety and moderation analytics</p>
-        </div>
-      </div>
+    <AdminLayout
+      title="Safety Metrics"
+      subtitle="Comprehensive safety and moderation analytics"
+    >
 
       {/* Key Metrics */}
       <div className="grid md:grid-cols-4 gap-4">
@@ -347,6 +339,6 @@ export default function SafetyDashboard() {
           </div>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 }

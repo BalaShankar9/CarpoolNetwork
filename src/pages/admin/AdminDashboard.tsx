@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import AdminLayout from '../../components/admin/AdminLayout';
 import {
   LayoutDashboard,
   Users,
@@ -16,7 +17,6 @@ import {
   RefreshCw,
   UserCheck,
   AlertCircle,
-  ArrowLeft,
   BarChart3,
   DollarSign,
   Mail,
@@ -232,49 +232,31 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4 min-w-0">
-              <button
-                onClick={() => navigate('/')}
-                className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <LayoutDashboard className="w-7 h-7 text-white" />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-                <p className="text-gray-500 truncate">Welcome back, {user?.email?.split('@')[0]}</p>
-              </div>
-            </div>
-            <button
-              onClick={fetchDashboardData}
-              disabled={refreshing}
-              className="self-start px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2 sm:self-auto"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4">
+    <AdminLayout
+      title="Admin Dashboard"
+      subtitle={`Welcome back, ${user?.email?.split('@')[0]}`}
+      actions={
+        <button
+          onClick={fetchDashboardData}
+          disabled={refreshing}
+          className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
+      }
+    >
+      <div className="bg-white border-b border-gray-200 -mx-6 -mt-4 mb-6">
+        <div className="px-6">
           <div className="flex flex-wrap gap-1 sm:flex-nowrap sm:overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-3 sm:px-4 py-3 border-b-2 transition-colors min-w-0 text-left whitespace-normal sm:whitespace-nowrap ${
-                  activeTab === tab.id
+                className={`flex items-center gap-2 px-3 sm:px-4 py-3 border-b-2 transition-colors min-w-0 text-left whitespace-normal sm:whitespace-nowrap ${activeTab === tab.id
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
-                }`}
+                  }`}
               >
                 <tab.icon className="w-4 h-4 shrink-0" />
                 <span className="text-sm font-medium">{tab.label}</span>
@@ -283,186 +265,183 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {loading && activeTab === 'overview' ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : activeTab !== 'overview' ? (
-          <div className="py-4">
-            {renderTabContent()}
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-              {statCards.map((stat) => (
-                <div
-                  key={stat.label}
-                  className={`bg-white rounded-xl p-4 border shadow-sm hover:shadow-md transition-all ${stat.link ? 'cursor-pointer' : ''} ${stat.highlight ? 'ring-2 ring-orange-400 ring-offset-2' : ''}`}
-                  onClick={() => stat.link && navigate(stat.link)}
-                >
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${colorClasses[stat.color as keyof typeof colorClasses]}`}>
-                    <stat.icon className="w-5 h-5" />
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                  <p className="text-sm text-gray-500">{stat.label}</p>
-                  {stat.subtext && (
-                    <p className="text-xs text-gray-400 mt-1">{stat.subtext}</p>
-                  )}
-                  {stat.highlight && stat.value > 0 && (
-                    <p className="text-xs text-orange-600 font-medium mt-1">Needs attention</p>
-                  )}
+      {loading && activeTab === 'overview' ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : activeTab !== 'overview' ? (
+        <div className="py-4">
+          {renderTabContent()}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+            {statCards.map((stat) => (
+              <div
+                key={stat.label}
+                className={`bg-white rounded-xl p-4 border shadow-sm hover:shadow-md transition-all ${stat.link ? 'cursor-pointer' : ''} ${stat.highlight ? 'ring-2 ring-orange-400 ring-offset-2' : ''}`}
+                onClick={() => stat.link && navigate(stat.link)}
+              >
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${colorClasses[stat.color as keyof typeof colorClasses]}`}>
+                  <stat.icon className="w-5 h-5" />
                 </div>
-              ))}
-            </div>
-
-            <div className="grid lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 min-w-0 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-2 min-w-0">
-                  <h2 className="text-lg font-semibold text-gray-900 truncate min-w-0">Recent Activity</h2>
-                  <Clock className="w-5 h-5 text-gray-400 shrink-0" />
-                </div>
-                <div className="divide-y divide-gray-100">
-                  {recentActivity.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500">
-                      No recent activity
-                    </div>
-                  ) : (
-                    recentActivity.map((activity, idx) => (
-                      <div key={idx} className="px-6 py-4 flex items-center gap-4 hover:bg-gray-50">
-                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                          {getActivityIcon(activity.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 truncate">{activity.description}</p>
-                          {activity.details && (
-                            <p className="text-sm text-gray-500 truncate">{activity.details}</p>
-                          )}
-                        </div>
-                        <span className="text-xs text-gray-400 whitespace-nowrap">
-                          {formatTimeAgo(activity.timestamp)}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
+                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                <p className="text-sm text-gray-500">{stat.label}</p>
+                {stat.subtext && (
+                  <p className="text-xs text-gray-400 mt-1">{stat.subtext}</p>
+                )}
+                {stat.highlight && stat.value > 0 && (
+                  <p className="text-xs text-orange-600 font-medium mt-1">Needs attention</p>
+                )}
               </div>
+            ))}
+          </div>
 
-              <div className="space-y-4">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                  <div className="space-y-2">
-                    <Link
-                      to="/admin/verifications"
-                      className={`flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group ${(stats?.pendingVerifications || 0) > 0 ? 'bg-orange-50' : ''}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-orange-500" />
-                        <span className="font-medium text-gray-700">Verification Queue</span>
-                        {(stats?.pendingVerifications || 0) > 0 && (
-                          <span className="px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded-full">
-                            {stats?.pendingVerifications}
-                          </span>
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 min-w-0 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-2 min-w-0">
+                <h2 className="text-lg font-semibold text-gray-900 truncate min-w-0">Recent Activity</h2>
+                <Clock className="w-5 h-5 text-gray-400 shrink-0" />
+              </div>
+              <div className="divide-y divide-gray-100">
+                {recentActivity.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    No recent activity
+                  </div>
+                ) : (
+                  recentActivity.map((activity, idx) => (
+                    <div key={idx} className="px-6 py-4 flex items-center gap-4 hover:bg-gray-50">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                        {getActivityIcon(activity.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 truncate">{activity.description}</p>
+                        {activity.details && (
+                          <p className="text-sm text-gray-500 truncate">{activity.details}</p>
                         )}
                       </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
-                    </Link>
-                    <Link
-                      to="/admin/analytics"
-                      className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <BarChart3 className="w-5 h-5 text-green-500" />
-                        <span className="font-medium text-gray-700">Advanced Analytics</span>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
-                    </Link>
-                    <Link
-                      to="/admin/activity"
-                      className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Zap className="w-5 h-5 text-yellow-500" />
-                        <span className="font-medium text-gray-700">Live Activity Monitor</span>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
-                    </Link>
-                    <Link
-                      to="/admin/diagnostics"
-                      className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Activity className="w-5 h-5 text-blue-500" />
-                        <span className="font-medium text-gray-700">System Diagnostics</span>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
-                    </Link>
-                    <Link
-                      to="/admin/feedback"
-                      className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <MessageSquare className="w-5 h-5 text-teal-500" />
-                        <span className="font-medium text-gray-700">User Feedback</span>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
-                    </Link>
-                    <Link
-                      to="/admin/users"
-                      className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <UserCheck className="w-5 h-5 text-green-500" />
-                        <span className="font-medium text-gray-700">User Management</span>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
-                    </Link>
-                    <Link
-                      to="/admin/bulk-operations"
-                      className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Package className="w-5 h-5 text-purple-500" />
-                        <span className="font-medium text-gray-700">Bulk Operations</span>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
-                    </Link>
-                    <Link
-                      to="/admin/performance"
-                      className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Gauge className="w-5 h-5 text-indigo-500" />
-                        <span className="font-medium text-gray-700">Performance Monitor</span>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
-                    </Link>
-                  </div>
-                </div>
+                      <span className="text-xs text-gray-400 whitespace-nowrap">
+                        {formatTimeAgo(activity.timestamp)}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
 
-                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white">
-                  <div className="flex items-center gap-3 mb-3">
-                    <AlertCircle className="w-6 h-6" />
-                    <h3 className="font-semibold">System Status</h3>
-                  </div>
-                  <p className="text-blue-100 text-sm mb-4">
-                    Run diagnostics to check all system components and integrations.
-                  </p>
+            <div className="space-y-4">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+                <div className="space-y-2">
+                  <Link
+                    to="/admin/verifications"
+                    className={`flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group ${(stats?.pendingVerifications || 0) > 0 ? 'bg-orange-50' : ''}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-orange-500" />
+                      <span className="font-medium text-gray-700">Verification Queue</span>
+                      {(stats?.pendingVerifications || 0) > 0 && (
+                        <span className="px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded-full">
+                          {stats?.pendingVerifications}
+                        </span>
+                      )}
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                  </Link>
+                  <Link
+                    to="/admin/analytics"
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <BarChart3 className="w-5 h-5 text-green-500" />
+                      <span className="font-medium text-gray-700">Advanced Analytics</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                  </Link>
+                  <Link
+                    to="/admin/activity"
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Zap className="w-5 h-5 text-yellow-500" />
+                      <span className="font-medium text-gray-700">Live Activity Monitor</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                  </Link>
                   <Link
                     to="/admin/diagnostics"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
                   >
-                    <Activity className="w-4 h-4" />
-                    Run Health Check
+                    <div className="flex items-center gap-3">
+                      <Activity className="w-5 h-5 text-blue-500" />
+                      <span className="font-medium text-gray-700">System Diagnostics</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                  </Link>
+                  <Link
+                    to="/admin/feedback"
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <MessageSquare className="w-5 h-5 text-teal-500" />
+                      <span className="font-medium text-gray-700">User Feedback</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                  </Link>
+                  <Link
+                    to="/admin/users"
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <UserCheck className="w-5 h-5 text-green-500" />
+                      <span className="font-medium text-gray-700">User Management</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                  </Link>
+                  <Link
+                    to="/admin/bulk-operations"
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Package className="w-5 h-5 text-purple-500" />
+                      <span className="font-medium text-gray-700">Bulk Operations</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                  </Link>
+                  <Link
+                    to="/admin/performance"
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Gauge className="w-5 h-5 text-indigo-500" />
+                      <span className="font-medium text-gray-700">Performance Monitor</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
                   </Link>
                 </div>
               </div>
+
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white">
+                <div className="flex items-center gap-3 mb-3">
+                  <AlertCircle className="w-6 h-6" />
+                  <h3 className="font-semibold">System Status</h3>
+                </div>
+                <p className="text-blue-100 text-sm mb-4">
+                  Run diagnostics to check all system components and integrations.
+                </p>
+                <Link
+                  to="/admin/diagnostics"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
+                >
+                  <Activity className="w-4 h-4" />
+                  Run Health Check
+                </Link>
+              </div>
             </div>
-          </>
-        )}
-      </div>
-    </div>
+          </div>
+        </>
+      )}
+    </AdminLayout>
   );
 }
 

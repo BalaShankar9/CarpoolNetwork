@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AdminLayout from '../../components/admin/AdminLayout';
 import {
-  ArrowLeft,
   Activity,
   Zap,
   TrendingUp,
@@ -150,24 +150,10 @@ export default function PerformanceMonitor() {
   }
 
   return (
-    <div className="space-y-6 pb-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/admin')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <Gauge className="w-8 h-8 text-blue-600" />
-              Performance Monitor
-            </h1>
-            <p className="text-gray-600 mt-1">Real-time system performance and health metrics</p>
-          </div>
-        </div>
-
+    <AdminLayout
+      title="Performance Monitor"
+      subtitle="Real-time system performance and health metrics"
+      actions={
         <div className="flex flex-wrap items-center gap-3">
           <select
             value={timeRange}
@@ -179,16 +165,12 @@ export default function PerformanceMonitor() {
             <option value="24h">Last 24 Hours</option>
             <option value="7d">Last 7 Days</option>
           </select>
-
-          <button
-            onClick={loadData}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Refresh"
-          >
+          <button onClick={loadData} className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Refresh">
             <RefreshCw className="w-5 h-5" />
           </button>
         </div>
-      </div>
+      }
+    >
 
       {systemHealth && (
         <div className="grid md:grid-cols-3 gap-6">
@@ -362,6 +344,6 @@ export default function PerformanceMonitor() {
           </div>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 }

@@ -137,7 +137,7 @@ export default function RideDetails() {
     if (!user || !ride) return;
 
     if (!isEmailVerified) {
-      alert('Please verify your email address before booking rides.');
+      toast.warning('Please verify your email address before booking rides.');
       return;
     }
 
@@ -159,13 +159,13 @@ export default function RideDetails() {
         const errorMsg = error.message.toLowerCase();
 
         if (errorMsg.includes('not enough seats')) {
-          alert('Sorry, not enough seats available. Please try a different number of seats or refresh the page.');
+          toast.error('Sorry, not enough seats available. Please try a different number of seats or refresh the page.');
         } else if (errorMsg.includes('not active')) {
-          alert('This ride is no longer active.');
+          toast.error('This ride is no longer active.');
         } else if (errorMsg.includes('already requested') || error.code === '23505') {
-          alert('You have already requested this ride.');
+          toast.info('You have already requested this ride.');
         } else {
-          alert(`Failed to request ride: ${error.message}`);
+          toast.error(`Failed to request ride: ${error.message}`);
         }
 
         await loadRideDetails();
@@ -183,12 +183,12 @@ export default function RideDetails() {
             .eq('id', user.id);
         }
 
-        alert('Ride request sent successfully!');
+        toast.success('Ride request sent successfully!');
         await Promise.all([loadRideDetails(), checkUserBooking()]);
       }
     } catch (error: any) {
       console.error('Booking error:', error);
-      alert('Failed to request ride. Please try again.');
+      toast.error('Failed to request ride. Please try again.');
       await loadRideDetails();
     } finally {
       setRequesting(false);
@@ -212,11 +212,11 @@ export default function RideDetails() {
 
       if (error) throw error;
 
-      alert('Booking cancelled successfully!');
+      toast.success('Booking cancelled successfully!');
       await Promise.all([loadRideDetails(), checkUserBooking()]);
     } catch (error) {
       console.error('Error cancelling booking:', error);
-      alert('Failed to cancel booking. Please try again.');
+      toast.error('Failed to cancel booking. Please try again.');
     } finally {
       setCancelling(false);
     }

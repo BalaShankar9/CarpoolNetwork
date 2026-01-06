@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bug, ArrowLeft, RefreshCw, ExternalLink, Clock, AlertCircle, Sparkles } from 'lucide-react';
+import { Bug, RefreshCw, ExternalLink, Clock, AlertCircle, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { toast } from '../../lib/toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { logApiError } from '../../services/errorTracking';
+import AdminLayout from '../../components/admin/AdminLayout';
 
 interface BugReport {
   id: string;
@@ -19,7 +21,7 @@ interface BugReport {
 }
 
 export default function BugReports() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, hasRole } = useAuth();
   const navigate = useNavigate();
   const [reports, setReports] = useState<BugReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,12 +30,12 @@ export default function BugReports() {
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (!isAdmin && !hasRole('moderator')) {
       navigate('/');
       return;
     }
     fetchReports();
-  }, [isAdmin, navigate]);
+  }, [isAdmin, hasRole, navigate]);
 
   const fetchReports = async () => {
     setRefreshing(true);
@@ -107,13 +109,13 @@ export default function BugReports() {
     } catch (error) {
       console.error('AI triage failed', error);
       await logApiError('ai-bug-triage-client', error, { extra: { bugId } });
-      alert('AI analysis failed. Please try again.');
+      toast.error('AI analysis failed. Please try again.');
     } finally {
       setTriaging(null);
     }
   };
 
-  if (!isAdmin) return null;
+  if (!isAdmin && !hasRole('moderator')) return null;
 
   const statusBadge = (status: string) => {
     const colors: Record<string, string> = {
@@ -126,38 +128,21 @@ export default function BugReports() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/admin')}
-                className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div className="w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <Bug className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Bug Reports</h1>
-                <p className="text-gray-500">{reports.length} reports</p>
-              </div>
-            </div>
-            <button
-              onClick={fetchReports}
-              disabled={refreshing}
-              className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 py-8 space-y-4">
+    <AdminLayout
+      title="Bug Reports"
+      subtitle={`${reports.length} reports`}
+      actions={
+        <button
+          onClick={fetchReports}
+          disabled={refreshing}
+          className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
+      }
+    >
+      <div className="space-y-4">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
@@ -256,6 +241,6 @@ export default function BugReports() {
           </div>
         )}
       </div>
-    </div>
+    </AdminLayout>
   );
 }

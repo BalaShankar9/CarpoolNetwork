@@ -3,6 +3,7 @@ import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation } from 
 import { Capacitor } from '@capacitor/core';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { RealtimeProvider } from './contexts/RealtimeContext';
+import { PremiumProvider } from './contexts/PremiumContext';
 import Layout from './components/layout/Layout';
 import { AppErrorBoundary } from './components/shared/ProductionErrorBoundary';
 import { LoadingProvider } from './components/shared/LoadingStateManager';
@@ -52,6 +53,12 @@ const Challenges = lazy(() => import('./pages/Challenges'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Friends = lazy(() => import('./pages/Friends'));
 const HelpHub = lazy(() => import('./pages/HelpHub'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const SafetyCenter = lazy(() => import('./pages/SafetyCenter'));
+const Favorites = lazy(() => import('./pages/Favorites'));
+const Pools = lazy(() => import('./pages/Pools'));
+const AdminManagement = lazy(() => import('./pages/admin/AdminManagement'));
+const AuditLog = lazy(() => import('./pages/admin/AuditLog'));
 
 const LoadingScreen = () => (
   <div className="min-h-screen bg-white flex items-center justify-center">
@@ -122,237 +129,275 @@ function AppContent() {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
-          <Route path="/signin" element={
-            <PublicRoute>
-              <SignIn />
-            </PublicRoute>
-          } />
-          <Route path="/signup" element={
-            <PublicRoute>
-              <SignUp />
-            </PublicRoute>
-          } />
-          <Route path="/verify-otp" element={
-            <PublicRoute>
-              <VerifyOtp />
-            </PublicRoute>
-          } />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/forgot-password" element={
-            <PublicRoute>
-              <ForgotPassword />
-            </PublicRoute>
-          } />
-          <Route path="/reset-password" element={
-            <ResetPassword />
-          } />
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Layout>
-                <Home />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/find-rides" element={
-            <ProtectedRoute>
-              <Layout>
-                <FindRides />
-              </Layout>
-            </ProtectedRoute>
-          } />
-            <Route path="/post-ride" element={
-              <RequireProfileComplete>
-                <Layout>
-                  <PostRide />
-                </Layout>
-              </RequireProfileComplete>
-            } />
-            <Route path="/request-ride" element={
-              <RequireProfileComplete>
-                <Layout>
-                  <RequestRide />
-                </Layout>
-              </RequireProfileComplete>
-            } />
-          <Route path="/my-rides" element={
-            <ProtectedRoute>
-              <Layout>
-                <MyRides />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/messages" element={
-            <ProtectedRoute>
-              <Layout>
-                <Messages />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/community" element={
-            <ProtectedRoute>
-              <Layout>
-                <Community />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/community/:postId" element={
-            <ProtectedRoute>
-              <Layout>
-                <CommunityPost />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <Layout>
-                <Profile />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/onboarding/profile" element={
-            <ProtectedRoute>
-              <ProfileOnboarding />
-            </ProtectedRoute>
-          } />
-          <Route path="/user/:userId" element={
-            <ProtectedRoute>
-              <Layout>
-                <PublicProfile />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/security" element={
-            <ProtectedRoute>
-              <SecuritySettings />
-            </ProtectedRoute>
-          } />
-          <Route path="/settings" element={
-            <ProtectedRoute>
-              <Layout>
-                <Settings />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/preferences" element={
-            <ProtectedRoute>
-              <Preferences />
-            </ProtectedRoute>
-          } />
-          <Route path="/analytics" element={
-            <ProtectedRoute>
-              <Analytics />
-            </ProtectedRoute>
-          } />
-          <Route path="/leaderboards" element={
-            <ProtectedRoute>
-              <Leaderboards />
-            </ProtectedRoute>
-          } />
-          <Route path="/challenges" element={
-            <ProtectedRoute>
-              <Challenges />
-            </ProtectedRoute>
-          } />
-          <Route path="/rides/:rideId" element={
-            <ProtectedRoute>
-              <Layout>
-                <RideDetails />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/bookings/:bookingId" element={
-            <ProtectedRoute>
-              <Layout>
-                <BookingDetails />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/friends" element={
-            <ProtectedRoute>
-              <Layout>
-                <Friends />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/help" element={
-            <ProtectedRoute>
-              <Layout>
-                <HelpHub />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/terms" element={<TermsOfService />} />
-          <Route path="/privacy" element={<PrivacyPolicy />} />
-          <Route path="/admin/beta" element={
-            <ProtectedRoute>
-              <BetaManagement />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/feedback" element={
-            <ProtectedRoute>
-              <FeedbackManagement />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/diagnostics" element={
-            <ProtectedRoute>
-              <Diagnostics />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin" element={
-            <ProtectedRoute>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/users" element={
-            <ProtectedRoute>
-              <UserManagement />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/bugs" element={
-            <ProtectedRoute>
-              <BugReports />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/verifications" element={
-            <ProtectedRoute>
-              <VerificationQueue />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/safety" element={
-            <ProtectedRoute>
-              <SafetyReports />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/safety/report/:reportId" element={
-            <ProtectedRoute>
-              <SafetyReportDetail />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/safety/dashboard" element={
-            <ProtectedRoute>
-              <SafetyDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/analytics" element={
-            <ProtectedRoute>
-              <AdvancedAnalytics />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/activity" element={
-            <ProtectedRoute>
-              <LiveActivityMonitor />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/bulk-operations" element={
-            <ProtectedRoute>
-              <BulkOperations />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/performance" element={
-            <ProtectedRoute>
-              <PerformanceMonitor />
-            </ProtectedRoute>
-          } />
+        <Route path="/signin" element={
+          <PublicRoute>
+            <SignIn />
+          </PublicRoute>
+        } />
+        <Route path="/signup" element={
+          <PublicRoute>
+            <SignUp />
+          </PublicRoute>
+        } />
+        <Route path="/verify-otp" element={
+          <PublicRoute>
+            <VerifyOtp />
+          </PublicRoute>
+        } />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={
+          <PublicRoute>
+            <ForgotPassword />
+          </PublicRoute>
+        } />
+        <Route path="/reset-password" element={
+          <ResetPassword />
+        } />
+        <Route path="/" element={
+          <ProtectedRoute>
+            <Layout>
+              <Home />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/find-rides" element={
+          <ProtectedRoute>
+            <Layout>
+              <FindRides />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/post-ride" element={
+          <RequireProfileComplete>
+            <Layout>
+              <PostRide />
+            </Layout>
+          </RequireProfileComplete>
+        } />
+        <Route path="/request-ride" element={
+          <RequireProfileComplete>
+            <Layout>
+              <RequestRide />
+            </Layout>
+          </RequireProfileComplete>
+        } />
+        <Route path="/my-rides" element={
+          <ProtectedRoute>
+            <Layout>
+              <MyRides />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/messages" element={
+          <ProtectedRoute>
+            <Layout>
+              <Messages />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/community" element={
+          <ProtectedRoute>
+            <Layout>
+              <Community />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/community/:postId" element={
+          <ProtectedRoute>
+            <Layout>
+              <CommunityPost />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <Layout>
+              <Profile />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/onboarding/profile" element={
+          <ProtectedRoute>
+            <ProfileOnboarding />
+          </ProtectedRoute>
+        } />
+        <Route path="/user/:userId" element={
+          <ProtectedRoute>
+            <Layout>
+              <PublicProfile />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/security" element={
+          <ProtectedRoute>
+            <SecuritySettings />
+          </ProtectedRoute>
+        } />
+        <Route path="/settings" element={
+          <ProtectedRoute>
+            <Layout>
+              <Settings />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/preferences" element={
+          <ProtectedRoute>
+            <Preferences />
+          </ProtectedRoute>
+        } />
+        <Route path="/analytics" element={
+          <ProtectedRoute>
+            <Analytics />
+          </ProtectedRoute>
+        } />
+        <Route path="/leaderboards" element={
+          <ProtectedRoute>
+            <Leaderboards />
+          </ProtectedRoute>
+        } />
+        <Route path="/challenges" element={
+          <ProtectedRoute>
+            <Challenges />
+          </ProtectedRoute>
+        } />
+        <Route path="/rides/:rideId" element={
+          <ProtectedRoute>
+            <Layout>
+              <RideDetails />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/bookings/:bookingId" element={
+          <ProtectedRoute>
+            <Layout>
+              <BookingDetails />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/friends" element={
+          <ProtectedRoute>
+            <Layout>
+              <Friends />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/notifications" element={
+          <ProtectedRoute>
+            <Layout>
+              <Notifications />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/safety" element={
+          <ProtectedRoute>
+            <Layout>
+              <SafetyCenter />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/favorites" element={
+          <ProtectedRoute>
+            <Layout>
+              <Favorites />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/pools" element={
+          <ProtectedRoute>
+            <Layout>
+              <Pools />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/help" element={
+          <ProtectedRoute>
+            <Layout>
+              <HelpHub />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/admin/beta" element={
+          <ProtectedRoute>
+            <BetaManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/feedback" element={
+          <ProtectedRoute>
+            <FeedbackManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/diagnostics" element={
+          <ProtectedRoute>
+            <Diagnostics />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin" element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/users" element={
+          <ProtectedRoute>
+            <UserManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/bugs" element={
+          <ProtectedRoute>
+            <BugReports />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/verifications" element={
+          <ProtectedRoute>
+            <VerificationQueue />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/safety" element={
+          <ProtectedRoute>
+            <SafetyReports />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/safety/report/:reportId" element={
+          <ProtectedRoute>
+            <SafetyReportDetail />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/safety/dashboard" element={
+          <ProtectedRoute>
+            <SafetyDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/analytics" element={
+          <ProtectedRoute>
+            <AdvancedAnalytics />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/activity" element={
+          <ProtectedRoute>
+            <LiveActivityMonitor />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/bulk-operations" element={
+          <ProtectedRoute>
+            <BulkOperations />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/performance" element={
+          <ProtectedRoute>
+            <PerformanceMonitor />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/admins" element={
+          <ProtectedRoute>
+            <AdminManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/audit" element={
+          <ProtectedRoute>
+            <AuditLog />
+          </ProtectedRoute>
+        } />
       </Routes>
     </Suspense>
   );
@@ -362,13 +407,15 @@ function App() {
   return (
     <LoadingProvider>
       <AuthProvider>
-        <RealtimeProvider>
-          <Router>
-            <AppErrorBoundary>
-              <AppContent />
-            </AppErrorBoundary>
-          </Router>
-        </RealtimeProvider>
+        <PremiumProvider>
+          <RealtimeProvider>
+            <Router>
+              <AppErrorBoundary>
+                <AppContent />
+              </AppErrorBoundary>
+            </Router>
+          </RealtimeProvider>
+        </PremiumProvider>
       </AuthProvider>
     </LoadingProvider>
   );

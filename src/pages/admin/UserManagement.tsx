@@ -1,7 +1,6 @@
 import { useState, useEffect, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
   Users,
   Search,
   Mail,
@@ -12,10 +11,12 @@ import {
   Shield,
   ChevronDown,
   ChevronUp,
-  ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import AdminLayout from '../../components/admin/AdminLayout';
+import { Can } from '../../components/admin/PermissionGuard';
 
 interface UserProfile {
   id: string;
@@ -30,7 +31,7 @@ interface UserProfile {
 }
 
 export default function UserManagement() {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin, hasPermission } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,12 +41,12 @@ export default function UserManagement() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (!isAdmin && !hasPermission('users.view')) {
       navigate('/');
       return;
     }
     fetchUsers();
-  }, [isAdmin, navigate, sortBy, sortOrder]);
+  }, [isAdmin, hasPermission, navigate, sortBy, sortOrder]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -106,36 +107,24 @@ export default function UserManagement() {
     });
   };
 
-  if (!isAdmin) return null;
+  if (!isAdmin && !hasPermission('users.view')) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <button
-            onClick={() => navigate('/admin')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>Back to Dashboard</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-              <Users className="w-6 h-6 text-green-600" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-              <p className="text-gray-600">{users.length} registered users</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
+    <AdminLayout
+      title="User Management"
+      subtitle={`${users.length} registered users`}
+      actions={
+        <button
+          onClick={fetchUsers}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
+      }
+    >
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
           <div className="p-4 border-b border-gray-200">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -301,7 +290,6 @@ export default function UserManagement() {
             </table>
           </div>
         </div>
-      </div>
-    </div>
+    </AdminLayout>
   );
 }

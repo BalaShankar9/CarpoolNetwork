@@ -2,26 +2,26 @@ import { supabase } from '../lib/supabase';
 import { Notification, NotificationType, NotificationData } from '../types/notifications';
 
 const hasReadAtColumnError = (error: any) =>
-  error?.code === '42703' || (typeof error?.message === 'string' && error.message.includes('read_at'));
+    error?.code === '42703' || (typeof error?.message === 'string' && error.message.includes('read_at'));
 
 export function normalizeNotification(raw: any): Notification {
-  const normalizedType = (raw?.type || 'SYSTEM').toString().toUpperCase() as NotificationType;
-  const read_at =
-    raw?.read_at ??
-    (typeof raw?.is_read === 'boolean'
-      ? raw.is_read
-        ? raw?.created_at || new Date().toISOString()
-        : null
-      : null);
+    const normalizedType = (raw?.type || 'SYSTEM').toString().toUpperCase() as NotificationType;
+    const read_at =
+        raw?.read_at ??
+        (typeof raw?.is_read === 'boolean'
+            ? raw.is_read
+                ? raw?.created_at || new Date().toISOString()
+                : null
+            : null);
 
-  return {
-    id: raw.id,
-    user_id: raw.user_id,
-    type: normalizedType,
-    data: raw?.data || {},
-    created_at: raw.created_at,
-    read_at,
-  };
+    return {
+        id: raw.id,
+        user_id: raw.user_id,
+        type: normalizedType,
+        data: raw?.data || {},
+        created_at: raw.created_at,
+        read_at,
+    };
 }
 
 export class NotificationsService {
@@ -196,6 +196,59 @@ export function formatNotification(notification: Notification) {
             return {
                 title: 'New Review',
                 description: data.message || 'You received a new review.',
+            };
+        // Phase 3 - Ride Tracking notifications
+        case 'RIDE_STARTED':
+            return {
+                title: 'Ride Started',
+                description: data.message || `Your ride to ${data.destination || 'destination'} has started.`,
+            };
+        case 'RIDE_LOCATION_UPDATE':
+            return {
+                title: 'Driver Location Update',
+                description: data.message || `Driver is ${data.eta_minutes || 'a few'} minutes away.`,
+            };
+        case 'RIDE_COMPLETED':
+            return {
+                title: 'Ride Completed',
+                description: data.message || 'Your ride has been completed. Don\'t forget to leave a review!',
+            };
+        case 'RIDE_DELAYED':
+            return {
+                title: 'Ride Delayed',
+                description: data.message || `Your ride has been delayed by ${data.delay_minutes || 'a few'} minutes.`,
+            };
+        case 'DRIVER_ARRIVING':
+            return {
+                title: 'Driver Arriving',
+                description: data.message || `${data.driver_name || 'Your driver'} will arrive in ${data.eta_minutes || '5'} minutes.`,
+            };
+        // Phase 3 - Achievement notifications
+        case 'ACHIEVEMENT_UNLOCKED':
+            return {
+                title: '🏆 Achievement Unlocked!',
+                description: data.message || `You earned the "${data.achievement_name || 'achievement'}" badge!`,
+            };
+        case 'BADGE_EARNED':
+            return {
+                title: '🎖️ New Badge Earned',
+                description: data.message || `You've earned the ${data.badge_name || 'badge'}!`,
+            };
+        case 'LEVEL_UP':
+            return {
+                title: '⬆️ Level Up!',
+                description: data.message || `Congratulations! You've reached level ${data.level || 'new'}!`,
+            };
+        // Phase 3 - Environmental notifications
+        case 'ECO_MILESTONE':
+            return {
+                title: '🌱 Eco Milestone',
+                description: data.message || `You've reached an environmental milestone!`,
+            };
+        case 'CO2_SAVED':
+            return {
+                title: '🌍 CO₂ Saved',
+                description: data.message || `You've saved ${data.kg_saved || ''} kg of CO₂ this month!`,
             };
         case 'SAFETY_ALERT':
             return {

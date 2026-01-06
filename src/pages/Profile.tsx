@@ -911,12 +911,6 @@ export default function Profile() {
         )}
       </div>
 
-      <DocumentUploadCenter />
-
-      <StatisticsDashboard />
-
-      <RideAnalyticsDashboard />
-
       <ReviewsDisplay />
 
       <FriendsManager />

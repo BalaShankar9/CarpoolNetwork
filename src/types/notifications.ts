@@ -10,7 +10,20 @@ export type NotificationType =
     | 'BOOKING_CANCELLED'
     | 'REVIEW'
     | 'SAFETY_ALERT'
-    | 'SYSTEM';
+    | 'SYSTEM'
+    // Phase 3 types - Ride Tracking
+    | 'RIDE_STARTED'
+    | 'RIDE_LOCATION_UPDATE'
+    | 'RIDE_COMPLETED'
+    | 'RIDE_DELAYED'
+    | 'DRIVER_ARRIVING'
+    // Phase 3 types - Achievements
+    | 'ACHIEVEMENT_UNLOCKED'
+    | 'BADGE_EARNED'
+    | 'LEVEL_UP'
+    // Phase 3 types - Environmental
+    | 'ECO_MILESTONE'
+    | 'CO2_SAVED';
 
 export interface Notification {
     id: string;

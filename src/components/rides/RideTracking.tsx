@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MapPin, Navigation, CheckCircle, XCircle, AlertTriangle, Users } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { toast } from '../../lib/toast';
 import { useAuth } from '../../contexts/AuthContext';
 import ClickableUserProfile from '../shared/ClickableUserProfile';
 
@@ -95,7 +96,7 @@ export default function RideTracking({ rideId, onComplete }: RideTrackingProps) 
 
   const startTracking = async () => {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser');
+      toast.error('Geolocation is not supported by your browser');
       return;
     }
 
@@ -116,15 +117,15 @@ export default function RideTracking({ rideId, onComplete }: RideTrackingProps) 
         const result = data[0];
         if (result.success) {
           setRideStarted(true);
-          alert('Ride tracking started! Safe travels!');
+          toast.success('Ride tracking started! Safe travels!');
           loadTrackingData();
         } else {
-          alert(result.message || 'Failed to start tracking');
+          toast.error(result.message || 'Failed to start tracking');
         }
       }
     } catch (error: any) {
       console.error('Error starting tracking:', error);
-      alert(error.message || 'Failed to start tracking');
+      toast.error(error.message || 'Failed to start tracking');
     }
   };
 
@@ -159,12 +160,12 @@ export default function RideTracking({ rideId, onComplete }: RideTrackingProps) 
       if (error) throw error;
 
       if (data && data.length > 0 && data[0].success) {
-        alert('Passenger marked as picked up!');
+        toast.success('Passenger marked as picked up!');
         loadPassengers();
       }
     } catch (error: any) {
       console.error('Error marking picked up:', error);
-      alert(error.message || 'Failed to mark passenger as picked up');
+      toast.error(error.message || 'Failed to mark passenger as picked up');
     } finally {
       setProcessingPassengerId(null);
     }
@@ -181,12 +182,12 @@ export default function RideTracking({ rideId, onComplete }: RideTrackingProps) 
       if (error) throw error;
 
       if (data && data.length > 0 && data[0].success) {
-        alert('Passenger marked as dropped off!');
+        toast.success('Passenger marked as dropped off!');
         loadPassengers();
       }
     } catch (error: any) {
       console.error('Error marking dropped off:', error);
-      alert(error.message || 'Failed to mark passenger as dropped off');
+      toast.error(error.message || 'Failed to mark passenger as dropped off');
     } finally {
       setProcessingPassengerId(null);
     }
@@ -207,15 +208,15 @@ export default function RideTracking({ rideId, onComplete }: RideTrackingProps) 
       if (data && data.length > 0) {
         const result = data[0];
         if (result.success) {
-          alert(`Ride completed successfully!\nDuration: ${result.total_duration_minutes} minutes\n\nPlease review your passengers.`);
+          toast.success(`Ride completed! Duration: ${result.total_duration_minutes} minutes. Please review your passengers.`);
           if (onComplete) onComplete();
         } else {
-          alert(result.message || 'Failed to complete ride');
+          toast.error(result.message || 'Failed to complete ride');
         }
       }
     } catch (error: any) {
       console.error('Error completing ride:', error);
-      alert(error.message || 'Failed to complete ride');
+      toast.error(error.message || 'Failed to complete ride');
     }
   };
 

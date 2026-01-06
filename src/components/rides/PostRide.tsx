@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Calendar, Clock, Users, Car, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { toast } from '../../lib/toast';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function PostRide() {
@@ -32,7 +33,7 @@ export default function PostRide() {
         .maybeSingle();
 
       if (!vehicles) {
-        alert('Please add a vehicle to your profile first');
+        toast.warning('Please add a vehicle to your profile first');
         setLoading(false);
         return;
       }
@@ -73,7 +74,7 @@ export default function PostRide() {
       setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
       console.error('Error posting ride:', error);
-      alert('Failed to post ride. Please try again.');
+      toast.error('Failed to post ride. Please try again.');
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Car, ArrowRight, SkipForward } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { toast } from '../../lib/toast';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface VehicleStepProps {
@@ -42,7 +43,7 @@ export default function VehicleStep({ onNext, onSkipStep }: VehicleStepProps) {
       onNext();
     } catch (error: any) {
       console.error('Error adding vehicle:', error);
-      alert(error.message || 'Failed to add vehicle. Please try again.');
+      toast.error(error.message || 'Failed to add vehicle. Please try again.');
     } finally {
       setLoading(false);
     }

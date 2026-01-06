@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AdminLayout from '../../components/admin/AdminLayout';
 import {
-  ArrowLeft,
   TrendingUp,
   TrendingDown,
   Download,
@@ -219,20 +219,10 @@ export default function AdvancedAnalytics() {
   }
 
   return (
-    <div className="space-y-6 pb-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/admin')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Advanced Analytics</h1>
-            <p className="text-gray-600 mt-1">Comprehensive platform insights and metrics</p>
-          </div>
-        </div>
+    <AdminLayout
+      title="Advanced Analytics"
+      subtitle="Comprehensive platform insights and metrics"
+      actions={
         <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={loadAnalytics}
@@ -249,7 +239,8 @@ export default function AdvancedAnalytics() {
             Export Data
           </button>
         </div>
-      </div>
+      }
+    >
 
       {/* Time Range Selector */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -262,11 +253,10 @@ export default function AdvancedAnalytics() {
                 <button
                   key={range}
                   onClick={() => setTimeRange(range)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    timeRange === range
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${timeRange === range
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                 >
                   {range === '7d' ? '7 Days' : range === '30d' ? '30 Days' : '90 Days'}
                 </button>
@@ -302,18 +292,16 @@ export default function AdvancedAnalytics() {
               tabIndex={isClickable ? 0 : undefined}
               onClick={isClickable ? () => scrollToSection(metric.targetId!) : undefined}
               onKeyDown={isClickable ? (event) => handleCardKeyDown(event, metric.targetId!) : undefined}
-              className={`bg-white rounded-xl border border-gray-200 p-6 ${
-                isClickable ? 'cursor-pointer hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300' : ''
-              }`}
+              className={`bg-white rounded-xl border border-gray-200 p-6 ${isClickable ? 'cursor-pointer hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300' : ''
+                }`}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className={`p-3 rounded-lg ${metric.color}`}>
                   {metric.icon}
                 </div>
                 {metric.change !== undefined && (
-                  <div className={`flex items-center gap-1 text-sm font-medium ${
-                    metric.change >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
+                  <div className={`flex items-center gap-1 text-sm font-medium ${metric.change >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
                     {metric.change >= 0 ? (
                       <TrendingUp className="w-4 h-4" />
                     ) : (
@@ -348,9 +336,8 @@ export default function AdvancedAnalytics() {
                   <span className="text-lg font-medium text-gray-700">{item.previous_value}</span>
                   <span className="text-sm text-gray-500">previous</span>
                 </div>
-                <div className={`flex items-center gap-1 text-sm font-medium ${
-                  item.change_percentage >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <div className={`flex items-center gap-1 text-sm font-medium ${item.change_percentage >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
                   {item.change_percentage >= 0 ? (
                     <TrendingUp className="w-4 h-4" />
                   ) : (
@@ -604,6 +591,6 @@ export default function AdvancedAnalytics() {
           </div>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 }

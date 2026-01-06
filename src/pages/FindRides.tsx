@@ -8,6 +8,7 @@ import { googleMapsService } from '../services/googleMapsService';
 import UserAvatar from '../components/shared/UserAvatar';
 import { getUserProfilePath } from '../utils/profileNavigation';
 import { fetchPublicProfilesByIds, PublicProfile } from '../services/publicProfiles';
+import { toast } from '../lib/toast';
 
 interface Ride {
   id: string;
@@ -55,6 +56,8 @@ export default function FindRides() {
   const navigate = useNavigate();
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
+  const [originCoords, setOriginCoords] = useState({ lat: 0, lng: 0 });
+  const [destCoords, setDestCoords] = useState({ lat: 0, lng: 0 });
   const [date, setDate] = useState('');
   const [seats, setSeats] = useState(1);
   const [rides, setRides] = useState<Ride[]>([]);
@@ -310,7 +313,7 @@ export default function FindRides() {
 
     const ride = rides.find(r => r.id === rideId);
     if (!ride) {
-      alert('Ride not found');
+      toast.error('Ride not found');
       return;
     }
 
@@ -330,25 +333,25 @@ export default function FindRides() {
         }]);
 
       if (error) throw error;
-      alert('Ride request sent successfully!');
+      toast.success('Ride request sent successfully!');
       loadAllRides();
     } catch (error: any) {
       if (error.code === '23505') {
-        alert('You have already requested this ride');
+        toast.info('You have already requested this ride');
       } else {
-        alert('Failed to request ride. Please try again.');
+        toast.error('Failed to request ride. Please try again.');
       }
     }
   };
 
   const createTripRequest = async () => {
     if (!user || !origin || !destination || !date) {
-      alert('Please fill in all fields');
+      toast.warning('Please fill in all fields');
       return;
     }
 
     if (!eligibilityStatus?.is_eligible) {
-      alert(eligibilityStatus?.reason || 'You are not eligible to book rides at this time');
+      toast.warning(eligibilityStatus?.reason || 'You are not eligible to book rides at this time');
       return;
     }
 
@@ -359,7 +362,7 @@ export default function FindRides() {
       const { data: destCoords } = await googleMapsService.geocodeAddress(destination);
 
       if (!originCoords || !destCoords) {
-        alert('Could not geocode locations');
+        toast.error('Could not geocode locations');
         return;
       }
 
@@ -382,12 +385,12 @@ export default function FindRides() {
 
       await supabase.rpc('match_trip_requests_to_rides');
 
-      alert('Trip request created! We will notify you when matching rides are found.');
+      toast.success('Trip request created! We will notify you when matching rides are found.');
       setShowCreateRequest(false);
       loadMyTripRequests();
     } catch (error) {
       console.error('Error creating trip request:', error);
-      alert('Failed to create trip request');
+      toast.error('Failed to create trip request');
     }
   };
 
@@ -430,7 +433,15 @@ export default function FindRides() {
               id="search-origin-input"
               label="From"
               value={origin}
-              onChange={(value) => setOrigin(value)}
+              onChange={(value, place) => {
+                setOrigin(value);
+                if (place?.geometry?.location) {
+                  setOriginCoords({
+                    lat: place.geometry.location.lat(),
+                    lng: place.geometry.location.lng(),
+                  });
+                }
+              }}
               placeholder="Enter pickup location"
             />
 
@@ -438,7 +449,15 @@ export default function FindRides() {
               id="search-destination-input"
               label="To"
               value={destination}
-              onChange={(value) => setDestination(value)}
+              onChange={(value, place) => {
+                setDestination(value);
+                if (place?.geometry?.location) {
+                  setDestCoords({
+                    lat: place.geometry.location.lat(),
+                    lng: place.geometry.location.lng(),
+                  });
+                }
+              }}
               placeholder="Enter destination"
             />
           </div>

@@ -869,7 +869,7 @@ export default function MyRides() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  alert('Edit functionality coming soon!');
+                                  toast.info('Edit functionality coming soon!');
                                 }}
                                 className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                                 title="Edit Ride"

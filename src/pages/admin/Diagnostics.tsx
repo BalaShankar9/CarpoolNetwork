@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import AdminLayout from '../../components/admin/AdminLayout';
 import {
-  ArrowLeft,
   Activity,
   CheckCircle,
   XCircle,
@@ -648,205 +648,176 @@ export default function Diagnostics() {
   const warnCount = results.filter(r => r.status === 'warn').length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <button
-            onClick={() => navigate('/admin')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>Back to Dashboard</span>
-          </button>
-          <Link
-            to="/admin"
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
-          >
-            <LayoutDashboard className="w-4 h-4" />
-            Admin Dashboard
-          </Link>
-        </div>
-      </div>
-
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-              <Activity className="w-6 h-6 text-orange-600" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">System Diagnostics</h1>
-              <p className="text-gray-600">Comprehensive health checks for all system components</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 flex-wrap">
-            {results.length > 0 && (
-              <button
-                onClick={copyReport}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
-              >
-                <Copy className="w-4 h-4" />
-                {copied ? 'Copied!' : 'Copy Report'}
-              </button>
-            )}
+    <AdminLayout
+      title="System Diagnostics"
+      subtitle="Comprehensive health checks for all system components"
+      actions={
+        <div className="flex items-center gap-3 flex-wrap">
+          {results.length > 0 && (
             <button
-              onClick={runAllTests}
-              disabled={running}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              onClick={copyReport}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
             >
-              {running ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Running...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-4 h-4" />
-                  Run All Tests
-                </>
-              )}
+              <Copy className="w-4 h-4" />
+              {copied ? 'Copied!' : 'Copy Report'}
             </button>
-          </div>
-        </div>
-
-        {results.length > 0 && (
-          <div className="mb-6 flex items-center gap-4">
-            <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-              <span className="font-medium text-green-700">{passCount} Pass</span>
-            </div>
-            {warnCount > 0 && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <CheckCircle className="w-5 h-5 text-yellow-500" />
-                <span className="font-medium text-yellow-700">{warnCount} Warn</span>
-              </div>
+          )}
+          <button
+            onClick={runAllTests}
+            disabled={running}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {running ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Running...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                Run All Tests
+              </>
             )}
-            <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg">
-              <XCircle className="w-5 h-5 text-red-500" />
-              <span className="font-medium text-red-700">{failCount} Fail</span>
-            </div>
-          </div>
-        )}
+          </button>
+        </div>
+      }
+    >
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Test Results</h2>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-              <span className="w-3 h-3 rounded-full bg-blue-500"></span> Auth
-              <span className="w-3 h-3 rounded-full bg-green-500 ml-2"></span> Database
-              <span className="w-3 h-3 rounded-full bg-orange-500 ml-2"></span> Storage
-              <span className="w-3 h-3 rounded-full bg-teal-500 ml-2"></span> Functions
-              <span className="w-3 h-3 rounded-full bg-red-500 ml-2"></span> Maps
-            </div>
+      {results.length > 0 && (
+        <div className="mb-6 flex items-center gap-4">
+          <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
+            <CheckCircle className="w-5 h-5 text-green-500" />
+            <span className="font-medium text-green-700">{passCount} Pass</span>
           </div>
-
-          {results.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">
-              <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-lg font-medium text-gray-600">No tests run yet</p>
-              <p className="text-sm mt-1">Click "Run All Tests" to start diagnostics</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {results.map((result) => (
-                <div
-                  key={result.name}
-                  className={`px-6 py-4 border-l-4 ${getCategoryColor(result.category)} ${
-                    result.status === 'fail' ? 'bg-red-50' : result.status === 'warn' ? 'bg-yellow-50' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    {getStatusIcon(result.status)}
-                    <div className="flex items-center gap-2 text-gray-500">
-                      {getTestIcon(result.name)}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <span className="font-medium text-gray-900">{result.name}</span>
-                        {result.duration && (
-                          <span className="text-xs text-gray-400">{result.duration}ms</span>
-                        )}
-                      </div>
-                      {result.details && (
-                        <p className="text-sm text-gray-600 mt-1">{result.details}</p>
-                      )}
-                      {result.error && (
-                        <p className="text-sm text-red-600 mt-1 font-mono bg-red-100 px-2 py-1 rounded break-words">
-                          {result.error}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+          {warnCount > 0 && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-yellow-500" />
+              <span className="font-medium text-yellow-700">{warnCount} Warn</span>
             </div>
           )}
+          <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg">
+            <XCircle className="w-5 h-5 text-red-500" />
+            <span className="font-medium text-red-700">{failCount} Fail</span>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">Test Results</h2>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+            <span className="w-3 h-3 rounded-full bg-blue-500"></span> Auth
+            <span className="w-3 h-3 rounded-full bg-green-500 ml-2"></span> Database
+            <span className="w-3 h-3 rounded-full bg-orange-500 ml-2"></span> Storage
+            <span className="w-3 h-3 rounded-full bg-teal-500 ml-2"></span> Functions
+            <span className="w-3 h-3 rounded-full bg-red-500 ml-2"></span> Maps
+          </div>
         </div>
 
-        {dbStats && (
-          <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <BarChart3 className="w-5 h-5 text-gray-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Database Statistics</h3>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {[
-                { label: 'Users', value: dbStats.profiles, icon: User },
-                { label: 'Rides', value: dbStats.rides, icon: Car },
-                { label: 'Bookings', value: dbStats.bookings, icon: Server },
-                { label: 'Messages', value: dbStats.messages, icon: Activity },
-                { label: 'Vehicles', value: dbStats.vehicles, icon: Car },
-                { label: 'Feedback', value: dbStats.bug_reports, icon: Activity },
-              ].map(stat => (
-                <div key={stat.label} className="bg-gray-50 rounded-lg p-4 text-center">
-                  <stat.icon className="w-5 h-5 text-gray-400 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                  <p className="text-sm text-gray-500">{stat.label}</p>
+        {results.length === 0 ? (
+          <div className="p-12 text-center text-gray-500">
+            <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+            <p className="text-lg font-medium text-gray-600">No tests run yet</p>
+            <p className="text-sm mt-1">Click "Run All Tests" to start diagnostics</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {results.map((result) => (
+              <div
+                key={result.name}
+                className={`px-6 py-4 border-l-4 ${getCategoryColor(result.category)} ${result.status === 'fail' ? 'bg-red-50' : result.status === 'warn' ? 'bg-yellow-50' : ''
+                  }`}
+              >
+                <div className="flex items-center gap-4">
+                  {getStatusIcon(result.status)}
+                  <div className="flex items-center gap-2 text-gray-500">
+                    {getTestIcon(result.name)}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium text-gray-900">{result.name}</span>
+                      {result.duration && (
+                        <span className="text-xs text-gray-400">{result.duration}ms</span>
+                      )}
+                    </div>
+                    {result.details && (
+                      <p className="text-sm text-gray-600 mt-1">{result.details}</p>
+                    )}
+                    {result.error && (
+                      <p className="text-sm text-red-600 mt-1 font-mono bg-red-100 px-2 py-1 rounded break-words">
+                        {result.error}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         )}
+      </div>
 
+      {dbStats && (
         <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Environment Configuration</h3>
-          <div className="grid md:grid-cols-2 gap-4 text-sm">
-            <div className="space-y-3">
-              <div>
-                <span className="text-gray-500 block mb-1">Supabase URL</span>
-                <p className="font-mono text-gray-900 bg-gray-50 px-3 py-2 rounded truncate">
-                  {import.meta.env.VITE_SUPABASE_URL}
-                </p>
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart3 className="w-5 h-5 text-gray-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Database Statistics</h3>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {[
+              { label: 'Users', value: dbStats.profiles, icon: User },
+              { label: 'Rides', value: dbStats.rides, icon: Car },
+              { label: 'Bookings', value: dbStats.bookings, icon: Server },
+              { label: 'Messages', value: dbStats.messages, icon: Activity },
+              { label: 'Vehicles', value: dbStats.vehicles, icon: Car },
+              { label: 'Feedback', value: dbStats.bug_reports, icon: Activity },
+            ].map(stat => (
+              <div key={stat.label} className="bg-gray-50 rounded-lg p-4 text-center">
+                <stat.icon className="w-5 h-5 text-gray-400 mx-auto mb-2" />
+                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                <p className="text-sm text-gray-500">{stat.label}</p>
               </div>
-              <div>
-                <span className="text-gray-500 block mb-1">Google Maps API</span>
-                <p className="font-mono text-gray-900 bg-gray-50 px-3 py-2 rounded">
-                  {mapsApiConfigured === null
-                    ? 'UNKNOWN'
-                    : mapsApiConfigured
-                      ? 'Configured'
-                      : 'NOT CONFIGURED'}
-                </p>
-              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Environment Configuration</h3>
+        <div className="grid md:grid-cols-2 gap-4 text-sm">
+          <div className="space-y-3">
+            <div>
+              <span className="text-gray-500 block mb-1">Supabase URL</span>
+              <p className="font-mono text-gray-900 bg-gray-50 px-3 py-2 rounded truncate">
+                {import.meta.env.VITE_SUPABASE_URL}
+              </p>
             </div>
-            <div className="space-y-3">
-              <div>
-                <span className="text-gray-500 block mb-1">Environment</span>
-                <p className="font-mono text-gray-900 bg-gray-50 px-3 py-2 rounded">
-                  {import.meta.env.MODE} {import.meta.env.VITE_BETA_MODE === 'true' && '(Beta)'}
-                </p>
-              </div>
-              <div>
-                <span className="text-gray-500 block mb-1">Admin Email</span>
-                <p className="font-mono text-gray-900 bg-gray-50 px-3 py-2 rounded">
-                  {import.meta.env.VITE_ADMIN_EMAIL || 'Not configured'}
-                </p>
-              </div>
+            <div>
+              <span className="text-gray-500 block mb-1">Google Maps API</span>
+              <p className="font-mono text-gray-900 bg-gray-50 px-3 py-2 rounded">
+                {mapsApiConfigured === null
+                  ? 'UNKNOWN'
+                  : mapsApiConfigured
+                    ? 'Configured'
+                    : 'NOT CONFIGURED'}
+              </p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <span className="text-gray-500 block mb-1">Environment</span>
+              <p className="font-mono text-gray-900 bg-gray-50 px-3 py-2 rounded">
+                {import.meta.env.MODE} {import.meta.env.VITE_BETA_MODE === 'true' && '(Beta)'}
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-500 block mb-1">Admin Email</span>
+              <p className="font-mono text-gray-900 bg-gray-50 px-3 py-2 rounded">
+                {import.meta.env.VITE_ADMIN_EMAIL || 'Not configured'}
+              </p>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 }

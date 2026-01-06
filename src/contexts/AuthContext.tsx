@@ -1,11 +1,14 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
 import { getAllowOtpSignups } from '../utils/authOtp';
 import { getProfileMissingFields, isProfileComplete as isProfileCompleteUtil } from '../utils/profileCompleteness';
+import { AdminRole, Permission, ROLE_HIERARCHY, DEFAULT_ROLE_PERMISSIONS } from '../types/admin';
 
-type Profile = Database['public']['Tables']['profiles']['Row'];
+type Profile = Database['public']['Tables']['profiles']['Row'] & {
+  admin_role?: AdminRole | null;
+};
 
 interface AuthContextType {
   user: User | null;
@@ -16,6 +19,12 @@ interface AuthContextType {
   isAdmin: boolean;
   isProfileComplete: boolean;
   profileMissingFields: string[];
+  // RBAC properties
+  adminRole: AdminRole | null;
+  permissions: Permission[];
+  hasPermission: (permission: Permission) => boolean;
+  hasRole: (minRole: AdminRole) => boolean;
+  // Auth methods
   signUp: (email: string, password: string, fullName: string, phone: string) => Promise<{ error: AuthError | null; requiresEmailConfirmation?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
@@ -27,6 +36,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
   resendVerificationEmail: () => Promise<{ error: AuthError | null }>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,6 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [adminRole, setAdminRole] = useState<AdminRole | null>(null);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
   const allowOtpSignups = getAllowOtpSignups();
 
   useEffect(() => {
@@ -97,13 +109,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (createError) throw createError;
         setProfile(createdProfile);
+        setAdminRole(null);
+        setPermissions([]);
       } else {
         setProfile(data);
+
+        // Load RBAC permissions
+        const role = data.admin_role as AdminRole | null;
+        setAdminRole(role);
+
+        if (role) {
+          // Try to load permissions from database first
+          const { data: permsData } = await supabase
+            .from('admin_permissions')
+            .select('permission')
+            .eq('role', role);
+
+          if (permsData && permsData.length > 0) {
+            setPermissions(permsData.map(p => p.permission as Permission));
+          } else {
+            // Fall back to default permissions if database table doesn't exist yet
+            setPermissions(DEFAULT_ROLE_PERMISSIONS[role] || []);
+          }
+        } else {
+          setPermissions([]);
+        }
       }
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Refresh profile data
+  const refreshProfile = async () => {
+    if (user) {
+      await loadProfile(user);
     }
   };
   const signUp = async (email: string, password: string, fullName: string, phone: string) => {
@@ -272,9 +314,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Skip email verification in development if configured
   const skipEmailVerification = import.meta.env.VITE_SKIP_EMAIL_VERIFICATION === 'true';
   const isEmailVerified = skipEmailVerification || !!user?.email_confirmed_at;
-  const isAdmin = profile?.is_admin === true;
+  // Support both legacy is_admin flag and new admin_role
+  const isAdmin = profile?.is_admin === true || adminRole !== null;
   const profileMissingFields = getProfileMissingFields(profile);
   const isProfileComplete = isProfileCompleteUtil(profile);
+
+  // RBAC permission check
+  const hasPermission = useCallback((permission: Permission): boolean => {
+    return permissions.includes(permission);
+  }, [permissions]);
+
+  // RBAC role hierarchy check
+  const hasRole = useCallback((minRole: AdminRole): boolean => {
+    if (!adminRole) return false;
+    return ROLE_HIERARCHY[adminRole] >= ROLE_HIERARCHY[minRole];
+  }, [adminRole]);
 
   const value = {
     user,
@@ -285,6 +339,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAdmin,
     isProfileComplete,
     profileMissingFields,
+    // RBAC
+    adminRole,
+    permissions,
+    hasPermission,
+    hasRole,
+    // Auth methods
     signUp,
     signIn,
     signInWithGoogle,
@@ -296,6 +356,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetPassword,
     updateProfile,
     resendVerificationEmail,
+    refreshProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -4,8 +4,6 @@ import {
   AlertTriangle,
   Shield,
   Clock,
-  CheckCircle,
-  XCircle,
   Eye,
   Filter,
   Search,
@@ -16,10 +14,11 @@ import {
   MapPin,
   ChevronDown,
   AlertCircle,
-  ArrowLeft,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { toast } from '../../lib/toast';
 import { useAuth } from '../../contexts/AuthContext';
+import AdminLayout from '../../components/admin/AdminLayout';
 
 interface SafetyReport {
   id: string;
@@ -43,23 +42,22 @@ interface SafetyReport {
 }
 
 export default function SafetyReports() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, hasPermission } = useAuth();
   const navigate = useNavigate();
   const [reports, setReports] = useState<SafetyReport[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedReport, setSelectedReport] = useState<SafetyReport | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (!isAdmin && !hasPermission('safety.view')) {
       navigate('/');
       return;
     }
     loadReports();
-  }, [isAdmin, filterStatus, filterSeverity]);
+  }, [isAdmin, hasPermission, filterStatus, filterSeverity]);
 
   const loadReports = async () => {
     setLoading(true);
@@ -108,10 +106,10 @@ export default function SafetyReports() {
       });
 
       loadReports();
-      alert('Report status updated successfully');
+      toast.success('Report status updated successfully');
     } catch (error) {
       console.error('Error updating report:', error);
-      alert('Failed to update report status');
+      toast.error('Failed to update report status');
     }
   };
 
@@ -158,36 +156,28 @@ export default function SafetyReports() {
     critical: reports.filter(r => r.severity === 'critical').length,
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => navigate('/admin')}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold text-gray-900">Safety Reports</h1>
-          <p className="text-gray-600 mt-1">Manage and review safety incidents</p>
-        </div>
+    <AdminLayout
+      title="Safety Reports"
+      subtitle="Manage and review safety incidents"
+      actions={
         <button
           onClick={loadReports}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
           title="Refresh"
         >
-          <RefreshCw className="w-5 h-5" />
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
         </button>
-      </div>
-
+      }
+    >
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+        </div>
+      ) : (
+      <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -407,5 +397,7 @@ export default function SafetyReports() {
         )}
       </div>
     </div>
+      )}
+    </AdminLayout>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Star, Send, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { toast } from '../../lib/toast';
 
 interface ReviewSubmissionProps {
   bookingId: string;
@@ -47,20 +48,17 @@ export default function ReviewSubmission({
         if (result.success) {
           let message = 'Review submitted successfully!';
           if (result.achievements_unlocked && result.achievements_unlocked.length > 0) {
-            message += '\n\nAchievements unlocked:';
-            result.achievements_unlocked.forEach((achievement: string) => {
-              message += `\n- ${achievement}`;
-            });
+            message += ' Achievements unlocked: ' + result.achievements_unlocked.join(', ');
           }
-          alert(message);
+          toast.success(message);
           if (onSubmitted) onSubmitted();
         } else {
-          alert(result.message || 'Failed to submit review');
+          toast.error(result.message || 'Failed to submit review');
         }
       }
     } catch (error: any) {
       console.error('Error submitting review:', error);
-      alert(error.message || 'Failed to submit review');
+      toast.error(error.message || 'Failed to submit review');
     } finally {
       setSubmitting(false);
     }

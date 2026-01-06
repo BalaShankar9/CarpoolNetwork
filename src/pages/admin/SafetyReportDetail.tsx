@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import AdminLayout from '../../components/admin/AdminLayout';
 import {
-  ArrowLeft,
   User,
   Calendar,
   MapPin,
@@ -18,6 +18,7 @@ import {
   Edit,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { toast } from '../../lib/toast';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface ReportDetails {
@@ -126,16 +127,16 @@ export default function SafetyReportDetail() {
       });
 
       loadReportDetails();
-      alert('Report status updated');
+      toast.success('Report status updated');
     } catch (error) {
       console.error('Error updating status:', error);
-      alert('Failed to update status');
+      toast.error('Failed to update status');
     }
   };
 
   const resolveReport = async () => {
     if (!resolutionNotes.trim()) {
-      alert('Please provide resolution notes');
+      toast.warning('Please provide resolution notes');
       return;
     }
 
@@ -161,18 +162,18 @@ export default function SafetyReportDetail() {
         details: { resolution_notes: resolutionNotes },
       });
 
-      alert('Report resolved successfully');
+      toast.success('Report resolved successfully');
       loadReportDetails();
       setResolutionNotes('');
     } catch (error) {
       console.error('Error resolving report:', error);
-      alert('Failed to resolve report');
+      toast.error('Failed to resolve report');
     }
   };
 
   const suspendUser = async () => {
     if (!suspensionReason.trim()) {
-      alert('Please provide a suspension reason');
+      toast.warning('Please provide a suspension reason');
       return;
     }
 
@@ -207,18 +208,18 @@ export default function SafetyReportDetail() {
         performed_by_name: 'Admin',
       });
 
-      alert('User suspended successfully');
+      toast.success('User suspended successfully');
       setShowSuspendModal(false);
       loadReportDetails();
     } catch (error) {
       console.error('Error suspending user:', error);
-      alert('Failed to suspend user');
+      toast.error('Failed to suspend user');
     }
   };
 
   const issueWarning = async () => {
     if (!warningMessage.trim()) {
-      alert('Please provide a warning message');
+      toast.warning('Please provide a warning message');
       return;
     }
 
@@ -245,12 +246,12 @@ export default function SafetyReportDetail() {
         performed_by_name: 'Admin',
       });
 
-      alert('Warning issued successfully');
+      toast.success('Warning issued successfully');
       setShowWarningModal(false);
       loadReportDetails();
     } catch (error) {
       console.error('Error issuing warning:', error);
-      alert('Failed to issue warning');
+      toast.error('Failed to issue warning');
     }
   };
 
@@ -282,12 +283,12 @@ export default function SafetyReportDetail() {
         performed_by_name: 'Admin',
       });
 
-      alert('Incident created successfully');
+      toast.success('Incident created successfully');
       setShowIncidentModal(false);
       updateReportStatus('investigating');
     } catch (error) {
       console.error('Error creating incident:', error);
-      alert('Failed to create incident');
+      toast.error('Failed to create incident');
     }
   };
 
@@ -318,20 +319,10 @@ export default function SafetyReportDetail() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => navigate('/admin/safety')}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold text-gray-900">Safety Report Details</h1>
-          <p className="text-gray-600 mt-1">Report ID: {report.id.slice(0, 8)}</p>
-        </div>
-      </div>
-
+    <AdminLayout
+      title="Safety Report Details"
+      subtitle={`Report ID: ${report.id.slice(0, 8)}`}
+    >
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Report Details */}
         <div className="lg:col-span-2 space-y-6">
@@ -656,6 +647,6 @@ export default function SafetyReportDetail() {
           </div>
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 }

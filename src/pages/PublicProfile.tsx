@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, MessageCircle, Star, Calendar, Share2, Flag, UserPlus, UserCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { notify } from '../lib/toast';
+import { notify, toast } from '../lib/toast';
 import { checkRateLimit, recordRateLimitAction } from '../lib/rateLimiting';
 import { supabase } from '../lib/supabase';
 import { fetchPublicProfileById, PublicProfile as PublicProfileRow } from '../services/publicProfiles';
@@ -198,7 +198,7 @@ export default function PublicProfile() {
       await loadFriendStatus();
     } catch (err) {
       console.error('Error sending friend request:', err);
-      alert('Unable to send friend request. Please try again.');
+      toast.error('Unable to send friend request. Please try again.');
     } finally {
       setFriendActionLoading(false);
     }
@@ -239,7 +239,7 @@ export default function PublicProfile() {
       await loadFriendStatus();
     } catch (err) {
       console.error('Error accepting friend request:', err);
-      alert('Unable to accept friend request. Please try again.');
+      toast.error('Unable to accept friend request. Please try again.');
     } finally {
       setFriendActionLoading(false);
     }
@@ -256,7 +256,7 @@ export default function PublicProfile() {
       await loadFriendStatus();
     } catch (err) {
       console.error('Error declining friend request:', err);
-      alert('Unable to decline friend request. Please try again.');
+      toast.error('Unable to decline friend request. Please try again.');
     } finally {
       setFriendActionLoading(false);
     }
@@ -275,7 +275,7 @@ export default function PublicProfile() {
       await loadFriendStatus();
     } catch (err) {
       console.error('Error canceling friend request:', err);
-      alert('Unable to cancel friend request. Please try again.');
+      toast.error('Unable to cancel friend request. Please try again.');
     } finally {
       setFriendActionLoading(false);
     }
@@ -292,7 +292,7 @@ export default function PublicProfile() {
       );
 
     if (!canMessageInApp) {
-      alert('This user is not accepting in-app messages.');
+      toast.warning('This user is not accepting in-app messages.');
       return;
     }
 
@@ -319,7 +319,7 @@ export default function PublicProfile() {
     const url = `${window.location.origin}/user/${userId}`;
     try {
       await navigator.clipboard.writeText(url);
-      alert('Profile link copied to clipboard!');
+      toast.success('Profile link copied to clipboard!');
     } catch (err) {
       console.error('Failed to copy link:', err);
     }

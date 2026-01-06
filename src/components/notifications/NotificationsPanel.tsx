@@ -140,8 +140,8 @@ export function NotificationsPanel({ isOpen, onClose }: NotificationsPanelProps)
                                                 <button
                                                     data-testid="panel-mark-read-button"
                                                     onClick={async (e) => {
-                                                      e.stopPropagation();
-                                                      await markAsRead(notification.id);
+                                                        e.stopPropagation();
+                                                        await markAsRead(notification.id);
                                                     }}
                                                     className="p-1 hover:bg-gray-100 rounded transition-colors"
                                                     title="Mark as read"
@@ -156,6 +156,19 @@ export function NotificationsPanel({ isOpen, onClose }: NotificationsPanelProps)
                         })}
                     </div>
                 )}
+            </div>
+
+            {/* Footer - View All Link */}
+            <div className="border-t border-gray-200 p-3">
+                <button
+                    onClick={() => {
+                        navigate('/notifications');
+                        onClose();
+                    }}
+                    className="w-full text-center text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                    View all notifications
+                </button>
             </div>
         </div>
     );

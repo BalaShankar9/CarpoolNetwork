@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AdminLayout from '../../components/admin/AdminLayout';
 import {
-  ArrowLeft,
   Layers,
   Users,
   Car,
@@ -28,6 +28,7 @@ import {
   Ban,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { toast } from '../../lib/toast';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface BulkOperation {
@@ -171,17 +172,17 @@ export default function BulkOperations() {
 
   const handlePreview = () => {
     if (selectedItems.length === 0) {
-      alert('Please select at least one item');
+      toast.warning('Please select at least one item');
       return;
     }
 
     if (!selectedAction) {
-      alert('Please select an action');
+      toast.warning('Please select an action');
       return;
     }
 
     if (operationType === 'notifications' && (!notificationTitle || !notificationMessage)) {
-      alert('Please enter notification title and message');
+      toast.warning('Please enter notification title and message');
       return;
     }
 
@@ -268,7 +269,7 @@ export default function BulkOperations() {
 
       if (executeError) throw executeError;
 
-      alert('Bulk operation completed successfully!');
+      toast.success('Bulk operation completed successfully!');
       setShowPreview(false);
       setSelectedItems([]);
       setSelectedAction('');
@@ -277,7 +278,7 @@ export default function BulkOperations() {
       loadOperationHistory();
     } catch (error: any) {
       console.error('Error executing operation:', error);
-      alert(`Error: ${error.message}`);
+      toast.error(`Error: ${error.message}`);
     } finally {
       setExecuting(false);
     }
@@ -350,24 +351,10 @@ export default function BulkOperations() {
   }
 
   return (
-    <div className="space-y-6 pb-8">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/admin')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <Package className="w-8 h-8 text-blue-600" />
-              Bulk Operations
-            </h1>
-            <p className="text-gray-600 mt-1">Efficient mass management of users, rides, and data</p>
-          </div>
-        </div>
-
+    <AdminLayout
+      title="Bulk Operations"
+      subtitle="Efficient mass management of users, rides, and data"
+      actions={
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={handleExport}
@@ -384,16 +371,16 @@ export default function BulkOperations() {
             <RefreshCw className="w-5 h-5" />
           </button>
         </div>
-      </div>
+      }
+    >
 
       <div className="flex gap-2 border-b border-gray-200">
         <button
           onClick={() => setSelectedTab('new')}
-          className={`px-6 py-3 font-medium transition-colors border-b-2 ${
-            selectedTab === 'new'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-600 hover:text-gray-900'
-          }`}
+          className={`px-6 py-3 font-medium transition-colors border-b-2 ${selectedTab === 'new'
+            ? 'border-blue-600 text-blue-600'
+            : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
         >
           <span className="flex items-center gap-2">
             <Zap className="w-5 h-5" />
@@ -402,11 +389,10 @@ export default function BulkOperations() {
         </button>
         <button
           onClick={() => setSelectedTab('history')}
-          className={`px-6 py-3 font-medium transition-colors border-b-2 ${
-            selectedTab === 'history'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-600 hover:text-gray-900'
-          }`}
+          className={`px-6 py-3 font-medium transition-colors border-b-2 ${selectedTab === 'history'
+            ? 'border-blue-600 text-blue-600'
+            : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
         >
           <span className="flex items-center gap-2">
             <Clock className="w-5 h-5" />
@@ -420,11 +406,10 @@ export default function BulkOperations() {
           <div className="grid md:grid-cols-4 gap-4">
             <button
               onClick={() => setOperationType('users')}
-              className={`p-6 rounded-xl border-2 transition-all ${
-                operationType === 'users'
-                  ? 'border-blue-600 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
+              className={`p-6 rounded-xl border-2 transition-all ${operationType === 'users'
+                ? 'border-blue-600 bg-blue-50'
+                : 'border-gray-200 hover:border-gray-300'
+                }`}
             >
               <Users className={`w-8 h-8 mb-3 ${operationType === 'users' ? 'text-blue-600' : 'text-gray-600'}`} />
               <h3 className="font-semibold text-gray-900">User Operations</h3>
@@ -433,11 +418,10 @@ export default function BulkOperations() {
 
             <button
               onClick={() => setOperationType('rides')}
-              className={`p-6 rounded-xl border-2 transition-all ${
-                operationType === 'rides'
-                  ? 'border-blue-600 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
+              className={`p-6 rounded-xl border-2 transition-all ${operationType === 'rides'
+                ? 'border-blue-600 bg-blue-50'
+                : 'border-gray-200 hover:border-gray-300'
+                }`}
             >
               <Car className={`w-8 h-8 mb-3 ${operationType === 'rides' ? 'text-blue-600' : 'text-gray-600'}`} />
               <h3 className="font-semibold text-gray-900">Ride Operations</h3>
@@ -446,11 +430,10 @@ export default function BulkOperations() {
 
             <button
               onClick={() => setOperationType('bookings')}
-              className={`p-6 rounded-xl border-2 transition-all ${
-                operationType === 'bookings'
-                  ? 'border-blue-600 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
+              className={`p-6 rounded-xl border-2 transition-all ${operationType === 'bookings'
+                ? 'border-blue-600 bg-blue-50'
+                : 'border-gray-200 hover:border-gray-300'
+                }`}
             >
               <Calendar className={`w-8 h-8 mb-3 ${operationType === 'bookings' ? 'text-blue-600' : 'text-gray-600'}`} />
               <h3 className="font-semibold text-gray-900">Booking Operations</h3>
@@ -459,11 +442,10 @@ export default function BulkOperations() {
 
             <button
               onClick={() => setOperationType('notifications')}
-              className={`p-6 rounded-xl border-2 transition-all ${
-                operationType === 'notifications'
-                  ? 'border-blue-600 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
+              className={`p-6 rounded-xl border-2 transition-all ${operationType === 'notifications'
+                ? 'border-blue-600 bg-blue-50'
+                : 'border-gray-200 hover:border-gray-300'
+                }`}
             >
               <Bell className={`w-8 h-8 mb-3 ${operationType === 'notifications' ? 'text-blue-600' : 'text-gray-600'}`} />
               <h3 className="font-semibold text-gray-900">Send Notifications</h3>
@@ -594,11 +576,10 @@ export default function BulkOperations() {
                           <>
                             <p className="font-medium text-gray-900">{item.full_name}</p>
                             <p className="text-sm text-gray-600">{item.email}</p>
-                            <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${
-                              item.status === 'active' ? 'bg-green-100 text-green-800' :
+                            <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${item.status === 'active' ? 'bg-green-100 text-green-800' :
                               item.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
+                                'bg-red-100 text-red-800'
+                              }`}>
                               {item.status}
                             </span>
                           </>
@@ -611,11 +592,10 @@ export default function BulkOperations() {
                             <p className="text-sm text-gray-600">
                               {new Date(item.departure_time).toLocaleString()}
                             </p>
-                            <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${
-                              item.status === 'active' ? 'bg-green-100 text-green-800' :
+                            <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${item.status === 'active' ? 'bg-green-100 text-green-800' :
                               item.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
+                                'bg-gray-100 text-gray-800'
+                              }`}>
                               {item.status}
                             </span>
                           </>
@@ -628,11 +608,10 @@ export default function BulkOperations() {
                             <p className="text-sm text-gray-600">
                               {item.seats_requested} seat(s)
                             </p>
-                            <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${
-                              item.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${item.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                               item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
+                                'bg-gray-100 text-gray-800'
+                              }`}>
                               {item.status}
                             </span>
                           </>
@@ -806,6 +785,6 @@ export default function BulkOperations() {
           </div>
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 }
