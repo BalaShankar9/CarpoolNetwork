@@ -34,9 +34,9 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => 
-            name !== CACHE_NAME && 
-            name !== RUNTIME_CACHE && 
+          .filter((name) =>
+            name !== CACHE_NAME &&
+            name !== RUNTIME_CACHE &&
             name !== DATA_CACHE &&
             name !== OFFLINE_QUEUE
           )
@@ -52,7 +52,7 @@ self.addEventListener('fetch', (event) => {
   if (!event.request.url.startsWith('http')) return;
 
   const url = new URL(event.request.url);
-  
+
   // Netlify functions - always network
   const isFunctionRequest =
     url.pathname.startsWith('/.netlify/functions/') ||
@@ -143,7 +143,7 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
-  
+
   if (event.data && event.data.type === 'CACHE_URLS') {
     event.waitUntil(
       caches.open(DATA_CACHE).then((cache) => {
@@ -194,11 +194,11 @@ async function networkFirst(request) {
   } catch (error) {
     const cached = await caches.match(request);
     if (cached) return cached;
-    
+
     if (request.mode === 'navigate') {
       return caches.match('/offline.html');
     }
-    
+
     return new Response(JSON.stringify({ error: 'Offline' }), {
       status: 503,
       headers: { 'Content-Type': 'application/json' }
@@ -208,7 +208,7 @@ async function networkFirst(request) {
 
 async function handleApiRequest(request) {
   const url = request.url;
-  
+
   if (request.method === 'GET' && isCacheableApi(url)) {
     try {
       const response = await fetch(request);
@@ -243,10 +243,10 @@ async function handleMutationRequest(request) {
     return await fetch(request);
   } catch (error) {
     await queueOfflineAction(request);
-    
-    return new Response(JSON.stringify({ 
-      queued: true, 
-      message: 'Action queued for when you are back online' 
+
+    return new Response(JSON.stringify({
+      queued: true,
+      message: 'Action queued for when you are back online'
     }), {
       status: 202,
       headers: { 'Content-Type': 'application/json' }
@@ -292,7 +292,7 @@ async function syncOfflineActions() {
 
       if (result.ok) {
         await cache.delete(key);
-        
+
         const clients = await self.clients.matchAll();
         clients.forEach(client => {
           client.postMessage({

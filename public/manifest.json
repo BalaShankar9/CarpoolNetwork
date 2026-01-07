@@ -60,7 +60,12 @@
       "purpose": "maskable"
     }
   ],
-  "categories": ["travel", "lifestyle", "productivity", "social"],
+  "categories": [
+    "travel",
+    "lifestyle",
+    "productivity",
+    "social"
+  ],
   "screenshots": [
     {
       "src": "/static/screenshot-mobile.png",
@@ -83,28 +88,48 @@
       "short_name": "Find",
       "description": "Search for available rides",
       "url": "/find-rides?source=shortcut",
-      "icons": [{ "src": "/static/shortcut-search.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "/static/shortcut-search.png",
+          "sizes": "96x96"
+        }
+      ]
     },
     {
       "name": "Post Ride",
       "short_name": "Post",
       "description": "Offer a ride to others",
       "url": "/post-ride?source=shortcut",
-      "icons": [{ "src": "/static/shortcut-add.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "/static/shortcut-add.png",
+          "sizes": "96x96"
+        }
+      ]
     },
     {
       "name": "My Rides",
       "short_name": "Rides",
       "description": "View your booked rides",
       "url": "/my-rides?source=shortcut",
-      "icons": [{ "src": "/static/shortcut-car.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "/static/shortcut-car.png",
+          "sizes": "96x96"
+        }
+      ]
     },
     {
       "name": "Messages",
       "short_name": "Chat",
       "description": "Check your messages",
       "url": "/messages?source=shortcut",
-      "icons": [{ "src": "/static/shortcut-chat.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "/static/shortcut-chat.png",
+          "sizes": "96x96"
+        }
+      ]
     }
   ],
   "prefer_related_applications": false,
