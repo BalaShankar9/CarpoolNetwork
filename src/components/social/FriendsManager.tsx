@@ -157,7 +157,7 @@ export default function FriendsManager() {
       if (friendProfilesError) throw friendProfilesError;
 
       const friendProfileMap = new Map<string, FriendProfile>(
-        (friendProfiles || []).map((friend) => [friend.id, friend as FriendProfile])
+        (friendProfiles || []).map((friend): [string, FriendProfile] => [friend.id, friend as FriendProfile])
       );
 
       const formattedFriends: Friendship[] = [];
@@ -207,7 +207,7 @@ export default function FriendsManager() {
       if (requestProfilesError) throw requestProfilesError;
 
       const requestProfileMap = new Map<string, FriendProfile>(
-        (requestProfiles || []).map((requestProfile) => [requestProfile.id, requestProfile as FriendProfile])
+        (requestProfiles || []).map((requestProfile): [string, FriendProfile] => [requestProfile.id, requestProfile as FriendProfile])
       );
 
       const formattedPendingRequests: FriendRequest[] = [];

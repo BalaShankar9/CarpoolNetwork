@@ -546,19 +546,89 @@ class CorporateService {
 
     // Update employee status (admin only)
     async updateEmployeeStatus(
+        companyId: string,
         employeeId: string,
-        status: 'active' | 'suspended'
+        status: 'pending' | 'active' | 'suspended'
     ): Promise<{ success: boolean; message: string }> {
         const { error } = await supabase
             .from('company_employees')
             .update({ status })
-            .eq('id', employeeId);
+            .eq('id', employeeId)
+            .eq('company_id', companyId);
 
         if (error) {
             return { success: false, message: 'Failed to update status' };
         }
 
-        return { success: true, message: `Employee ${status === 'active' ? 'approved' : 'suspended'}` };
+        return { success: true, message: `Employee ${status === 'active' ? 'approved' : status === 'suspended' ? 'suspended' : 'set to pending'}` };
+    }
+
+    // Update employee role (admin only)
+    async updateEmployeeRole(
+        companyId: string,
+        employeeId: string,
+        role: 'employee' | 'admin' | 'super_admin'
+    ): Promise<{ success: boolean; message: string }> {
+        const { error } = await supabase
+            .from('company_employees')
+            .update({ role })
+            .eq('id', employeeId)
+            .eq('company_id', companyId);
+
+        if (error) {
+            return { success: false, message: 'Failed to update role' };
+        }
+
+        return { success: true, message: `Employee role updated to ${role}` };
+    }
+
+    // Invite employees by email
+    async inviteEmployees(
+        companyId: string,
+        emails: string[],
+        department?: string
+    ): Promise<{ success: boolean; invited: number; failed: string[] }> {
+        const failed: string[] = [];
+        let invited = 0;
+
+        for (const email of emails) {
+            try {
+                // Check if employee already exists
+                const { data: existing } = await supabase
+                    .from('company_employees')
+                    .select('id')
+                    .eq('company_id', companyId)
+                    .eq('email', email)
+                    .single();
+
+                if (existing) {
+                    failed.push(email);
+                    continue;
+                }
+
+                // Create pending employee record
+                const { error } = await supabase
+                    .from('company_employees')
+                    .insert({
+                        company_id: companyId,
+                        email: email.toLowerCase(),
+                        department,
+                        role: 'employee',
+                        status: 'pending',
+                        joined_at: new Date().toISOString()
+                    });
+
+                if (error) {
+                    failed.push(email);
+                } else {
+                    invited++;
+                }
+            } catch {
+                failed.push(email);
+            }
+        }
+
+        return { success: invited > 0, invited, failed };
     }
 }
 

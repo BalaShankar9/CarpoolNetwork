@@ -80,7 +80,7 @@ export default function SmartRecommendations() {
   };
 
   const getReasoningBadges = (reasoning: Record<string, any>) => {
-    const badges = [];
+    const badges: string[] = [];
 
     if (reasoning.smoking_match) badges.push('Smoking preference match');
     if (reasoning.pets_match) badges.push('Pet-friendly');

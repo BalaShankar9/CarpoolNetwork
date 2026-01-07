@@ -182,7 +182,7 @@ export default function FindRides() {
       const ridesWithBookings = await Promise.all(ridesWithDrivers.map(async (ride) => {
         const booking = bookings.find(b => b.ride_id === ride.id);
         const reliability = reliabilityScores.find(r => r.user_id === ride.driver_id);
-        let weather = null;
+        let weather: { temperature: number; condition: string; humidity: number; windSpeed: number; icon: string } | null = null;
 
         if (ride.origin_lat && ride.origin_lng) {
           try {
@@ -279,7 +279,7 @@ export default function FindRides() {
 
       const ridesWithBookings = await Promise.all(ridesWithDrivers.map(async (ride) => {
         const booking = bookings?.find(b => b.ride_id === ride.id);
-        let weather = null;
+        let weather: { temperature: number; condition: string; humidity: number; windSpeed: number; icon: string } | null = null;
 
         if (ride.origin_lat && ride.origin_lng) {
           try {

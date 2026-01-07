@@ -75,9 +75,13 @@ export function SOSButton({ rideId, userId, onAlert }: SOSButtonProps) {
             return;
         }
 
+        if (!rideId) {
+            alert('No active ride to report. Emergency services have been notified of your location.');
+        }
+
         setIsTriggering(true);
         try {
-            await emergencyService.triggerSOS(rideId, userId, currentLocation);
+            await emergencyService.triggerSOS(rideId || 'emergency', userId, currentLocation);
             setAlertSent(true);
             onAlert?.();
 

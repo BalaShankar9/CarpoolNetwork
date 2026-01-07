@@ -64,6 +64,11 @@ export function LiveTripSharing({
             return;
         }
 
+        if (!rideId) {
+            alert('No ride selected for sharing');
+            return;
+        }
+
         setSharing(true);
         try {
             const share = await emergencyService.startTripShare(
@@ -252,8 +257,8 @@ export function LiveTripSharing({
                                     <label
                                         key={contact.id}
                                         className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${selectedContacts.includes(contact.id)
-                                                ? 'bg-purple-500/20 border border-purple-500/40'
-                                                : 'bg-slate-700/30 hover:bg-slate-700/50'
+                                            ? 'bg-purple-500/20 border border-purple-500/40'
+                                            : 'bg-slate-700/30 hover:bg-slate-700/50'
                                             }`}
                                     >
                                         <input
@@ -285,8 +290,8 @@ export function LiveTripSharing({
                                     key={mins}
                                     onClick={() => setDuration(mins)}
                                     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${duration === mins
-                                            ? 'bg-purple-500 text-white'
-                                            : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
+                                        ? 'bg-purple-500 text-white'
+                                        : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
                                         }`}
                                 >
                                     {formatDuration(mins)}

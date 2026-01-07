@@ -334,7 +334,7 @@ export default function LiveRideTracker({
 }
 
 function transformTrackingData(data: any): RideTrackingState {
-    let currentLocation = null;
+    let currentLocation: { longitude: number; latitude: number } | null = null;
 
     if (data.current_location) {
         // Handle different location formats
