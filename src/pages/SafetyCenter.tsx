@@ -10,19 +10,28 @@ import {
     ArrowLeft,
     Phone,
     FileText,
+    Scale,
+    Activity,
+    MapPin,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { EmergencyContacts } from '../components/safety/EmergencyContacts';
 import { SafetyTips } from '../components/safety/SafetyTips';
 import { TrustBadges, TrustScore } from '../components/safety/TrustBadges';
+import { SOSButton } from '../components/safety/SOSButton';
+import { LiveTripSharing } from '../components/safety/LiveTripSharing';
+import { SafetyScoreDisplay } from '../components/safety/SafetyScoreDisplay';
+import { SafetyDashboard } from '../components/safety/SafetyDashboard';
+import { DisputeCenter } from '../components/disputes/DisputeCenter';
+import { ReportSystem } from '../components/moderation/ReportSystem';
 import {
     getUserTrustBadges,
     getSafetyScoreBreakdown,
     TrustBadge,
 } from '../services/safetyService';
 
-type Tab = 'overview' | 'contacts' | 'badges' | 'tips';
+type Tab = 'overview' | 'contacts' | 'badges' | 'tips' | 'disputes' | 'analytics';
 
 export default function SafetyCenter() {
     const { user } = useAuth();
@@ -64,6 +73,8 @@ export default function SafetyCenter() {
         { id: 'contacts' as Tab, label: 'Emergency Contacts', icon: Users },
         { id: 'badges' as Tab, label: 'Trust Badges', icon: Award },
         { id: 'tips' as Tab, label: 'Safety Tips', icon: Lightbulb },
+        { id: 'disputes' as Tab, label: 'Disputes', icon: Scale },
+        { id: 'analytics' as Tab, label: 'Analytics', icon: Activity },
     ];
 
     return (
@@ -219,7 +230,38 @@ export default function SafetyCenter() {
                                 </div>
                                 <ChevronRight className="h-5 w-5 text-gray-400" />
                             </a>
+
+                            <button
+                                onClick={() => setActiveTab('disputes')}
+                                className="bg-white rounded-xl border p-4 flex items-center gap-4
+                         hover:shadow-md transition-all text-left"
+                            >
+                                <div className="p-3 bg-orange-100 rounded-xl">
+                                    <Scale className="h-6 w-6 text-orange-600" />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="font-medium text-gray-900">Dispute Center</h3>
+                                    <p className="text-sm text-gray-500">Resolve ride issues</p>
+                                </div>
+                                <ChevronRight className="h-5 w-5 text-gray-400" />
+                            </button>
                         </div>
+
+                        {/* Live Trip Sharing */}
+                        {user && (
+                            <div className="bg-white rounded-xl border p-6">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 bg-purple-100 rounded-lg">
+                                        <MapPin className="h-5 w-5 text-purple-600" />
+                                    </div>
+                                    <h2 className="text-lg font-semibold text-gray-900">Live Trip Sharing</h2>
+                                </div>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    Share your real-time location with trusted contacts during rides.
+                                </p>
+                                <LiveTripSharing userId={user.id} />
+                            </div>
+                        )}
 
                         {/* Trust Badges Preview */}
                         <div className="bg-white rounded-xl border p-6">
@@ -309,7 +351,14 @@ export default function SafetyCenter() {
                 )}
 
                 {activeTab === 'tips' && <SafetyTips />}
+
+                {activeTab === 'disputes' && user && <DisputeCenter userId={user.id} />}
+
+                {activeTab === 'analytics' && <SafetyDashboard />}
             </div>
+
+            {/* Floating SOS Button */}
+            {user && <SOSButton userId={user.id} />}
         </div>
     );
 }
