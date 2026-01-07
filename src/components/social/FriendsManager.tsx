@@ -149,9 +149,9 @@ export default function FriendsManager() {
 
       const { data: friendProfiles, error: friendProfilesError } = friendIds.length
         ? await supabase
-            .from('profiles')
-            .select(profileSelect)
-            .in('id', friendIds)
+          .from('profiles')
+          .select(profileSelect)
+          .in('id', friendIds)
         : { data: [], error: null };
 
       if (friendProfilesError) throw friendProfilesError;
@@ -199,9 +199,9 @@ export default function FriendsManager() {
 
       const { data: requestProfiles, error: requestProfilesError } = requestProfileIds.size
         ? await supabase
-            .from('profiles')
-            .select(profileSelect)
-            .in('id', Array.from(requestProfileIds))
+          .from('profiles')
+          .select(profileSelect)
+          .in('id', Array.from(requestProfileIds))
         : { data: [], error: null };
 
       if (requestProfilesError) throw requestProfilesError;
@@ -376,21 +376,19 @@ export default function FriendsManager() {
         <div className="flex gap-2">
           <button
             onClick={() => setActiveTab('friends')}
-            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === 'friends'
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'friends'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+              }`}
           >
             Friends ({friends.length})
           </button>
           <button
             onClick={() => setActiveTab('requests')}
-            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors relative ${
-              activeTab === 'requests'
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors relative ${activeTab === 'requests'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+              }`}
           >
             Requests ({pendingRequests.length})
             {pendingRequests.length > 0 && (
@@ -401,11 +399,10 @@ export default function FriendsManager() {
           </button>
           <button
             onClick={() => setActiveTab('add')}
-            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === 'add'
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'add'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+              }`}
           >
             Add Friends
           </button>
