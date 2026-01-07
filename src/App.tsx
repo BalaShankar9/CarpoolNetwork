@@ -7,6 +7,7 @@ import { PremiumProvider } from './contexts/PremiumContext';
 import Layout from './components/layout/Layout';
 import { AppErrorBoundary } from './components/shared/ProductionErrorBoundary';
 import { LoadingProvider } from './components/shared/LoadingStateManager';
+import { InstallPrompt, UpdatePrompt, OfflineIndicator } from './components/pwa';
 
 const Router = Capacitor.isNativePlatform() ? HashRouter : BrowserRouter;
 
@@ -412,6 +413,10 @@ function App() {
             <Router>
               <AppErrorBoundary>
                 <AppContent />
+                {/* PWA Components */}
+                <InstallPrompt />
+                <UpdatePrompt />
+                <OfflineIndicator />
               </AppErrorBoundary>
             </Router>
           </RealtimeProvider>

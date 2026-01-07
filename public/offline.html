@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#10B981">
+  <title>Offline - CarpoolNetwork</title>
+  <link rel="icon" type="image/png" href="/static/icon-192.png">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      padding: 20px;
+    }
+    
+    .container {
+      text-align: center;
+      max-width: 400px;
+    }
+    
+    .icon {
+      width: 120px;
+      height: 120px;
+      margin-bottom: 24px;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.05); }
+    }
+    
+    .offline-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      background: rgba(239, 68, 68, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .offline-icon svg {
+      width: 40px;
+      height: 40px;
+      color: #EF4444;
+    }
+    
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #F1F5F9;
+    }
+    
+    p {
+      font-size: 16px;
+      color: #94A3B8;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+    
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    button {
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+    }
+    
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #F1F5F9;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+    
+    .status {
+      margin-top: 40px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      font-size: 14px;
+      color: #64748B;
+    }
+    
+    .status.online {
+      background: rgba(16, 185, 129, 0.1);
+      color: #10B981;
+    }
+    
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: #EF4444;
+      border-radius: 50%;
+      margin-right: 8px;
+      animation: blink 1.5s infinite;
+    }
+    
+    .online .dot {
+      background: #10B981;
+      animation: none;
+    }
+    
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    
+    .queued-actions {
+      margin-top: 24px;
+      text-align: left;
+    }
+    
+    .queued-actions h3 {
+      font-size: 14px;
+      color: #64748B;
+      margin-bottom: 8px;
+    }
+    
+    .queue-item {
+      padding: 8px 12px;
+      background: rgba(251, 191, 36, 0.1);
+      border-radius: 8px;
+      font-size: 13px;
+      color: #FCD34D;
+      margin-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="offline-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414" />
+      </svg>
+    </div>
+    
+    <h1>You're Offline</h1>
+    <p>
+      It looks like you've lost your internet connection. 
+      Don't worry - we've saved your important data and any actions 
+      you take will sync when you're back online.
+    </p>
+    
+    <div class="actions">
+      <button class="btn-primary" onclick="tryReconnect()">
+        Try Again
+      </button>
+      <button class="btn-secondary" onclick="goBack()">
+        Go Back
+      </button>
+    </div>
+    
+    <div class="status" id="status">
+      <span class="dot"></span>
+      Waiting for connection...
+    </div>
+    
+    <div class="queued-actions" id="queued" style="display: none;">
+      <h3>Pending actions will sync automatically:</h3>
+      <div id="queue-list"></div>
+    </div>
+  </div>
+
+  <script>
+    // Check online status
+    function updateStatus() {
+      const statusEl = document.getElementById('status');
+      if (navigator.onLine) {
+        statusEl.classList.add('online');
+        statusEl.innerHTML = '<span class="dot"></span>Connection restored! Redirecting...';
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        statusEl.classList.remove('online');
+        statusEl.innerHTML = '<span class="dot"></span>Waiting for connection...';
+      }
+    }
+    
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+    
+    // Initial check
+    updateStatus();
+    
+    function tryReconnect() {
+      if (navigator.onLine) {
+        window.location.reload();
+      } else {
+        const statusEl = document.getElementById('status');
+        statusEl.innerHTML = '<span class="dot"></span>Still offline. Please check your connection.';
+      }
+    }
+    
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/';
+      }
+    }
+    
+    // Show queued actions if any
+    async function checkQueuedActions() {
+      if ('caches' in window) {
+        try {
+          const cache = await caches.open('carpool-offline-queue');
+          const keys = await cache.keys();
+          
+          if (keys.length > 0) {
+            document.getElementById('queued').style.display = 'block';
+            const listEl = document.getElementById('queue-list');
+            listEl.innerHTML = `<div class="queue-item">${keys.length} action(s) waiting to sync</div>`;
+          }
+        } catch (e) {
+          console.log('Could not check queued actions');
+        }
+      }
+    }
+    
+    checkQueuedActions();
+  </script>
+</body>
+</html>
