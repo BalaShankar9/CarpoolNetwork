@@ -245,6 +245,26 @@ export default function ProfileOnboarding() {
       setError('Please enter your city. This is required to connect you with local carpoolers.');
       return;
     }
+    if (!basicForm.date_of_birth) {
+      setError('Please enter your date of birth. You must be 18+ to use the platform.');
+      return;
+    }
+    // Validate age - must be 18+
+    const birthDate = new Date(basicForm.date_of_birth);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    if (age < 18) {
+      setError('You must be at least 18 years old to use this platform.');
+      return;
+    }
+    if (!basicForm.gender) {
+      setError('Please select your gender.');
+      return;
+    }
     setSaving(true);
     const updates: Record<string, any> = {
       full_name: basicForm.full_name.trim(),
@@ -252,8 +272,8 @@ export default function ProfileOnboarding() {
       nationality: basicForm.nationality.trim(),
       city: basicForm.city.trim(),
       home_city: basicForm.city.trim(), // Also set home_city for matching
-      date_of_birth: basicForm.date_of_birth || null,
-      gender: basicForm.gender || null,
+      date_of_birth: basicForm.date_of_birth,
+      gender: basicForm.gender,
       occupation: basicForm.occupation.trim() || null,
     };
     const { error: updateError } = await updateProfile(updates);
@@ -721,7 +741,7 @@ export default function ProfileOnboarding() {
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Date of birth <span className="font-normal text-gray-400">(Optional)</span>
+                          Date of birth *
                         </label>
                         <div className="relative">
                           <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -733,18 +753,18 @@ export default function ProfileOnboarding() {
                             className="w-full pl-12 pr-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
                           />
                         </div>
-                        <p className="mt-1 text-xs text-gray-400">Must be 18+ to use the platform</p>
+                        <p className="mt-1 text-xs text-gray-400">Required - Must be 18+ to use the platform</p>
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Gender <span className="font-normal text-gray-400">(Optional)</span>
+                          Gender *
                         </label>
                         <select
                           value={basicForm.gender}
                           onChange={(e) => setBasicForm({ ...basicForm, gender: e.target.value as any })}
                           className="w-full px-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all appearance-none bg-white"
                         >
-                          <option value="">Prefer not to say</option>
+                          <option value="">Select gender</option>
                           <option value="male">Male</option>
                           <option value="female">Female</option>
                           <option value="non-binary">Non-binary</option>
