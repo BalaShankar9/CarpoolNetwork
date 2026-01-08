@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Car, Star, Phone, Mail, Calendar, Plus, Edit, X, Shield, AlertCircle, CheckCircle, Upload, Image as ImageIcon, Camera, Settings } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { uploadProfilePhoto, uploadVehiclePhoto, getPublicUrlSync } from '../services/storageService';
@@ -108,6 +108,18 @@ export default function Profile() {
   const [preferencesLoading, setPreferencesLoading] = useState(false);
   const [preferencesSaving, setPreferencesSaving] = useState(false);
   const displayName = profile?.full_name || 'Unnamed';
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Handle URL params to auto-open edit modal
+  useEffect(() => {
+    const editParam = searchParams.get('edit');
+    if (editParam === 'true' || editParam === 'bio' || editParam === 'phone' || editParam === 'photo') {
+      setShowEditProfile(true);
+      // Clear the param after opening
+      searchParams.delete('edit');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!authLoading && !user) {

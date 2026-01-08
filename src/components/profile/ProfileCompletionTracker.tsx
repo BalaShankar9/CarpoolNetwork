@@ -25,7 +25,7 @@ export default function ProfileCompletionTracker() {
       completed: !!(profile as any).profile_photo_url || !!profile.avatar_url,
       icon: ImageIcon,
       description: 'Upload a clear photo of your face',
-      action: () => navigate('/onboarding/profile'),
+      action: () => navigate('/profile?edit=photo'),
       benefit: '+25% trust score'
     },
     {
@@ -34,7 +34,7 @@ export default function ProfileCompletionTracker() {
       completed: !!(profile as any).profile_verified,
       icon: Shield,
       description: 'Verify your identity with face detection',
-      action: () => navigate('/onboarding/profile'),
+      action: () => navigate('/profile?edit=photo'),
       benefit: '+40% booking success'
     },
     {
@@ -43,7 +43,7 @@ export default function ProfileCompletionTracker() {
       completed: !!profile.phone_e164 && !!profile.phone_verified,
       icon: Phone,
       description: 'Add and verify your phone number',
-      action: () => navigate('/onboarding/profile'),
+      action: () => navigate('/profile?edit=phone'),
       benefit: '+15% visibility'
     },
     {
@@ -52,7 +52,7 @@ export default function ProfileCompletionTracker() {
       completed: !!profile.bio && profile.bio.length > 20,
       icon: User,
       description: 'Write a brief bio about yourself',
-      action: () => navigate('/onboarding/profile'),
+      action: () => navigate('/profile?edit=bio'),
       benefit: '+20% match rate'
     },
     {
