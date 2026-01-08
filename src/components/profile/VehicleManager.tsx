@@ -231,6 +231,11 @@ export default function VehicleManager() {
       setError('Capacity must be between 1 and 8');
       return false;
     }
+    // Vehicle photo is mandatory for new vehicles
+    if (!editingVehicle && !vehicleImage) {
+      setError('Please upload a photo of your vehicle - this is required for safety and verification');
+      return false;
+    }
     return true;
   };
 
@@ -309,23 +314,47 @@ export default function VehicleManager() {
   };
 
   const handleDelete = async (vehicleId: string) => {
-    if (!confirm('Are you sure you want to delete this vehicle?')) return;
+    const vehicleToDelete = vehicles.find(v => v.id === vehicleId);
+    const confirmMessage = vehicleToDelete
+      ? `Are you sure you want to delete ${vehicleToDelete.make} ${vehicleToDelete.model} (${vehicleToDelete.license_plate})?`
+      : 'Are you sure you want to delete this vehicle?';
+
+    if (!confirm(confirmMessage)) return;
 
     setError('');
     setSuccess('');
 
     try {
+      // First check if this vehicle is used in any active rides
+      const { data: activeRides, error: ridesError } = await supabase
+        .from('rides')
+        .select('id')
+        .eq('vehicle_id', vehicleId)
+        .in('status', ['pending', 'in_progress', 'scheduled'])
+        .limit(1);
+
+      if (ridesError) {
+        console.warn('Could not check for active rides:', ridesError);
+      }
+
+      if (activeRides && activeRides.length > 0) {
+        setError('Cannot delete this vehicle - it is currently assigned to active rides. Please complete or cancel those rides first.');
+        return;
+      }
+
       const { error: deleteError } = await supabase
         .from('vehicles')
         .delete()
-        .eq('id', vehicleId);
+        .eq('id', vehicleId)
+        .eq('user_id', profile?.id); // Extra safety check
 
       if (deleteError) throw deleteError;
 
       setSuccess('Vehicle deleted successfully!');
       await loadVehicles();
     } catch (err: any) {
-      setError(err.message || 'Failed to delete vehicle');
+      console.error('Delete error:', err);
+      setError(err.message || 'Failed to delete vehicle. Please try again.');
     }
   };
 
@@ -577,7 +606,7 @@ export default function VehicleManager() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Vehicle Photo (Optional)
+                  Vehicle Photo *
                 </label>
                 <input
                   ref={fileInputRef}
@@ -589,16 +618,21 @@ export default function VehicleManager() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-blue-500 transition-colors"
+                  className={`w-full border-2 border-dashed rounded-lg p-6 transition-colors ${!editingVehicle && !vehicleImage
+                      ? 'border-red-300 hover:border-red-500 bg-red-50'
+                      : 'border-gray-300 hover:border-blue-500'
+                    }`}
                 >
                   <div className="flex flex-col items-center gap-2">
                     {imagePreview ? (
                       <img src={imagePreview} alt="Preview" className="w-full h-40 object-cover rounded-lg" />
                     ) : (
                       <>
-                        <Upload className="w-8 h-8 text-gray-400" />
-                        <span className="text-sm text-gray-600">Click to upload vehicle photo</span>
-                        <span className="text-xs text-gray-500">Max 10MB</span>
+                        <Upload className={`w-8 h-8 ${!editingVehicle ? 'text-red-400' : 'text-gray-400'}`} />
+                        <span className={`text-sm ${!editingVehicle ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                          {!editingVehicle ? 'Vehicle photo required - Click to upload' : 'Click to upload vehicle photo'}
+                        </span>
+                        <span className="text-xs text-gray-500">Max 10MB • Required for safety verification</span>
                       </>
                     )}
                   </div>

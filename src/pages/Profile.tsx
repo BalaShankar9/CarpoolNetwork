@@ -110,13 +110,29 @@ export default function Profile() {
   const displayName = profile?.full_name || 'Unnamed';
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Handle URL params to auto-open edit modal
+  // Handle URL params to auto-open edit modal or scroll to section
   useEffect(() => {
     const editParam = searchParams.get('edit');
+    const sectionParam = searchParams.get('section');
+
     if (editParam === 'true' || editParam === 'bio' || editParam === 'phone' || editParam === 'photo') {
       setShowEditProfile(true);
       // Clear the param after opening
       searchParams.delete('edit');
+      setSearchParams(searchParams, { replace: true });
+    }
+
+    // Handle section param to scroll to specific section
+    if (sectionParam === 'vehicles') {
+      // Scroll to vehicles section after a short delay to ensure component is mounted
+      setTimeout(() => {
+        const vehiclesSection = document.getElementById('vehicles-section');
+        if (vehiclesSection) {
+          vehiclesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+      // Clear the param after scrolling
+      searchParams.delete('section');
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
@@ -806,7 +822,7 @@ export default function Profile() {
 
       <PrivacyControls />
 
-      <div className="bg-white rounded-xl p-6 md:p-8 border border-gray-200 shadow-sm">
+      <div id="vehicles-section" className="bg-white rounded-xl p-6 md:p-8 border border-gray-200 shadow-sm">
         <VehicleManager />
       </div>
 
@@ -1015,7 +1031,7 @@ export default function Profile() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number (E.164) *
+                  Phone Number *
                 </label>
                 <input
                   type="tel"

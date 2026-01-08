@@ -153,21 +153,19 @@ export default function Dashboard() {
           <div className="flex">
             <button
               onClick={() => setActiveTab('offered')}
-              className={`px-6 py-4 font-medium transition-colors ${
-                activeTab === 'offered'
+              className={`px-6 py-4 font-medium transition-colors ${activeTab === 'offered'
                   ? 'text-blue-600 border-b-2 border-blue-600'
                   : 'text-gray-600 hover:text-gray-900'
-              }`}
+                }`}
             >
               Rides I'm Offering
             </button>
             <button
               onClick={() => setActiveTab('booked')}
-              className={`px-6 py-4 font-medium transition-colors ${
-                activeTab === 'booked'
+              className={`px-6 py-4 font-medium transition-colors ${activeTab === 'booked'
                   ? 'text-blue-600 border-b-2 border-blue-600'
                   : 'text-gray-600 hover:text-gray-900'
-              }`}
+                }`}
             >
               My Bookings
             </button>

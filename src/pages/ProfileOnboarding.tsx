@@ -32,6 +32,7 @@ import {
   Cigarette,
   Briefcase,
   AlertTriangle,
+  Loader,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -39,6 +40,102 @@ import { countryCodes, defaultCountry } from '../data/countryCodes';
 import { normalizePhoneNumber } from '../utils/phone';
 import { getProfileMissingFields } from '../utils/profileCompleteness';
 import PhoneVerificationStep from '../components/onboarding/PhoneVerificationStep';
+
+// Helper function to get location from browser
+async function getLocationFromBrowser(): Promise<{ country: string; city: string } | null> {
+  try {
+    // First try IP-based geolocation (faster, no permission required)
+    const response = await fetch('https://ipapi.co/json/', {
+      signal: AbortSignal.timeout(5000)
+    });
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        country: data.country_code || '',
+        city: data.city || ''
+      };
+    }
+  } catch (e) {
+    console.log('IP geolocation failed, trying browser geolocation');
+  }
+
+  // Fallback to browser geolocation + reverse geocoding
+  if ('geolocation' in navigator) {
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false,
+          timeout: 10000,
+          maximumAge: 300000 // 5 minutes cache
+        });
+      });
+
+      // Use Nominatim for reverse geocoding (free, no API key)
+      const { latitude, longitude } = position.coords;
+      const geoResponse = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`,
+        { headers: { 'Accept-Language': 'en' } }
+      );
+      if (geoResponse.ok) {
+        const geoData = await geoResponse.json();
+        return {
+          country: geoData.address?.country_code?.toUpperCase() || '',
+          city: geoData.address?.city || geoData.address?.town || geoData.address?.village || ''
+        };
+      }
+    } catch (e) {
+      console.log('Browser geolocation failed:', e);
+    }
+  }
+
+  return null;
+}
+
+// Helper function to generate auto bio
+function generateAutoBio(name: string, city: string, occupation: string, preferences: {
+  smoking_policy: string;
+  music_preference: string;
+  conversation_level: string;
+}): string {
+  const firstName = name.split(' ')[0] || 'there';
+  const parts: string[] = [];
+
+  // Intro
+  parts.push(`Hi, I'm ${firstName}!`);
+
+  // Location
+  if (city) {
+    parts.push(`Based in ${city}.`);
+  }
+
+  // Occupation
+  if (occupation) {
+    parts.push(`Working as a ${occupation}.`);
+  }
+
+  // Preferences
+  const prefParts: string[] = [];
+  if (preferences.conversation_level === 'chatty') {
+    prefParts.push('love a good chat');
+  } else if (preferences.conversation_level === 'quiet') {
+    prefParts.push('prefer quiet rides');
+  }
+
+  if (preferences.music_preference === 'radio') {
+    prefParts.push('enjoy music on drives');
+  } else if (preferences.music_preference === 'podcasts') {
+    prefParts.push('love podcasts');
+  }
+
+  if (prefParts.length > 0) {
+    parts.push(`I ${prefParts.join(' and ')}.`);
+  }
+
+  // Closing
+  parts.push('Looking forward to sharing rides! 🚗');
+
+  return parts.join(' ');
+}
 
 type StepKey = 'welcome' | 'basics' | 'photo' | 'phone' | 'preferences' | 'details' | 'complete';
 
@@ -136,6 +233,8 @@ export default function ProfileOnboarding() {
   const [initialized, setInitialized] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [loadingLocation, setLoadingLocation] = useState(false);
+  const [locationDetected, setLocationDetected] = useState(false);
 
   const [basicForm, setBasicForm] = useState({
     full_name: '',
@@ -195,7 +294,23 @@ export default function ProfileOnboarding() {
     if (profile.avatar_url) {
       setPhotoPreview(profile.avatar_url);
     }
-  }, [profile]);
+
+    // Auto-detect location if not already set
+    if (!profile.country && !profile.city && !locationDetected) {
+      setLoadingLocation(true);
+      getLocationFromBrowser().then((loc) => {
+        if (loc) {
+          setBasicForm(prev => ({
+            ...prev,
+            country: prev.country || loc.country,
+            city: prev.city || loc.city,
+          }));
+          setLocationDetected(true);
+        }
+        setLoadingLocation(false);
+      }).catch(() => setLoadingLocation(false));
+    }
+  }, [profile, locationDetected]);
 
   const initialStep = useMemo(() => {
     if (!profile) return 0;
@@ -392,11 +507,34 @@ export default function ProfileOnboarding() {
       return;
     }
 
+    // Auto-generate bio if empty
+    if (!detailsForm.bio.trim()) {
+      const autoBio = generateAutoBio(
+        basicForm.full_name,
+        basicForm.city,
+        basicForm.occupation,
+        preferencesForm
+      );
+      setDetailsForm(prev => ({ ...prev, bio: autoBio }));
+    }
+
     setCurrentStep(5); // Go to details step
   };
 
   const handleDetailsSave = async () => {
     setError('');
+
+    // Use auto-generated bio if still empty
+    let bioToSave = detailsForm.bio.trim();
+    if (!bioToSave) {
+      bioToSave = generateAutoBio(
+        basicForm.full_name,
+        basicForm.city,
+        basicForm.occupation,
+        preferencesForm
+      );
+    }
+
     const languages = detailsForm.languages
       .split(',')
       .map((value) => value.trim())
@@ -425,7 +563,7 @@ export default function ProfileOnboarding() {
 
     setSaving(true);
     const updates: Record<string, any> = {
-      bio: detailsForm.bio.trim() || null,
+      bio: bioToSave || null,
       languages: languages.length ? languages : null,
       whatsapp_e164: whatsappE164,
       whatsapp_number: whatsappE164,
@@ -720,6 +858,12 @@ export default function ProfileOnboarding() {
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Your City *
+                        {loadingLocation && (
+                          <span className="ml-2 text-blue-600 text-xs font-normal inline-flex items-center gap-1">
+                            <Loader className="w-3 h-3 animate-spin" />
+                            Detecting location...
+                          </span>
+                        )}
                       </label>
                       <div className="relative">
                         <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -727,13 +871,13 @@ export default function ProfileOnboarding() {
                           type="text"
                           value={basicForm.city}
                           onChange={(e) => setBasicForm({ ...basicForm, city: e.target.value })}
-                          placeholder="e.g., London, Manchester, Birmingham"
+                          placeholder={loadingLocation ? "Detecting your city..." : "e.g., London, Manchester, Birmingham"}
                           data-testid="onboarding-city"
                           className="w-full pl-12 pr-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
                         />
                       </div>
                       <p className="mt-2 text-sm text-gray-500">
-                        Required - This helps match you with carpoolers in your area
+                        {locationDetected ? '✓ Location auto-detected - feel free to adjust' : 'Required - This helps match you with carpoolers in your area'}
                       </p>
                     </div>
 

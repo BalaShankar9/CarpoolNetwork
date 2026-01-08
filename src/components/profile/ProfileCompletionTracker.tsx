@@ -61,7 +61,7 @@ export default function ProfileCompletionTracker() {
       completed: profile.total_rides_offered > 0,
       icon: Car,
       description: 'Add a vehicle to offer rides',
-      action: () => navigate('/post-ride'),
+      action: () => navigate('/profile?section=vehicles'),
       benefit: 'Unlock driver features'
     }
   ];
