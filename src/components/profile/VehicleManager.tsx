@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Car, X, Edit, Trash2, Upload, Check, AlertCircle, Loader, Plus, Search } from 'lucide-react';
+import { Car, X, Edit, Trash2, Upload, Check, AlertCircle, Loader, Plus, Search, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -52,6 +52,8 @@ export default function VehicleManager() {
   const [vehicleImage, setVehicleImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; vehicle: Vehicle | null }>({ show: false, vehicle: null });
+  const [deleting, setDeleting] = useState(false);
 
   const [formData, setFormData] = useState<VehicleFormData>({
     make: '',
@@ -315,12 +317,17 @@ export default function VehicleManager() {
 
   const handleDelete = async (vehicleId: string) => {
     const vehicleToDelete = vehicles.find(v => v.id === vehicleId);
-    const confirmMessage = vehicleToDelete
-      ? `Are you sure you want to delete ${vehicleToDelete.make} ${vehicleToDelete.model} (${vehicleToDelete.license_plate})?`
-      : 'Are you sure you want to delete this vehicle?';
+    if (!vehicleToDelete) return;
+    
+    // Show custom confirmation modal instead of browser confirm
+    setDeleteConfirm({ show: true, vehicle: vehicleToDelete });
+  };
 
-    if (!confirm(confirmMessage)) return;
-
+  const confirmDelete = async () => {
+    if (!deleteConfirm.vehicle) return;
+    
+    const vehicleId = deleteConfirm.vehicle.id;
+    setDeleting(true);
     setError('');
     setSuccess('');
 
@@ -339,6 +346,8 @@ export default function VehicleManager() {
 
       if (activeRides && activeRides.length > 0) {
         setError('Cannot delete this vehicle - it is currently assigned to active rides. Please complete or cancel those rides first.');
+        setDeleteConfirm({ show: false, vehicle: null });
+        setDeleting(false);
         return;
       }
 
@@ -351,10 +360,14 @@ export default function VehicleManager() {
       if (deleteError) throw deleteError;
 
       setSuccess('Vehicle deleted successfully!');
+      setDeleteConfirm({ show: false, vehicle: null });
       await loadVehicles();
     } catch (err: any) {
       console.error('Delete error:', err);
       setError(err.message || 'Failed to delete vehicle. Please try again.');
+    } finally {
+      setDeleting(false);
+      setDeleteConfirm({ show: false, vehicle: null });
     }
   };
 
@@ -381,6 +394,59 @@ export default function VehicleManager() {
 
   return (
     <div className="space-y-4">
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.show && deleteConfirm.vehicle && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Delete Vehicle</h3>
+                <p className="text-sm text-gray-500">This action cannot be undone</p>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <p className="text-gray-700">
+                Are you sure you want to delete <span className="font-semibold">{deleteConfirm.vehicle.make} {deleteConfirm.vehicle.model}</span>?
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                License Plate: {deleteConfirm.vehicle.license_plate}
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm({ show: false, vehicle: null })}
+                disabled={deleting}
+                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {deleting ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete Vehicle
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Car className="w-6 h-6" />
