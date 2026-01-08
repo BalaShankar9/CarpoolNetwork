@@ -392,15 +392,8 @@ BEGIN
   DO UPDATE SET inviter_id = v_user_id, message = p_message, status = 'PENDING', created_at = now(), responded_at = NULL
   RETURNING id INTO v_invite_id;
 
-  -- Create notification
-  INSERT INTO notifications (user_id, type, title, message, data)
-  VALUES (
-    p_invitee_id,
-    'group-invite',
-    'Group Invitation',
-    'You have been invited to join a group',
-    jsonb_build_object('group_id', p_group_id, 'invite_id', v_invite_id, 'inviter_id', v_user_id)
-  );
+  -- NOTE: Notification creation removed due to database webhook conflict
+  -- Notifications should be handled client-side
 
   RETURN v_invite_id;
 END;

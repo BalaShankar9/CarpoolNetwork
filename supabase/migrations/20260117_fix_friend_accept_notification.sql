@@ -1,11 +1,12 @@
 /*
-  # Fix Friend Accept - Remove Notification Insert
+  # Fix Friend Accept & Group Invite - Remove Notification Inserts
   
-  The accept_friend_request function was failing because inserting into
-  the notifications table triggers a database webhook that is misconfigured.
+  The accept_friend_request and invite_to_group functions were failing because 
+  inserting into the notifications table triggers a database webhook that is 
+  misconfigured with "Unexpected operation type: notification_created".
   
-  This fix removes the notification INSERT from the function.
-  Notifications will be handled client-side instead.
+  This fix removes the notification INSERT from these functions.
+  Notifications should be handled client-side instead.
 */
 
 -- Recreate accept_friend_request without notification insert
@@ -103,9 +104,57 @@ BEGIN
 END;
 $$;
 
+-- Recreate invite_to_group without notification insert
+CREATE OR REPLACE FUNCTION invite_to_group(p_group_id uuid, p_invitee_id uuid, p_message text DEFAULT NULL)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id uuid;
+  v_user_role text;
+  v_invite_id uuid;
+BEGIN
+  v_user_id := auth.uid();
+  
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  -- Check if user has permission to invite
+  SELECT role INTO v_user_role
+  FROM social_group_members
+  WHERE group_id = p_group_id AND user_id = v_user_id;
+
+  IF v_user_role NOT IN ('OWNER', 'ADMIN', 'MODERATOR') THEN
+    RAISE EXCEPTION 'Only admins and moderators can invite users';
+  END IF;
+
+  -- Check if invitee is already a member
+  IF EXISTS (SELECT 1 FROM social_group_members WHERE group_id = p_group_id AND user_id = p_invitee_id) THEN
+    RAISE EXCEPTION 'User is already a member of this group';
+  END IF;
+
+  -- Create or update invite
+  INSERT INTO social_group_invites (group_id, inviter_id, invitee_id, message, status)
+  VALUES (p_group_id, v_user_id, p_invitee_id, p_message, 'PENDING')
+  ON CONFLICT (group_id, invitee_id)
+  DO UPDATE SET inviter_id = v_user_id, message = p_message, status = 'PENDING', created_at = now(), responded_at = NULL
+  RETURNING id INTO v_invite_id;
+
+  -- NOTE: Notification creation removed due to database webhook conflict
+
+  RETURN v_invite_id;
+END;
+$$;
+
 -- Ensure grants are correct
 REVOKE ALL ON FUNCTION accept_friend_request(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION accept_friend_request(uuid) TO authenticated;
 
 REVOKE ALL ON FUNCTION decline_friend_request(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION decline_friend_request(uuid) TO authenticated;
+
+REVOKE ALL ON FUNCTION invite_to_group(uuid, uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION invite_to_group(uuid, uuid, text) TO authenticated;
