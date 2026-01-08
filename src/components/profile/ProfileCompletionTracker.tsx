@@ -25,7 +25,7 @@ export default function ProfileCompletionTracker() {
       completed: !!(profile as any).profile_photo_url || !!profile.avatar_url,
       icon: ImageIcon,
       description: 'Upload a clear photo of your face',
-      action: () => navigate('/profile/edit'),
+      action: () => navigate('/onboarding/profile'),
       benefit: '+25% trust score'
     },
     {
@@ -34,7 +34,7 @@ export default function ProfileCompletionTracker() {
       completed: !!(profile as any).profile_verified,
       icon: Shield,
       description: 'Verify your identity with face detection',
-      action: () => navigate('/profile/edit'),
+      action: () => navigate('/onboarding/profile'),
       benefit: '+40% booking success'
     },
     {
@@ -43,7 +43,7 @@ export default function ProfileCompletionTracker() {
       completed: !!profile.phone_e164 && !!profile.phone_verified,
       icon: Phone,
       description: 'Add and verify your phone number',
-      action: () => navigate('/profile/edit'),
+      action: () => navigate('/onboarding/profile'),
       benefit: '+15% visibility'
     },
     {
@@ -52,7 +52,7 @@ export default function ProfileCompletionTracker() {
       completed: !!profile.bio && profile.bio.length > 20,
       icon: User,
       description: 'Write a brief bio about yourself',
-      action: () => navigate('/profile/edit'),
+      action: () => navigate('/onboarding/profile'),
       benefit: '+20% match rate'
     },
     {
@@ -61,7 +61,7 @@ export default function ProfileCompletionTracker() {
       completed: profile.total_rides_offered > 0,
       icon: Car,
       description: 'Add a vehicle to offer rides',
-      action: () => navigate('/vehicles'),
+      action: () => navigate('/post-ride'),
       benefit: 'Unlock driver features'
     }
   ];
@@ -82,8 +82,8 @@ export default function ProfileCompletionTracker() {
   const milestone = getMilestone();
 
   const estimatedBenefit = completionPercentage >= 75 ? '78% better matches' :
-                          completionPercentage >= 50 ? '45% better matches' :
-                          '20% better matches';
+    completionPercentage >= 50 ? '45% better matches' :
+      '20% better matches';
 
   if (isComplete) {
     return (
