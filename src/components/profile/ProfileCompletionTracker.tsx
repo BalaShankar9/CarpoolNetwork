@@ -1,5 +1,6 @@
 import { CheckCircle, AlertCircle, Car, Shield, Phone, User, Image as ImageIcon, TrendingUp, Award, Sparkles, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface CompletionItem {
   id: string;
@@ -7,12 +8,13 @@ interface CompletionItem {
   completed: boolean;
   icon: typeof CheckCircle;
   description: string;
-  link?: string;
+  action?: () => void;
   benefit?: string;
 }
 
 export default function ProfileCompletionTracker() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
 
   if (!profile) return null;
 
@@ -23,7 +25,7 @@ export default function ProfileCompletionTracker() {
       completed: !!(profile as any).profile_photo_url || !!profile.avatar_url,
       icon: ImageIcon,
       description: 'Upload a clear photo of your face',
-      link: '#profile-photo',
+      action: () => navigate('/profile/edit'),
       benefit: '+25% trust score'
     },
     {
@@ -32,7 +34,7 @@ export default function ProfileCompletionTracker() {
       completed: !!(profile as any).profile_verified,
       icon: Shield,
       description: 'Verify your identity with face detection',
-      link: '#profile-photo',
+      action: () => navigate('/profile/edit'),
       benefit: '+40% booking success'
     },
     {
@@ -41,7 +43,7 @@ export default function ProfileCompletionTracker() {
       completed: !!profile.phone_e164 && !!profile.phone_verified,
       icon: Phone,
       description: 'Add and verify your phone number',
-      link: '#edit-profile',
+      action: () => navigate('/profile/edit'),
       benefit: '+15% visibility'
     },
     {
@@ -50,7 +52,7 @@ export default function ProfileCompletionTracker() {
       completed: !!profile.bio && profile.bio.length > 20,
       icon: User,
       description: 'Write a brief bio about yourself',
-      link: '#edit-profile',
+      action: () => navigate('/profile/edit'),
       benefit: '+20% match rate'
     },
     {
@@ -59,7 +61,7 @@ export default function ProfileCompletionTracker() {
       completed: profile.total_rides_offered > 0,
       icon: Car,
       description: 'Add a vehicle to offer rides',
-      link: '#vehicles',
+      action: () => navigate('/vehicles'),
       benefit: 'Unlock driver features'
     }
   ];
@@ -164,10 +166,10 @@ export default function ProfileCompletionTracker() {
 
       <div className="space-y-2 mb-5">
         {completionItems.filter(item => !item.completed).slice(0, 3).map((item) => (
-          <a
+          <button
             key={item.id}
-            href={item.link}
-            className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 transition-all group"
+            onClick={item.action}
+            className="w-full flex items-start gap-3 p-3 rounded-lg bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 transition-all group text-left cursor-pointer"
           >
             <div className="flex-shrink-0 p-2 rounded-full bg-gray-200 group-hover:bg-blue-100 transition-colors">
               <AlertCircle className="w-4 h-4 text-gray-500 group-hover:text-blue-600 transition-colors" />
@@ -184,7 +186,7 @@ export default function ProfileCompletionTracker() {
               <p className="text-xs text-gray-600 mt-0.5">{item.description}</p>
             </div>
             <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors flex-shrink-0 mt-1" />
-          </a>
+          </button>
         ))}
       </div>
 
