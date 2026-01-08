@@ -3463,6 +3463,7 @@ COMMENT ON VIEW rides_with_calculated_seats IS
 
 -- ============================================================================
 -- FUNCTION: Recalculate and sync available_seats for a ride
+-- Fixed to handle deleted rides gracefully during cascade operations
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.recalculate_ride_seats(p_ride_id uuid)
 RETURNS void
@@ -3480,8 +3481,10 @@ BEGIN
   FROM rides
   WHERE id = p_ride_id;
 
+  -- If ride doesn't exist, just return silently
+  -- This handles cascade delete operations where ride is deleted first
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'Ride not found';
+    RETURN;
   END IF;
 
   -- Calculate booked seats (only count active bookings)

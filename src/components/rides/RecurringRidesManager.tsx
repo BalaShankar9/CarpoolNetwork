@@ -180,19 +180,16 @@ export default function RecurringRidesManager() {
             {recurringRides.map((ride) => (
               <div
                 key={ride.id}
-                className={`p-5 rounded-xl border-2 transition-all ${
-                  ride.status === 'active'
+                className={`p-5 rounded-xl border-2 transition-all ${ride.status === 'active'
                     ? 'bg-blue-50 border-blue-200'
                     : 'bg-gray-50 border-gray-200 opacity-75'
-                }`}
+                  }`}
               >
                 <div className="flex items-start gap-4">
-                  <div className={`p-3 rounded-full flex-shrink-0 ${
-                    ride.status === 'active' ? 'bg-blue-100' : 'bg-gray-200'
-                  }`}>
-                    <Repeat className={`w-6 h-6 ${
-                      ride.status === 'active' ? 'text-blue-600' : 'text-gray-500'
-                    }`} />
+                  <div className={`p-3 rounded-full flex-shrink-0 ${ride.status === 'active' ? 'bg-blue-100' : 'bg-gray-200'
+                    }`}>
+                    <Repeat className={`w-6 h-6 ${ride.status === 'active' ? 'text-blue-600' : 'text-gray-500'
+                      }`} />
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -202,11 +199,10 @@ export default function RecurringRidesManager() {
                           <h4 className="font-bold text-gray-900">
                             {ride.origin} → {ride.destination}
                           </h4>
-                          <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                            ride.status === 'active'
+                          <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${ride.status === 'active'
                               ? 'bg-green-100 text-green-800'
                               : 'bg-gray-200 text-gray-700'
-                          }`}>
+                            }`}>
                             {ride.status === 'active' ? 'Active' : 'Paused'}
                           </span>
                         </div>

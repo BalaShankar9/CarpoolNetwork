@@ -386,8 +386,8 @@ export default function NotificationTemplates() {
                                         <button
                                             onClick={() => handleToggleActive(template)}
                                             className={`p-1.5 rounded ${template.is_active
-                                                    ? 'text-gray-400 hover:text-orange-600 hover:bg-orange-50'
-                                                    : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                                                ? 'text-gray-400 hover:text-orange-600 hover:bg-orange-50'
+                                                : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
                                                 }`}
                                             title={template.is_active ? 'Disable' : 'Enable'}
                                         >

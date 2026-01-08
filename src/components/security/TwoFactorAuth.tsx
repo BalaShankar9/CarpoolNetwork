@@ -297,11 +297,10 @@ export default function TwoFactorAuth() {
               </p>
             </div>
           </div>
-          <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-            twoFactorStatus?.enabled
+          <div className={`px-3 py-1 rounded-full text-sm font-medium ${twoFactorStatus?.enabled
               ? 'bg-green-100 text-green-800'
               : 'bg-gray-100 text-gray-800'
-          }`}>
+            }`}>
             {twoFactorStatus?.enabled ? (
               <span className="flex items-center space-x-1">
                 <Lock className="w-3 h-3" />

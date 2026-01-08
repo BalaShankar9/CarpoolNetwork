@@ -233,10 +233,10 @@ export function SafetyCheckIn({
                 {status !== 'pending' && (
                     <div
                         className={`px-3 py-1 rounded-full text-sm font-medium ${status === 'ok'
-                                ? 'bg-green-100 text-green-700'
-                                : status === 'help_needed'
-                                    ? 'bg-red-100 text-red-700'
-                                    : 'bg-yellow-100 text-yellow-700'
+                            ? 'bg-green-100 text-green-700'
+                            : status === 'help_needed'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-yellow-100 text-yellow-700'
                             }`}
                     >
                         {status === 'ok' ? 'Safe' : status === 'help_needed' ? 'Help Sent' : 'Alert'}

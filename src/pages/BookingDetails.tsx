@@ -391,12 +391,11 @@ export default function BookingDetails() {
           <h1 className="text-3xl font-bold text-gray-900">Your Booking</h1>
           <p className="text-gray-600 mt-1">Trip details and information</p>
         </div>
-        <span className={`px-4 py-2 rounded-full text-sm font-medium ${
-          booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-          booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-          booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-          'bg-gray-100 text-gray-800'
-        }`}>
+        <span className={`px-4 py-2 rounded-full text-sm font-medium ${booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+            booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+              booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                'bg-gray-100 text-gray-800'
+          }`}>
           {booking.status}
         </span>
       </div>

@@ -337,7 +337,7 @@ export default function VehicleManager() {
         .from('rides')
         .select('id')
         .eq('vehicle_id', vehicleId)
-        .in('status', ['pending', 'in_progress', 'scheduled'])
+        .in('status', ['pending', 'in_progress', 'scheduled', 'active'])
         .limit(1);
 
       if (ridesError) {

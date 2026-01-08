@@ -178,8 +178,8 @@ export function WaitList({ rideId, rideName, availableSeats, onClose }: WaitList
                             <button
                                 onClick={() => setOptions((p) => ({ ...p, notifyOnAvailable: !p.notifyOnAvailable }))}
                                 className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${options.notifyOnAvailable
-                                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                                        : 'border-gray-200 dark:border-gray-700'
+                                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                                    : 'border-gray-200 dark:border-gray-700'
                                     }`}
                             >
                                 {options.notifyOnAvailable ? (
@@ -195,8 +195,8 @@ export function WaitList({ rideId, rideName, availableSeats, onClose }: WaitList
                                 </div>
                                 <div
                                     className={`w-4 h-4 rounded-full border-2 ${options.notifyOnAvailable
-                                            ? 'bg-emerald-500 border-emerald-500'
-                                            : 'border-gray-300 dark:border-gray-600'
+                                        ? 'bg-emerald-500 border-emerald-500'
+                                        : 'border-gray-300 dark:border-gray-600'
                                         }`}
                                 >
                                     {options.notifyOnAvailable && (
@@ -209,8 +209,8 @@ export function WaitList({ rideId, rideName, availableSeats, onClose }: WaitList
                             <button
                                 onClick={() => setOptions((p) => ({ ...p, autoBook: !p.autoBook }))}
                                 className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${options.autoBook
-                                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                                        : 'border-gray-200 dark:border-gray-700'
+                                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                                    : 'border-gray-200 dark:border-gray-700'
                                     }`}
                             >
                                 <Zap
@@ -224,8 +224,8 @@ export function WaitList({ rideId, rideName, availableSeats, onClose }: WaitList
                                 </div>
                                 <div
                                     className={`w-4 h-4 rounded-full border-2 ${options.autoBook
-                                            ? 'bg-purple-500 border-purple-500'
-                                            : 'border-gray-300 dark:border-gray-600'
+                                        ? 'bg-purple-500 border-purple-500'
+                                        : 'border-gray-300 dark:border-gray-600'
                                         }`}
                                 >
                                     {options.autoBook && <CheckCircle className="w-full h-full text-white" />}
@@ -280,18 +280,18 @@ export function WaitList({ rideId, rideName, availableSeats, onClose }: WaitList
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ delay: index * 0.1 }}
                                         className={`flex items-center gap-3 p-3 rounded-lg ${entry.userId === user?.id
-                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800'
-                                                : 'bg-gray-50 dark:bg-gray-700/50'
+                                            ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800'
+                                            : 'bg-gray-50 dark:bg-gray-700/50'
                                             }`}
                                     >
                                         <div
                                             className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${entry.position === 1
-                                                    ? 'bg-amber-100 text-amber-700'
-                                                    : entry.position === 2
-                                                        ? 'bg-gray-200 text-gray-700'
-                                                        : entry.position === 3
-                                                            ? 'bg-orange-100 text-orange-700'
-                                                            : 'bg-gray-100 text-gray-600'
+                                                ? 'bg-amber-100 text-amber-700'
+                                                : entry.position === 2
+                                                    ? 'bg-gray-200 text-gray-700'
+                                                    : entry.position === 3
+                                                        ? 'bg-orange-100 text-orange-700'
+                                                        : 'bg-gray-100 text-gray-600'
                                                 }`}
                                         >
                                             {entry.position}

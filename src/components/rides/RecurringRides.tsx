@@ -231,8 +231,8 @@ function RecurringRideCard({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border-2 transition-all ${ride.isActive
-                    ? 'border-emerald-500/30'
-                    : 'border-gray-200 dark:border-gray-700 opacity-60'
+                ? 'border-emerald-500/30'
+                : 'border-gray-200 dark:border-gray-700 opacity-60'
                 }`}
         >
             <div className="p-4">
@@ -240,8 +240,8 @@ function RecurringRideCard({
                     <div className="flex items-center gap-3">
                         <div
                             className={`p-2 rounded-lg ${ride.type === 'driver'
-                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                                    : 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                                : 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
                                 }`}
                         >
                             {ride.type === 'driver' ? (
@@ -253,8 +253,8 @@ function RecurringRideCard({
                         <div>
                             <span
                                 className={`text-xs font-medium px-2 py-0.5 rounded-full ${ride.type === 'driver'
-                                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                                        : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                    : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
                                     }`}
                             >
                                 {ride.type === 'driver' ? 'Offering Ride' : 'Looking for Ride'}
@@ -266,8 +266,8 @@ function RecurringRideCard({
                         <button
                             onClick={onToggle}
                             className={`p-1 rounded transition-colors ${ride.isActive
-                                    ? 'text-emerald-500'
-                                    : 'text-gray-400 hover:text-gray-600'
+                                ? 'text-emerald-500'
+                                : 'text-gray-400 hover:text-gray-600'
                                 }`}
                         >
                             {ride.isActive ? (
@@ -454,8 +454,8 @@ function RecurringRideForm({
                                     type="button"
                                     onClick={() => setFormData((p) => ({ ...p, type: 'passenger' }))}
                                     className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${formData.type === 'passenger'
-                                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                                            : 'border-gray-200 dark:border-gray-700'
+                                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                                        : 'border-gray-200 dark:border-gray-700'
                                         }`}
                                 >
                                     <Users className="w-5 h-5" />
@@ -465,8 +465,8 @@ function RecurringRideForm({
                                     type="button"
                                     onClick={() => setFormData((p) => ({ ...p, type: 'driver' }))}
                                     className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${formData.type === 'driver'
-                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                            : 'border-gray-200 dark:border-gray-700'
+                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                        : 'border-gray-200 dark:border-gray-700'
                                         }`}
                                 >
                                     <Car className="w-5 h-5" />
@@ -539,8 +539,8 @@ function RecurringRideForm({
                                         type="button"
                                         onClick={() => toggleDay(day.value)}
                                         className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${formData.daysOfWeek.includes(day.value)
-                                                ? 'bg-emerald-500 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                                            ? 'bg-emerald-500 text-white'
+                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
                                             }`}
                                     >
                                         {day.label}

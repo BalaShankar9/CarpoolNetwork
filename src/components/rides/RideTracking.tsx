@@ -273,13 +273,12 @@ export default function RideTracking({ rideId, onComplete }: RideTrackingProps) 
               {passengers.map((passenger) => (
                 <div
                   key={passenger.id}
-                  className={`border rounded-lg p-4 ${
-                    passenger.status === 'completed'
+                  className={`border rounded-lg p-4 ${passenger.status === 'completed'
                       ? 'bg-green-50 border-green-200'
                       : passenger.status === 'active'
-                      ? 'bg-blue-50 border-blue-200'
-                      : 'border-gray-200'
-                  }`}
+                        ? 'bg-blue-50 border-blue-200'
+                        : 'border-gray-200'
+                    }`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
