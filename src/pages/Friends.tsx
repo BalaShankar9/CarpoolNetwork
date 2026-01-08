@@ -24,22 +24,20 @@ export default function Friends() {
         <div className="flex border-b border-gray-200">
           <button
             onClick={() => setActiveTab('friends')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-4 text-sm font-medium transition-colors border-b-2 ${
-              activeTab === 'friends'
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-4 text-sm font-medium transition-colors border-b-2 ${activeTab === 'friends'
                 ? 'text-blue-600 border-blue-600 bg-blue-50'
                 : 'text-gray-600 border-transparent hover:text-gray-900 hover:bg-gray-50'
-            }`}
+              }`}
           >
             <Users className="w-5 h-5" />
             <span>Friends</span>
           </button>
           <button
             onClick={() => setActiveTab('groups')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-4 text-sm font-medium transition-colors border-b-2 ${
-              activeTab === 'groups'
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-4 text-sm font-medium transition-colors border-b-2 ${activeTab === 'groups'
                 ? 'text-blue-600 border-blue-600 bg-blue-50'
                 : 'text-gray-600 border-transparent hover:text-gray-900 hover:bg-gray-50'
-            }`}
+              }`}
           >
             <UsersRound className="w-5 h-5" />
             <span>Groups</span>
