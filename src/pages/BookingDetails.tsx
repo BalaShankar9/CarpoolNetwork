@@ -720,7 +720,6 @@ export default function BookingDetails() {
         variant="danger"
         loading={cancelling}
       />
-      )}
     </div>
   );
 }
