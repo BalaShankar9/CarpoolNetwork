@@ -11,6 +11,7 @@ import {
     Check,
     X,
 } from 'lucide-react';
+import ConfirmModal from '../shared/ConfirmModal';
 import { useAuth } from '../../contexts/AuthContext';
 import {
     getEmergencyContacts,
@@ -109,16 +110,24 @@ export function EmergencyContacts() {
         setShowForm(true);
     };
 
-    const handleDelete = async (contactId: string) => {
-        if (!confirm('Are you sure you want to remove this emergency contact?')) {
-            return;
-        }
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
+    const handleDelete = async (contactId: string) => {
+        setDeleteConfirmId(contactId);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteConfirmId) return;
+        setDeleting(true);
         try {
-            await deleteEmergencyContact(contactId);
-            setContacts(contacts.filter(c => c.id !== contactId));
+            await deleteEmergencyContact(deleteConfirmId);
+            setContacts(contacts.filter(c => c.id !== deleteConfirmId));
         } catch (err) {
             setError('Failed to delete contact');
+        } finally {
+            setDeleting(false);
+            setDeleteConfirmId(null);
         }
     };
 
@@ -394,6 +403,19 @@ export function EmergencyContacts() {
                     </p>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={!!deleteConfirmId}
+                onClose={() => setDeleteConfirmId(null)}
+                onConfirm={confirmDelete}
+                title="Remove Emergency Contact"
+                message="Are you sure you want to remove this emergency contact?"
+                confirmText="Remove"
+                cancelText="Cancel"
+                variant="danger"
+                loading={deleting}
+            />
         </div>
     );
 }

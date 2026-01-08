@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import ConfirmModal from '../components/shared/ConfirmModal';
 import {
   MapPin,
   Users,
@@ -199,13 +200,17 @@ export default function BookingDetails() {
     }
   };
 
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+
   const cancelBooking = async () => {
-    const reason = prompt('Please provide a reason for cancellation (optional):');
-    if (reason === null) return;
+    setShowCancelConfirm(true);
+  };
 
-    if (!confirm('Are you sure you want to cancel this booking? This may affect your reliability score.')) return;
-
+  const confirmCancelBooking = async () => {
+    setShowCancelConfirm(false);
     setCancelling(true);
+    const reason = cancelReason || 'No reason provided';
     try {
       const { data, error } = await supabase.rpc('cancel_booking_with_impact', {
         p_booking_id: bookingId!,
@@ -688,6 +693,34 @@ export default function BookingDetails() {
             {cancelling ? 'Cancelling...' : 'Cancel Booking'}
           </button>
         </div>
+      )}
+
+      {/* Cancel Booking Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showCancelConfirm}
+        onClose={() => setShowCancelConfirm(false)}
+        onConfirm={confirmCancelBooking}
+        title="Cancel Booking"
+        message={
+          <div className="space-y-4">
+            <p>Are you sure you want to cancel this booking? This may affect your reliability score.</p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Reason (optional)</label>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Please provide a reason for cancellation..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                rows={3}
+              />
+            </div>
+          </div>
+        }
+        confirmText="Cancel Booking"
+        cancelText="Keep Booking"
+        variant="danger"
+        loading={cancelling}
+      />
       )}
     </div>
   );

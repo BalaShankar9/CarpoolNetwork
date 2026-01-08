@@ -14,6 +14,7 @@ import {
     Mail,
     BarChart3,
 } from 'lucide-react';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';
 import NotificationFilters, {
@@ -174,26 +175,40 @@ export default function NotificationsManagement() {
         }
     };
 
-    const handleDeleteNotification = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this notification?')) return;
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
+    const handleDeleteNotification = async (id: string) => {
+        setDeleteConfirmId(id);
+    };
+
+    const confirmDeleteNotification = async () => {
+        if (!deleteConfirmId) return;
+        setDeleting(true);
         try {
             const { error } = await supabase.rpc('admin_delete_notification', {
-                p_notification_id: id,
+                p_notification_id: deleteConfirmId,
             });
 
             if (error) throw error;
             toast.success('Notification deleted');
-            setNotifications(notifications.filter((n) => n.id !== id));
+            setNotifications(notifications.filter((n) => n.id !== deleteConfirmId));
         } catch (err: any) {
             toast.error(err.message || 'Failed to delete notification');
+        } finally {
+            setDeleting(false);
+            setDeleteConfirmId(null);
         }
     };
 
     const handleBulkDelete = async () => {
         if (selectedIds.size === 0) return;
-        if (!confirm(`Delete ${selectedIds.size} selected notifications?`)) return;
+        setBulkDeleteConfirm(true);
+    };
 
+    const confirmBulkDelete = async () => {
+        setDeleting(true);
         try {
             const { error } = await supabase.rpc('admin_bulk_delete_notifications', {
                 p_notification_ids: Array.from(selectedIds),
@@ -205,6 +220,9 @@ export default function NotificationsManagement() {
             loadData();
         } catch (err: any) {
             toast.error(err.message || 'Failed to delete notifications');
+        } finally {
+            setDeleting(false);
+            setBulkDeleteConfirm(false);
         }
     };
 
@@ -480,6 +498,32 @@ export default function NotificationsManagement() {
                 isOpen={showBulkModal}
                 onClose={() => setShowBulkModal(false)}
                 onSend={handleBulkSend}
+            />
+
+            {/* Delete Notification Confirmation Modal */}
+            <ConfirmModal
+                isOpen={!!deleteConfirmId}
+                onClose={() => setDeleteConfirmId(null)}
+                onConfirm={confirmDeleteNotification}
+                title="Delete Notification"
+                message="Are you sure you want to delete this notification?"
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+                loading={deleting}
+            />
+
+            {/* Bulk Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={bulkDeleteConfirm}
+                onClose={() => setBulkDeleteConfirm(false)}
+                onConfirm={confirmBulkDelete}
+                title="Delete Selected Notifications"
+                message={`Are you sure you want to delete ${selectedIds.size} selected notifications?`}
+                confirmText="Delete All"
+                cancelText="Cancel"
+                variant="danger"
+                loading={deleting}
             />
         </div>
     );

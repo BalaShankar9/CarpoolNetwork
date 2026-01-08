@@ -4,6 +4,7 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import QuickUserCard from '../../components/admin/QuickUserCard';
 import AdminActionLog from '../../components/admin/AdminActionLog';
 import RideEditModal from '../../components/admin/RideEditModal';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 import {
     Car,
     ArrowLeft,
@@ -224,23 +225,28 @@ export default function RideDetailAdmin() {
         }
     };
 
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleteReason, setDeleteReason] = useState('');
+    const [deletingRide, setDeletingRide] = useState(false);
+
     const handleDeleteRide = async () => {
         if (!ride || !hasRole('super_admin')) {
             toast.error('Only super admins can delete rides');
             return;
         }
+        setShowDeleteConfirm(true);
+    };
 
-        const reason = prompt('Please provide a reason for deletion:');
-        if (!reason) return;
-
-        if (!confirm('Are you sure you want to permanently delete this ride? This cannot be undone.')) {
+    const confirmDeleteRide = async () => {
+        if (!deleteReason) {
+            toast.error('Please provide a reason for deletion');
             return;
         }
-
+        setDeletingRide(true);
         try {
             const { error } = await supabase.rpc('admin_delete_ride', {
-                p_ride_id: ride.id,
-                p_reason: reason,
+                p_ride_id: ride!.id,
+                p_reason: deleteReason,
             });
 
             if (error) throw error;
@@ -250,6 +256,10 @@ export default function RideDetailAdmin() {
         } catch (error: any) {
             console.error('Error deleting ride:', error);
             toast.error(error.message || 'Failed to delete ride');
+        } finally {
+            setDeletingRide(false);
+            setShowDeleteConfirm(false);
+            setDeleteReason('');
         }
     };
 
@@ -814,6 +824,36 @@ export default function RideDetailAdmin() {
                     </div>
                 </div>
             )}
+
+            {/* Delete Ride Confirmation Modal */}
+            <ConfirmModal
+                isOpen={showDeleteConfirm}
+                onClose={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteReason('');
+                }}
+                onConfirm={confirmDeleteRide}
+                title="Delete Ride Permanently"
+                message={
+                    <div className="space-y-4">
+                        <p>Are you sure you want to permanently delete this ride? This action cannot be undone.</p>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Reason for deletion *</label>
+                            <textarea
+                                value={deleteReason}
+                                onChange={(e) => setDeleteReason(e.target.value)}
+                                placeholder="Enter reason for deleting this ride..."
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                rows={3}
+                            />
+                        </div>
+                    </div>
+                }
+                confirmText="Delete Permanently"
+                cancelText="Cancel"
+                variant="danger"
+                loading={deletingRide}
+            />
         </AdminLayout>
     );
 }

@@ -12,6 +12,7 @@ import {
     AlertCircle,
     Loader2,
 } from 'lucide-react';
+import ConfirmModal from '../shared/ConfirmModal';
 import { matchingService, WaitListEntry } from '@/services/matchingService';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -67,14 +68,25 @@ export function WaitList({ rideId, rideName, availableSeats, onClose }: WaitList
         }
     };
 
+    const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+    const [leaving, setLeaving] = useState(false);
+
     const handleLeave = async () => {
-        if (!user || !confirm('Leave the wait list?')) return;
+        if (!user) return;
+        setShowLeaveConfirm(true);
+    };
+
+    const confirmLeave = async () => {
+        setShowLeaveConfirm(false);
+        setLeaving(true);
         try {
-            await matchingService.leaveWaitList(user.id, rideId);
+            await matchingService.leaveWaitList(user!.id, rideId);
             setUserPosition(null);
             await loadWaitList();
         } catch (error) {
             console.error('Failed to leave wait list:', error);
+        } finally {
+            setLeaving(false);
         }
     };
 
@@ -310,6 +322,19 @@ export function WaitList({ rideId, rideName, availableSeats, onClose }: WaitList
                     )}
                 </div>
             </div>
+
+            {/* Leave Wait List Confirmation Modal */}
+            <ConfirmModal
+                isOpen={showLeaveConfirm}
+                onClose={() => setShowLeaveConfirm(false)}
+                onConfirm={confirmLeave}
+                title="Leave Wait List"
+                message="Are you sure you want to leave the wait list? You will lose your position."
+                confirmText="Leave"
+                cancelText="Stay"
+                variant="warning"
+                loading={leaving}
+            />
         </div>
     );
 }

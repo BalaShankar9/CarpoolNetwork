@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Repeat, Calendar, MapPin, Clock, Edit, Trash2, Pause, Play, Plus } from 'lucide-react';
+import ConfirmModal from '../shared/ConfirmModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
@@ -76,21 +77,29 @@ export default function RecurringRidesManager() {
     }
   };
 
-  const deleteRecurringRide = async (rideId: string) => {
-    if (!confirm('Are you sure you want to delete this recurring ride? This cannot be undone.')) {
-      return;
-    }
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
+  const deleteRecurringRide = async (rideId: string) => {
+    setDeleteConfirmId(rideId);
+  };
+
+  const confirmDeleteRide = async () => {
+    if (!deleteConfirmId) return;
+    setDeleting(true);
     try {
       const { error } = await supabase
         .from('rides')
         .delete()
-        .eq('id', rideId);
+        .eq('id', deleteConfirmId);
 
       if (error) throw error;
       await loadRecurringRides();
     } catch (err) {
       console.error('Error deleting ride:', err);
+    } finally {
+      setDeleting(false);
+      setDeleteConfirmId(null);
     }
   };
 
@@ -290,6 +299,19 @@ export default function RecurringRidesManager() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={confirmDeleteRide}
+        title="Delete Recurring Ride"
+        message="Are you sure you want to delete this recurring ride? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        loading={deleting}
+      />
     </div>
   );
 }

@@ -27,6 +27,7 @@ import {
   Zap,
   Ban,
 } from 'lucide-react';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';
 import { useAuth } from '../../contexts/AuthContext';
@@ -189,11 +190,14 @@ export default function BulkOperations() {
     setShowPreview(true);
   };
 
-  const handleExecute = async () => {
-    if (!confirm(`Are you sure you want to execute this operation on ${selectedItems.length} items?`)) {
-      return;
-    }
+  const [showExecuteConfirm, setShowExecuteConfirm] = useState(false);
 
+  const handleExecute = async () => {
+    setShowExecuteConfirm(true);
+  };
+
+  const confirmExecute = async () => {
+    setShowExecuteConfirm(false);
     setExecuting(true);
     try {
       let operationName = '';
@@ -785,6 +789,19 @@ export default function BulkOperations() {
           </div>
         </div>
       )}
+
+      {/* Execute Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showExecuteConfirm}
+        onClose={() => setShowExecuteConfirm(false)}
+        onConfirm={confirmExecute}
+        title="Execute Bulk Operation"
+        message={`Are you sure you want to execute this operation on ${selectedItems.length} items? This action may not be reversible.`}
+        confirmText="Execute"
+        cancelText="Cancel"
+        variant="warning"
+        loading={executing}
+      />
     </AdminLayout>
   );
 }

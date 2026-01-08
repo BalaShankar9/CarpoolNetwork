@@ -12,6 +12,7 @@ import {
   Lock,
   Unlock,
 } from 'lucide-react';
+import ConfirmModal from '../shared/ConfirmModal';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -186,11 +187,14 @@ export default function TwoFactorAuth() {
     }
   };
 
-  const disable2FA = async () => {
-    if (!confirm('Are you sure you want to disable two-factor authentication? This will make your account less secure.')) {
-      return;
-    }
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
 
+  const disable2FA = async () => {
+    setShowDisableConfirm(true);
+  };
+
+  const confirmDisable2FA = async () => {
+    setShowDisableConfirm(false);
     setProcessing(true);
     setError('');
 
@@ -485,6 +489,19 @@ export default function TwoFactorAuth() {
           </button>
         </div>
       )}
+
+      {/* Disable 2FA Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDisableConfirm}
+        onClose={() => setShowDisableConfirm(false)}
+        onConfirm={confirmDisable2FA}
+        title="Disable Two-Factor Authentication"
+        message="Are you sure you want to disable two-factor authentication? This will make your account less secure."
+        confirmText="Disable 2FA"
+        cancelText="Keep Enabled"
+        variant="warning"
+        loading={processing}
+      />
     </div>
   );
 }

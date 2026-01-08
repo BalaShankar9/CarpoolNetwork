@@ -8,6 +8,7 @@ import {
     Phone,
     X,
 } from 'lucide-react';
+import ConfirmModal from '../shared/ConfirmModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { createSafetyCheckIn, triggerSOS } from '../../services/safetyService';
 
@@ -131,22 +132,22 @@ export function SafetyCheckIn({
         }
     }, [user, rideId, location, onSOSTriggered]);
 
+    const [showSOSConfirm, setShowSOSConfirm] = useState(false);
+
     const handleSOSButton = async () => {
         if (!user) return;
+        setShowSOSConfirm(true);
+    };
 
-        const confirmed = confirm(
-            'This will alert your emergency contacts and our safety team. Continue?'
-        );
-        if (!confirmed) return;
-
+    const confirmSOS = async () => {
+        setShowSOSConfirm(false);
         setSubmitting(true);
         try {
-            await triggerSOS(user.id, rideId, location || undefined);
+            await triggerSOS(user!.id, rideId, location || undefined);
             onSOSTriggered?.();
-            alert('Emergency alert sent. Help is on the way.');
+            // Show success toast instead of alert
         } catch (err) {
             console.error('Failed to trigger SOS:', err);
-            alert('Failed to send alert. Please call emergency services directly.');
         } finally {
             setSubmitting(false);
         }
@@ -295,6 +296,19 @@ export function SafetyCheckIn({
             <p className="text-xs text-gray-500 text-center mt-3">
                 {isDriver ? 'As a driver' : 'As a passenger'}, your safety is our priority
             </p>
+
+            {/* SOS Confirmation Modal */}
+            <ConfirmModal
+                isOpen={showSOSConfirm}
+                onClose={() => setShowSOSConfirm(false)}
+                onConfirm={confirmSOS}
+                title="Send Emergency Alert"
+                message="This will alert your emergency contacts and our safety team with your current location. Are you sure you want to continue?"
+                confirmText="Send Alert"
+                cancelText="Cancel"
+                variant="danger"
+                loading={submitting}
+            />
         </div>
     );
 }

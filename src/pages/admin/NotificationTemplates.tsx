@@ -13,6 +13,7 @@ import {
     Code,
     Tag,
 } from 'lucide-react';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';
 import TemplateEditor from '../../components/admin/TemplateEditor';
@@ -135,19 +136,29 @@ export default function NotificationTemplates() {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this template?')) return;
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
+    const handleDelete = async (id: string) => {
+        setDeleteConfirmId(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteConfirmId) return;
+        setDeleting(true);
         try {
             const { error } = await supabase.rpc('admin_delete_notification_template', {
-                p_template_id: id,
+                p_template_id: deleteConfirmId,
             });
 
             if (error) throw error;
             toast.success('Template deleted');
-            setTemplates(templates.filter((t) => t.id !== id));
+            setTemplates(templates.filter((t) => t.id !== deleteConfirmId));
         } catch (err: any) {
             toast.error(err.message || 'Failed to delete template');
+        } finally {
+            setDeleting(false);
+            setDeleteConfirmId(null);
         }
     };
 
@@ -424,6 +435,19 @@ export default function NotificationTemplates() {
                     setSelectedTemplate(null);
                 }}
                 onSend={handleSendNotification}
+            />
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={!!deleteConfirmId}
+                onClose={() => setDeleteConfirmId(null)}
+                onConfirm={confirmDelete}
+                title="Delete Template"
+                message="Are you sure you want to delete this template? This action cannot be undone."
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+                loading={deleting}
             />
         </div>
     );

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { Plus, Trash2, Users, Shield, LayoutDashboard } from 'lucide-react';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -71,20 +72,29 @@ export default function BetaManagement() {
     setAdding(false);
   };
 
-  const handleRemoveEmail = async (email: string) => {
-    if (!confirm(`Remove ${email} from the allowlist?`)) return;
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
+  const handleRemoveEmail = async (email: string) => {
+    setDeleteConfirmEmail(email);
+  };
+
+  const confirmRemoveEmail = async () => {
+    if (!deleteConfirmEmail) return;
+    setDeleting(true);
     const { error } = await supabase
       .from('beta_allowlist')
       .delete()
-      .eq('email', email);
+      .eq('email', deleteConfirmEmail);
 
     if (error) {
       setError('Failed to remove email: ' + error.message);
     } else {
-      setSuccess(`${email} removed from allowlist`);
+      setSuccess(`${deleteConfirmEmail} removed from allowlist`);
       fetchAllowlist();
     }
+    setDeleting(false);
+    setDeleteConfirmEmail(null);
   };
 
   if (!isAdmin) {
@@ -171,6 +181,19 @@ export default function BetaManagement() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirmEmail}
+        onClose={() => setDeleteConfirmEmail(null)}
+        onConfirm={confirmRemoveEmail}
+        title="Remove from Allowlist"
+        message={`Are you sure you want to remove ${deleteConfirmEmail} from the beta allowlist?`}
+        confirmText="Remove"
+        cancelText="Cancel"
+        variant="danger"
+        loading={deleting}
+      />
     </AdminLayout>
   );
 }

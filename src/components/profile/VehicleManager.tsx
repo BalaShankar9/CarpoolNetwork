@@ -318,14 +318,14 @@ export default function VehicleManager() {
   const handleDelete = async (vehicleId: string) => {
     const vehicleToDelete = vehicles.find(v => v.id === vehicleId);
     if (!vehicleToDelete) return;
-    
+
     // Show custom confirmation modal instead of browser confirm
     setDeleteConfirm({ show: true, vehicle: vehicleToDelete });
   };
 
   const confirmDelete = async () => {
     if (!deleteConfirm.vehicle) return;
-    
+
     const vehicleId = deleteConfirm.vehicle.id;
     setDeleting(true);
     setError('');
@@ -407,7 +407,7 @@ export default function VehicleManager() {
                 <p className="text-sm text-gray-500">This action cannot be undone</p>
               </div>
             </div>
-            
+
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <p className="text-gray-700">
                 Are you sure you want to delete <span className="font-semibold">{deleteConfirm.vehicle.make} {deleteConfirm.vehicle.model}</span>?
@@ -416,7 +416,7 @@ export default function VehicleManager() {
                 License Plate: {deleteConfirm.vehicle.license_plate}
               </p>
             </div>
-            
+
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirm({ show: false, vehicle: null })}
@@ -685,8 +685,8 @@ export default function VehicleManager() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className={`w-full border-2 border-dashed rounded-lg p-6 transition-colors ${!editingVehicle && !vehicleImage
-                      ? 'border-red-300 hover:border-red-500 bg-red-50'
-                      : 'border-gray-300 hover:border-blue-500'
+                    ? 'border-red-300 hover:border-red-500 bg-red-50'
+                    : 'border-gray-300 hover:border-blue-500'
                     }`}
                 >
                   <div className="flex flex-col items-center gap-2">

@@ -12,6 +12,7 @@ import {
     Users,
     Send,
 } from 'lucide-react';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';
 import AnnouncementCard from '../../components/admin/AnnouncementCard';
@@ -133,34 +134,53 @@ export default function AnnouncementsManagement() {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this announcement?')) return;
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [broadcastConfirmId, setBroadcastConfirmId] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
+    const [broadcasting, setBroadcasting] = useState(false);
 
+    const handleDelete = async (id: string) => {
+        setDeleteConfirmId(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteConfirmId) return;
+        setDeleting(true);
         try {
             const { error } = await supabase.rpc('admin_delete_announcement', {
-                p_announcement_id: id,
+                p_announcement_id: deleteConfirmId,
             });
 
             if (error) throw error;
             toast.success('Announcement deleted');
-            setAnnouncements(announcements.filter((a) => a.id !== id));
+            setAnnouncements(announcements.filter((a) => a.id !== deleteConfirmId));
         } catch (err: any) {
             toast.error(err.message || 'Failed to delete announcement');
+        } finally {
+            setDeleting(false);
+            setDeleteConfirmId(null);
         }
     };
 
     const handleBroadcast = async (id: string) => {
-        if (!confirm('Broadcast this announcement to all eligible users?')) return;
+        setBroadcastConfirmId(id);
+    };
 
+    const confirmBroadcast = async () => {
+        if (!broadcastConfirmId) return;
+        setBroadcasting(true);
         try {
             const { data, error } = await supabase.rpc('admin_broadcast_announcement', {
-                p_announcement_id: id,
+                p_announcement_id: broadcastConfirmId,
             });
 
             if (error) throw error;
             toast.success(`Broadcast sent to ${data?.sent_count || 0} users`);
         } catch (err: any) {
             toast.error(err.message || 'Failed to broadcast announcement');
+        } finally {
+            setBroadcasting(false);
+            setBroadcastConfirmId(null);
         }
     };
 
@@ -300,6 +320,32 @@ export default function AnnouncementsManagement() {
                 onClose={() => setShowModal(false)}
                 onSave={handleSave}
                 announcement={editingAnnouncement}
+            />
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={!!deleteConfirmId}
+                onClose={() => setDeleteConfirmId(null)}
+                onConfirm={confirmDelete}
+                title="Delete Announcement"
+                message="Are you sure you want to delete this announcement? This action cannot be undone."
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+                loading={deleting}
+            />
+
+            {/* Broadcast Confirmation Modal */}
+            <ConfirmModal
+                isOpen={!!broadcastConfirmId}
+                onClose={() => setBroadcastConfirmId(null)}
+                onConfirm={confirmBroadcast}
+                title="Broadcast Announcement"
+                message="Are you sure you want to broadcast this announcement to all eligible users?"
+                confirmText="Broadcast"
+                cancelText="Cancel"
+                variant="info"
+                loading={broadcasting}
             />
         </div>
     );

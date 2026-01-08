@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Navigation, Clock, MapPin, Phone, MessageSquare, AlertTriangle, RefreshCw } from 'lucide-react';
+import ConfirmModal from '../shared/ConfirmModal';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';
 import { RideTrackingState, subscribeToRideTracking, calculateETA } from '../../services/rideTrackingService';
@@ -116,11 +117,16 @@ export default function LiveRideTracker({
         };
     }, [rideId, loadTrackingData]);
 
+    const [showEmergencyConfirm, setShowEmergencyConfirm] = useState(false);
+
     const handleEmergency = () => {
-        if (confirm('This will alert the driver and our safety team. Continue?')) {
-            toast.info('Emergency alert sent. Our team will contact you shortly.');
-            // In production, this would trigger actual emergency protocols
-        }
+        setShowEmergencyConfirm(true);
+    };
+
+    const confirmEmergency = () => {
+        setShowEmergencyConfirm(false);
+        toast.info('Emergency alert sent. Our team will contact you shortly.');
+        // In production, this would trigger actual emergency protocols
     };
 
     const handleMessage = () => {
@@ -329,6 +335,18 @@ export default function LiveRideTracker({
                 <AlertTriangle className="w-5 h-5" />
                 <span className="font-medium">Emergency</span>
             </button>
+
+            {/* Emergency Confirmation Modal */}
+            <ConfirmModal
+                isOpen={showEmergencyConfirm}
+                onClose={() => setShowEmergencyConfirm(false)}
+                onConfirm={confirmEmergency}
+                title="Emergency Alert"
+                message="This will alert the driver and our safety team. Are you sure you want to continue?"
+                confirmText="Send Alert"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </div>
     );
 }

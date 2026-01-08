@@ -16,6 +16,7 @@ import {
     CheckCircle,
     AlertCircle,
 } from 'lucide-react';
+import ConfirmModal from '../shared/ConfirmModal';
 import { matchingService, RecurringRide } from '@/services/matchingService';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -66,13 +67,24 @@ export function RecurringRides() {
         }
     };
 
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
+
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this recurring ride?')) return;
+        setDeleteConfirmId(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteConfirmId) return;
+        setDeleting(true);
         try {
-            await matchingService.deleteRecurringRide(id);
-            setRides((prev) => prev.filter((r) => r.id !== id));
+            await matchingService.deleteRecurringRide(deleteConfirmId);
+            setRides((prev) => prev.filter((r) => r.id !== deleteConfirmId));
         } catch (error) {
             console.error('Failed to delete ride:', error);
+        } finally {
+            setDeleting(false);
+            setDeleteConfirmId(null);
         }
     };
 
@@ -147,6 +159,19 @@ export function RecurringRides() {
                     />
                 )}
             </AnimatePresence>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={!!deleteConfirmId}
+                onClose={() => setDeleteConfirmId(null)}
+                onConfirm={confirmDelete}
+                title="Delete Recurring Ride"
+                message="Are you sure you want to delete this recurring ride? This action cannot be undone."
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+                loading={deleting}
+            />
         </div>
     );
 }

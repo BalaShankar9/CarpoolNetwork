@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { MessageSquare, User, Calendar, ExternalLink, Trash2, LayoutDashboard } from 'lucide-react';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -57,19 +58,28 @@ export default function FeedbackManagement() {
     setLoading(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this feedback?')) return;
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
+  const handleDelete = async (id: string) => {
+    setDeleteConfirmId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return;
+    setDeleting(true);
     const { error } = await supabase
       .from('bug_reports')
       .delete()
-      .eq('id', id);
+      .eq('id', deleteConfirmId);
 
     if (error) {
       setError('Failed to delete feedback');
     } else {
       fetchReports();
     }
+    setDeleting(false);
+    setDeleteConfirmId(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -149,6 +159,19 @@ export default function FeedbackManagement() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={confirmDelete}
+        title="Delete Feedback"
+        message="Are you sure you want to delete this feedback? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        loading={deleting}
+      />
     </AdminLayout>
   );
 }

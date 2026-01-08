@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MapPin, Navigation, CheckCircle, XCircle, AlertTriangle, Users } from 'lucide-react';
+import ConfirmModal from '../shared/ConfirmModal';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';
 import { useAuth } from '../../contexts/AuthContext';
@@ -193,11 +194,16 @@ export default function RideTracking({ rideId, onComplete }: RideTrackingProps) 
     }
   };
 
-  const completeRide = async () => {
-    if (!confirm('Are you sure you want to complete this ride? All passengers must be dropped off.')) {
-      return;
-    }
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
+  const completeRide = async () => {
+    setShowCompleteConfirm(true);
+  };
+
+  const confirmCompleteRide = async () => {
+    setShowCompleteConfirm(false);
+    setCompleting(true);
     try {
       const { data, error } = await supabase.rpc('complete_ride_tracking', {
         p_ride_id: rideId
@@ -346,16 +352,30 @@ export default function RideTracking({ rideId, onComplete }: RideTrackingProps) 
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <button
                   onClick={completeRide}
-                  className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                  disabled={completing}
+                  className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <CheckCircle className="w-5 h-5" />
-                  Complete Ride
+                  {completing ? 'Completing...' : 'Complete Ride'}
                 </button>
               </div>
             )}
           </div>
         </div>
       )}
+
+      {/* Complete Ride Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showCompleteConfirm}
+        onClose={() => setShowCompleteConfirm(false)}
+        onConfirm={confirmCompleteRide}
+        title="Complete Ride"
+        message="Are you sure you want to complete this ride? Make sure all passengers have been dropped off."
+        confirmText="Complete Ride"
+        cancelText="Cancel"
+        variant="success"
+        loading={completing}
+      />
     </div>
   );
 }
