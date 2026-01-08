@@ -53,6 +53,7 @@ const Leaderboards = lazy(() => import('./pages/Leaderboards'));
 const Challenges = lazy(() => import('./pages/Challenges'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Friends = lazy(() => import('./pages/Friends'));
+const GroupDetail = lazy(() => import('./pages/GroupDetail'));
 const HelpHub = lazy(() => import('./pages/HelpHub'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const SafetyCenter = lazy(() => import('./pages/SafetyCenter'));
@@ -295,6 +296,13 @@ function AppContent() {
           <ProtectedRoute>
             <Layout>
               <Friends />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/social/groups/:groupId" element={
+          <ProtectedRoute>
+            <Layout>
+              <GroupDetail />
             </Layout>
           </ProtectedRoute>
         } />

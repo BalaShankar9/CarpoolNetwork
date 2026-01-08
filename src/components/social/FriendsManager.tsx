@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, UserCheck, Users, X, Search, MessageCircle } from 'lucide-react';
+import { UserPlus, UserCheck, Users, X, Search, MessageCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import ClickableUserProfile from '../shared/ClickableUserProfile';
+import { toast } from '../../lib/toast';
 
 interface FriendProfile {
   id: string;
@@ -57,6 +58,7 @@ export default function FriendsManager() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [processingRequest, setProcessingRequest] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'add'>('friends');
 
   useEffect(() => {
@@ -281,6 +283,7 @@ export default function FriendsManager() {
 
   const sendFriendRequest = async (friendId: string) => {
     try {
+      setProcessingRequest(friendId);
       const { error } = await supabase
         .rpc('send_friend_request', { p_to_user_id: friendId });
 
@@ -298,38 +301,60 @@ export default function FriendsManager() {
 
       setSearchResults(prev => prev.filter(u => u.id !== friendId));
       await loadFriends();
+      toast.success('Friend request sent!');
     } catch (err) {
       console.error('Error sending friend request:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Failed to send friend request';
+      toast.error(errorMsg);
+    } finally {
+      setProcessingRequest(null);
     }
   };
 
-  const acceptFriendRequest = async (requestId: string) => {
+  const acceptFriendRequest = async (requestId: string, friendName: string) => {
     try {
-      const { error } = await supabase
+      setProcessingRequest(requestId);
+      const { data, error } = await supabase
         .rpc('accept_friend_request', { p_request_id: requestId });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Accept friend request error:', error);
+        throw error;
+      }
 
+      console.log('Friend request accepted successfully:', data);
       await loadFriends();
+      toast.success(`You are now friends with ${friendName}!`);
     } catch (err) {
       console.error('Error accepting friend request:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Failed to accept friend request';
+      toast.error(errorMsg);
+    } finally {
+      setProcessingRequest(null);
     }
   };
 
   const declineFriendRequest = async (requestId: string) => {
     try {
+      setProcessingRequest(requestId);
       const { error } = await supabase
         .rpc('decline_friend_request', { p_request_id: requestId });
 
       if (error) throw error;
       await loadFriends();
+      toast.success('Friend request declined');
     } catch (err) {
       console.error('Error declining friend request:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Failed to decline friend request';
+      toast.error(errorMsg);
+    } finally {
+      setProcessingRequest(null);
     }
   };
 
   const cancelFriendRequest = async (requestId: string) => {
     try {
+      setProcessingRequest(requestId);
       const { error } = await supabase
         .from('friend_requests')
         .update({ status: 'CANCELLED' })
@@ -337,21 +362,33 @@ export default function FriendsManager() {
 
       if (error) throw error;
       await loadFriends();
+      toast.success('Friend request cancelled');
     } catch (err) {
       console.error('Error canceling friend request:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Failed to cancel friend request';
+      toast.error(errorMsg);
+    } finally {
+      setProcessingRequest(null);
     }
   };
 
-  const removeFriend = async (friendshipId: string) => {
+  const removeFriend = async (friendshipId: string, friendName: string) => {
     try {
-      await supabase
+      setProcessingRequest(friendshipId);
+      const { error } = await supabase
         .from('friendships')
         .delete()
         .eq('id', friendshipId);
 
+      if (error) throw error;
       await loadFriends();
+      toast.success(`Removed ${friendName} from friends`);
     } catch (err) {
       console.error('Error removing friend:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Failed to remove friend';
+      toast.error(errorMsg);
+    } finally {
+      setProcessingRequest(null);
     }
   };
 
@@ -450,11 +487,16 @@ export default function FriendsManager() {
                       <MessageCircle className="w-5 h-5" />
                     </button>
                     <button
-                      onClick={() => removeFriend(friendship.id)}
-                      className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                      onClick={() => removeFriend(friendship.id, friendship.friend.full_name)}
+                      disabled={processingRequest === friendship.id}
+                      className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50"
                       title="Remove friend"
                     >
-                      <X className="w-5 h-5" />
+                      {processingRequest === friendship.id ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <X className="w-5 h-5" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -498,14 +540,19 @@ export default function FriendsManager() {
 
                           <div className="flex gap-2">
                             <button
-                              onClick={() => acceptFriendRequest(request.id)}
-                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                              onClick={() => acceptFriendRequest(request.id, request.friend.full_name)}
+                              disabled={processingRequest === request.id}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
                             >
+                              {processingRequest === request.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : null}
                               Accept
                             </button>
                             <button
                               onClick={() => declineFriendRequest(request.id)}
-                              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                              disabled={processingRequest === request.id}
+                              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50"
                             >
                               Decline
                             </button>
@@ -540,8 +587,12 @@ export default function FriendsManager() {
 
                           <button
                             onClick={() => cancelFriendRequest(request.id)}
-                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                            disabled={processingRequest === request.id}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
                           >
+                            {processingRequest === request.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : null}
                             Cancel
                           </button>
                         </div>
@@ -600,9 +651,14 @@ export default function FriendsManager() {
 
                     <button
                       onClick={() => sendFriendRequest(user.id)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
+                      disabled={processingRequest === user.id}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2 disabled:opacity-50"
                     >
-                      <UserPlus className="w-4 h-4" />
+                      {processingRequest === user.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <UserPlus className="w-4 h-4" />
+                      )}
                       Add Friend
                     </button>
                   </div>

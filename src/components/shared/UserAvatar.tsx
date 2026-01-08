@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { User, Star, CheckCircle } from 'lucide-react';
 
 interface UserAvatarUser {
-  id: string;
+  id?: string;
   full_name: string;
   avatar_url?: string | null;
+  profile_photo_url?: string | null;
 }
 
 interface UserAvatarProps {
@@ -76,9 +77,9 @@ export default function UserAvatar({
     .join('')
     .toUpperCase() || '?';
 
-  const bgColor = stringToColor(user.id);
+  const bgColor = stringToColor(user.id || user.full_name);
   const isClickable = !!onClick;
-  const avatarUrl = user.avatar_url ?? undefined;
+  const avatarUrl = user.avatar_url || user.profile_photo_url || undefined;
 
   const containerClasses = `
     ${sizeClasses[size]}
