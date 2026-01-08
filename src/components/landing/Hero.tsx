@@ -1,4 +1,5 @@
 import { Car, Users, Leaf, Shield } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Hero() {
   return (
@@ -15,18 +16,18 @@ export default function Hero() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-            <a
-              href="#find-ride"
+            <Link
+              to="/find-rides"
               className="px-8 py-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all transform hover:scale-105 shadow-lg"
             >
               Find a Ride
-            </a>
-            <a
-              href="#offer-ride"
+            </Link>
+            <Link
+              to="/post-ride"
               className="px-8 py-4 bg-white text-blue-600 border-2 border-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-all"
             >
               Offer a Ride
-            </a>
+            </Link>
           </div>
 
           <div className="grid md:grid-cols-4 gap-8 pt-12">

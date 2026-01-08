@@ -1,4 +1,5 @@
 import { UserPlus, Search, MessageCircle, CheckCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function HowItWorks() {
   const steps = [
@@ -61,12 +62,12 @@ export default function HowItWorks() {
         </div>
 
         <div className="mt-16 text-center">
-          <a
-            href="#signup"
+          <Link
+            to="/signup"
             className="inline-block px-8 py-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all transform hover:scale-105"
           >
             Get Started Today
-          </a>
+          </Link>
         </div>
       </div>
     </section>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Car, Calendar, Star, Settings, MapPin, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Database } from '../../lib/database.types';
@@ -184,12 +185,12 @@ export default function Dashboard() {
                 <div className="text-center py-12 text-gray-500">
                   <Car className="w-16 h-16 mx-auto mb-4 text-gray-400" />
                   <p>You haven't offered any rides yet</p>
-                  <a
-                    href="#offer-ride"
+                  <Link
+                    to="/post-ride"
                     className="inline-block mt-4 text-blue-600 hover:underline"
                   >
                     Post your first ride
-                  </a>
+                  </Link>
                 </div>
               ) : (
                 offeredRides.map((ride) => (
@@ -244,12 +245,12 @@ export default function Dashboard() {
                 <div className="text-center py-12 text-gray-500">
                   <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-400" />
                   <p>You haven't booked any rides yet</p>
-                  <a
-                    href="#find-ride"
+                  <Link
+                    to="/find-rides"
                     className="inline-block mt-4 text-blue-600 hover:underline"
                   >
                     Find a ride
-                  </a>
+                  </Link>
                 </div>
               ) : (
                 bookedRides.map((booking) => (

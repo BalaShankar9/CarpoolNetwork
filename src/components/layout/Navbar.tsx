@@ -6,7 +6,7 @@ import Logo from '../shared/Logo';
 import { NotificationsBell } from '../notifications/NotificationsBell';
 import { NotificationsPanel } from '../notifications/NotificationsPanel';
 import ClickableUserProfile from '../shared/ClickableUserProfile';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -22,18 +22,21 @@ export default function Navbar() {
           <Logo />
 
           <div className="hidden md:flex items-center gap-8">
-            <a href="#find-ride" className="text-gray-700 hover:text-blue-600 transition-colors">
+            <Link to="/find-rides" className="text-gray-700 hover:text-blue-600 transition-colors">
               Find a Ride
-            </a>
-            <a href="#offer-ride" className="text-gray-700 hover:text-blue-600 transition-colors">
+            </Link>
+            <Link to="/post-ride" className="text-gray-700 hover:text-blue-600 transition-colors">
               Offer a Ride
-            </a>
-            <a href="#how-it-works" className="text-gray-700 hover:text-blue-600 transition-colors">
+            </Link>
+            <button
+              onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+              className="text-gray-700 hover:text-blue-600 transition-colors"
+            >
               How It Works
-            </a>
-            <a href="#safety" className="text-gray-700 hover:text-blue-600 transition-colors">
+            </button>
+            <Link to="/safety" className="text-gray-700 hover:text-blue-600 transition-colors">
               Safety
-            </a>
+            </Link>
           </div>
 
           <div className="hidden md:flex items-center gap-4">
@@ -102,18 +105,18 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <a
-                  href="#signin"
+                <Link
+                  to="/signin"
                   className="text-gray-700 hover:text-blue-600 transition-colors font-medium"
                 >
                   Sign In
-                </a>
-                <a
-                  href="#signup"
+                </Link>
+                <Link
+                  to="/signup"
                   className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
                   Get Started
-                </a>
+                </Link>
               </>
             )}
           </div>
@@ -130,30 +133,36 @@ export default function Navbar() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-gray-200 bg-white">
           <div className="px-4 py-4 space-y-3">
-            <a
-              href="#find-ride"
+            <Link
+              to="/find-rides"
+              onClick={() => setMobileMenuOpen(false)}
               className="block py-2 text-gray-700 hover:text-blue-600 transition-colors"
             >
               Find a Ride
-            </a>
-            <a
-              href="#offer-ride"
+            </Link>
+            <Link
+              to="/post-ride"
+              onClick={() => setMobileMenuOpen(false)}
               className="block py-2 text-gray-700 hover:text-blue-600 transition-colors"
             >
               Offer a Ride
-            </a>
-            <a
-              href="#how-it-works"
-              className="block py-2 text-gray-700 hover:text-blue-600 transition-colors"
+            </Link>
+            <button
+              onClick={() => {
+                document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+                setMobileMenuOpen(false);
+              }}
+              className="block w-full text-left py-2 text-gray-700 hover:text-blue-600 transition-colors"
             >
               How It Works
-            </a>
-            <a
-              href="#safety"
+            </button>
+            <Link
+              to="/safety"
+              onClick={() => setMobileMenuOpen(false)}
               className="block py-2 text-gray-700 hover:text-blue-600 transition-colors"
             >
               Safety
-            </a>
+            </Link>
             {user ? (
               <>
                 {isAdmin && (
@@ -189,18 +198,20 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <a
-                  href="#signin"
+                <Link
+                  to="/signin"
+                  onClick={() => setMobileMenuOpen(false)}
                   className="block py-2 text-gray-700 hover:text-blue-600 transition-colors"
                 >
                   Sign In
-                </a>
-                <a
-                  href="#signup"
+                </Link>
+                <Link
+                  to="/signup"
+                  onClick={() => setMobileMenuOpen(false)}
                   className="block py-2 bg-blue-600 text-white text-center rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   Get Started
-                </a>
+                </Link>
               </>
             )}
           </div>

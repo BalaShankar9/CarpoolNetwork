@@ -1,4 +1,5 @@
 import { Shield, Star, Bell, Lock, Users, Phone } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Safety() {
   const features = [
@@ -74,12 +75,12 @@ export default function Safety() {
               maintaining a safe environment. We have zero tolerance for harassment or unsafe
               behavior.
             </p>
-            <a
-              href="#guidelines"
+            <Link
+              to="/help"
               className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
             >
               Read Our Guidelines
-            </a>
+            </Link>
           </div>
         </div>
       </div>
