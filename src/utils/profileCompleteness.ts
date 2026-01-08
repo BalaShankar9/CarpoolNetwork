@@ -5,7 +5,6 @@ export type ProfileCompletenessInput = {
   phone_e164?: string | null;
   phone_verified?: boolean | null;
   country?: string | null;
-  country_of_residence?: string | null;
 };
 
 export function getProfileMissingFields(profile: ProfileCompletenessInput | null): string[] {
@@ -17,7 +16,7 @@ export function getProfileMissingFields(profile: ProfileCompletenessInput | null
   const name = profile.full_name?.trim() || '';
   const hasAvatar = Boolean(profile.avatar_url || profile.profile_photo_url);
   const hasPhone = Boolean(profile.phone_e164);
-  const hasCountry = Boolean(profile.country_of_residence || profile.country);
+  const hasCountry = Boolean(profile.country)
 
   if (name.length < 2) missing.push('full_name');
   if (!hasAvatar) missing.push('avatar');

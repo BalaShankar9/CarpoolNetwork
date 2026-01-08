@@ -120,7 +120,7 @@ export default function Profile() {
       setEditForm({
         full_name: profile.full_name || '',
         phone_e164: profile.phone_e164 || profile.phone || '',
-        country: profile.country || profile.country_of_residence || '',
+        country: profile.country || '',
         city: profile.city || '',
         bio: profile.bio || '',
         whatsapp_number: (profile as any).whatsapp_number || '',
@@ -373,7 +373,6 @@ export default function Profile() {
         phone: phoneE164,
         phone_number: phoneE164,
         country: editForm.country || null,
-        country_of_residence: editForm.country || null,
         city: editForm.city || null,
         bio: editForm.bio,
         whatsapp_number: editForm.whatsapp_number || null,
@@ -1030,14 +1029,17 @@ export default function Profile() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  City (Optional)
+                  City *
                 </label>
                 <input
                   type="text"
                   value={editForm.city}
                   onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Your city for local matching"
+                  required
                 />
+                <p className="text-xs text-gray-500 mt-1">Required for matching with local carpoolers</p>
               </div>
 
               <div>

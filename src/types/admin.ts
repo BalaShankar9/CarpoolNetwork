@@ -6,11 +6,38 @@ export type Permission =
   | 'users.view'
   | 'users.edit'
   | 'users.suspend'
+  | 'users.ban'
+  | 'users.warn'
+  | 'users.verify'
+  | 'users.flag'
+  | 'users.notes'
+  | 'users.trust_score'
+  | 'users.badges'
   | 'users.delete'
   | 'admins.view'
   | 'admins.create'
   | 'admins.edit'
   | 'admins.delete'
+  | 'rides.view'
+  | 'rides.manage'
+  | 'rides.delete'
+  | 'bookings.view'
+  | 'bookings.manage'
+  | 'bookings.refund'
+  | 'bookings.delete'
+  | 'messages.view'
+  | 'messages.moderate'
+  | 'messages.mute'
+  | 'community.view'
+  | 'community.moderate'
+  | 'community.pin'
+  | 'community.warnings'
+  | 'notifications.view'
+  | 'notifications.send'
+  | 'notifications.bulk'
+  | 'notifications.templates'
+  | 'announcements.create'
+  | 'announcements.manage'
   | 'safety.view'
   | 'safety.investigate'
   | 'safety.resolve'
@@ -61,27 +88,50 @@ export const ROLE_DESCRIPTIONS: Record<AdminRole, string> = {
 // Default permissions for each role
 export const DEFAULT_ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   super_admin: [
-    'users.view', 'users.edit', 'users.suspend', 'users.delete',
+    'users.view', 'users.edit', 'users.suspend', 'users.ban', 'users.warn',
+    'users.verify', 'users.flag', 'users.notes', 'users.trust_score', 'users.badges', 'users.delete',
     'admins.view', 'admins.create', 'admins.edit', 'admins.delete',
+    'rides.view', 'rides.manage', 'rides.delete',
+    'bookings.view', 'bookings.manage', 'bookings.refund', 'bookings.delete',
+    'messages.view', 'messages.moderate', 'messages.mute',
+    'community.view', 'community.moderate', 'community.pin', 'community.warnings',
+    'notifications.view', 'notifications.send', 'notifications.bulk', 'notifications.templates',
+    'announcements.create', 'announcements.manage',
     'safety.view', 'safety.investigate', 'safety.resolve', 'safety.escalate',
     'verification.view', 'verification.approve', 'verification.reject',
     'analytics.view', 'analytics.export',
     'system.settings', 'system.diagnostics', 'system.bulk_operations',
   ],
   admin: [
-    'users.view', 'users.edit', 'users.suspend',
+    'users.view', 'users.edit', 'users.suspend', 'users.ban', 'users.warn',
+    'users.verify', 'users.flag', 'users.notes', 'users.trust_score', 'users.badges',
     'admins.view',
+    'rides.view', 'rides.manage',
+    'bookings.view', 'bookings.manage', 'bookings.refund',
+    'messages.view', 'messages.moderate', 'messages.mute',
+    'community.view', 'community.moderate', 'community.pin', 'community.warnings',
+    'notifications.view', 'notifications.send', 'notifications.bulk', 'notifications.templates',
+    'announcements.create', 'announcements.manage',
     'safety.view', 'safety.investigate', 'safety.resolve',
     'verification.view', 'verification.approve', 'verification.reject',
     'analytics.view',
   ],
   moderator: [
     'users.view',
+    'rides.view',
+    'bookings.view',
+    'messages.view', 'messages.moderate',
+    'community.view', 'community.moderate',
+    'notifications.view', 'notifications.send',
     'safety.view', 'safety.investigate',
     'verification.view', 'verification.approve', 'verification.reject',
   ],
   analyst: [
     'users.view',
+    'rides.view',
+    'bookings.view',
+    'messages.view',
+    'notifications.view',
     'safety.view',
     'analytics.view', 'analytics.export',
   ],
@@ -91,11 +141,38 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
 export const PERMISSION_CATEGORIES = {
   users: {
     label: 'User Management',
-    permissions: ['users.view', 'users.edit', 'users.suspend', 'users.delete'] as Permission[],
+    permissions: [
+      'users.view', 'users.edit', 'users.suspend', 'users.ban', 'users.warn',
+      'users.verify', 'users.flag', 'users.notes', 'users.trust_score', 'users.badges', 'users.delete'
+    ] as Permission[],
   },
   admins: {
     label: 'Admin Management',
     permissions: ['admins.view', 'admins.create', 'admins.edit', 'admins.delete'] as Permission[],
+  },
+  rides: {
+    label: 'Rides Management',
+    permissions: ['rides.view', 'rides.manage', 'rides.delete'] as Permission[],
+  },
+  bookings: {
+    label: 'Bookings Management',
+    permissions: ['bookings.view', 'bookings.manage', 'bookings.refund', 'bookings.delete'] as Permission[],
+  },
+  messages: {
+    label: 'Messages Management',
+    permissions: ['messages.view', 'messages.moderate', 'messages.mute'] as Permission[],
+  },
+  community: {
+    label: 'Community Management',
+    permissions: ['community.view', 'community.moderate', 'community.pin', 'community.warnings'] as Permission[],
+  },
+  notifications: {
+    label: 'Notifications',
+    permissions: ['notifications.view', 'notifications.send', 'notifications.bulk', 'notifications.templates'] as Permission[],
+  },
+  announcements: {
+    label: 'Announcements',
+    permissions: ['announcements.create', 'announcements.manage'] as Permission[],
   },
   safety: {
     label: 'Safety Reports',
@@ -125,6 +202,26 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   'admins.create': 'Create Admins',
   'admins.edit': 'Edit Admin Roles',
   'admins.delete': 'Remove Admins',
+  'rides.view': 'View Rides',
+  'rides.manage': 'Manage Rides',
+  'rides.delete': 'Delete Rides',
+  'bookings.view': 'View Bookings',
+  'bookings.manage': 'Manage Bookings',
+  'bookings.refund': 'Process Refunds',
+  'bookings.delete': 'Delete Bookings',
+  'messages.view': 'View Messages',
+  'messages.moderate': 'Moderate Messages',
+  'messages.mute': 'Mute Users',
+  'community.view': 'View Community Posts',
+  'community.moderate': 'Moderate Content',
+  'community.pin': 'Pin/Lock Posts',
+  'community.warnings': 'Issue Warnings',
+  'notifications.view': 'View Notifications',
+  'notifications.send': 'Send Notifications',
+  'notifications.bulk': 'Bulk Send Notifications',
+  'notifications.templates': 'Manage Templates',
+  'announcements.create': 'Create Announcements',
+  'announcements.manage': 'Manage Announcements',
   'safety.view': 'View Safety Reports',
   'safety.investigate': 'Investigate Reports',
   'safety.resolve': 'Resolve Reports',

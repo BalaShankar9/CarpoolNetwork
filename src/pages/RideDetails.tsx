@@ -13,6 +13,7 @@ import { RouteOption, PlaceDetails } from '../services/googleMapsService';
 import UserAvatar from '../components/shared/UserAvatar';
 import { getUserProfilePath } from '../utils/profileNavigation';
 import { fetchPublicProfileById, PublicProfile } from '../services/publicProfiles';
+import { RideType, getRideTypeInfo } from '../types/rideTypes';
 
 interface RideDetails {
   id: string;
@@ -30,6 +31,9 @@ interface RideDetails {
   notes: string | null;
   estimated_distance: number | null;
   estimated_duration: number | null;
+  ride_type: RideType | null;
+  available_until: string | null;
+  pickup_radius_km: number | null;
   driver: PublicProfile | null;
   vehicle: {
     make: string;
@@ -327,7 +331,7 @@ export default function RideDetails() {
               <h1 className="text-2xl font-bold text-gray-900 mb-2">
                 {ride.origin} → {ride.destination}
               </h1>
-              <div className="flex items-center gap-4 text-gray-600">
+              <div className="flex items-center gap-4 text-gray-600 flex-wrap">
                 <span className="flex items-center gap-1">
                   <Calendar className="w-4 h-4" />
                   {dateTime.date}
@@ -335,6 +339,12 @@ export default function RideDetails() {
                 <span className="flex items-center gap-1">
                   <span className="font-semibold">{dateTime.time}</span>
                 </span>
+                {ride.ride_type && (
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${getRideTypeInfo(ride.ride_type).color} ${getRideTypeInfo(ride.ride_type).textColor}`}>
+                    <span>{getRideTypeInfo(ride.ride_type).icon}</span>
+                    {getRideTypeInfo(ride.ride_type).label}
+                  </span>
+                )}
               </div>
             </div>
             <div className="text-right">
@@ -456,32 +466,32 @@ export default function RideDetails() {
         </div>
 
         {userBooking &&
-         (userBooking.status === 'confirmed' || userBooking.status === 'active') &&
-         (ride.status === 'in-progress' || ride.status === 'active') && (
-          <div className="p-6 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Navigation className="w-5 h-5 text-blue-600" />
-              Live Ride Tracking
-            </h3>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-gray-700">
-                The driver has started this ride. You can view real-time tracking and trip progress here.
-              </p>
-            </div>
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium text-gray-700">Tracking active - Updates every 30 seconds</span>
+          (userBooking.status === 'confirmed' || userBooking.status === 'active') &&
+          (ride.status === 'in-progress' || ride.status === 'active') && (
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Navigation className="w-5 h-5 text-blue-600" />
+                Live Ride Tracking
+              </h3>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-gray-700">
+                  The driver has started this ride. You can view real-time tracking and trip progress here.
+                </p>
               </div>
-              <p className="text-sm text-gray-600">
-                Driver: <span className="font-medium">{ride.driver?.full_name || 'Driver'}</span>
-              </p>
-              <p className="text-sm text-gray-600 mt-1">
-                Your booking: {userBooking.seats_requested} seat{userBooking.seats_requested > 1 ? 's' : ''}
-              </p>
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium text-gray-700">Tracking active - Updates every 30 seconds</span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Driver: <span className="font-medium">{ride.driver?.full_name || 'Driver'}</span>
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  Your booking: {userBooking.seats_requested} seat{userBooking.seats_requested > 1 ? 's' : ''}
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         <div className="p-6 border-b border-gray-200">
           <TripInsights
@@ -558,11 +568,10 @@ export default function RideDetails() {
                     <div>
                       <h3 className="font-semibold text-gray-900">Booking Confirmed</h3>
                       <p className="text-sm text-gray-600">
-                        Status: <span className={`font-medium ${
-                          userBooking.status === 'confirmed' ? 'text-green-600' :
-                          userBooking.status === 'pending' ? 'text-yellow-600' :
-                          'text-gray-600'
-                        }`}>{userBooking.status}</span>
+                        Status: <span className={`font-medium ${userBooking.status === 'confirmed' ? 'text-green-600' :
+                            userBooking.status === 'pending' ? 'text-yellow-600' :
+                              'text-gray-600'
+                          }`}>{userBooking.status}</span>
                       </p>
                     </div>
                   </div>
@@ -606,8 +615,8 @@ export default function RideDetails() {
                   {requesting
                     ? 'Sending Request...'
                     : ride.available_seats === 0
-                    ? 'No Seats Available'
-                    : 'Request Again'}
+                      ? 'No Seats Available'
+                      : 'Request Again'}
                 </button>
               </div>
             ) : (
@@ -619,8 +628,8 @@ export default function RideDetails() {
                 {requesting
                   ? 'Sending Request...'
                   : ride.available_seats === 0
-                  ? 'No Seats Available'
-                  : 'Request This Ride'}
+                    ? 'No Seats Available'
+                    : 'Request This Ride'}
               </button>
             )}
           </div>
@@ -645,11 +654,10 @@ export default function RideDetails() {
                 <button
                   key={i + 1}
                   onClick={() => setSelectedSeats(i + 1)}
-                  className={`py-3 px-4 rounded-lg font-semibold transition-all ${
-                    selectedSeats === i + 1
+                  className={`py-3 px-4 rounded-lg font-semibold transition-all ${selectedSeats === i + 1
                       ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {i + 1}
                 </button>

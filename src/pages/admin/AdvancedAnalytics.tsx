@@ -16,9 +16,16 @@ import {
   PieChart,
   Activity,
   RefreshCw,
+  Plane,
+  Briefcase,
+  Package,
+  Star,
+  Building2,
+  Route,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { getRideTypeInfo, RIDE_TYPE_LIST } from '../../types/rideTypes';
 
 interface MetricCard {
   label: string;
@@ -51,6 +58,13 @@ export default function AdvancedAnalytics() {
   const [rideStats, setRideStats] = useState<any>(null);
   const [bookingStats, setBookingStats] = useState<any>(null);
 
+  // New Phase 6 state
+  const [rideTypeDistribution, setRideTypeDistribution] = useState<any[]>([]);
+  const [cityDistribution, setCityDistribution] = useState<any[]>([]);
+  const [driverLeaderboard, setDriverLeaderboard] = useState<any[]>([]);
+  const [realtimeActivity, setRealtimeActivity] = useState<any[]>([]);
+  const [communityGrowth, setCommunityGrowth] = useState<any[]>([]);
+
   useEffect(() => {
     if (!isAdmin) {
       navigate('/admin');
@@ -72,6 +86,12 @@ export default function AdvancedAnalytics() {
         geoData,
         rideStatsData,
         bookingStatsData,
+        // New Phase 6 data
+        rideTypeData,
+        cityData,
+        leaderboardData,
+        realtimeData,
+        communityData,
       ] = await Promise.all([
         supabase.rpc('get_user_growth', { period_days: days }),
         supabase.rpc('get_peak_times'),
@@ -80,6 +100,12 @@ export default function AdvancedAnalytics() {
         supabase.rpc('get_geographic_distribution'),
         supabase.from('ride_completion_stats').select('*').single(),
         supabase.from('booking_success_metrics').select('*').single(),
+        // New Phase 6 queries
+        supabase.from('ride_type_distribution').select('*'),
+        supabase.from('city_user_distribution').select('*').limit(15),
+        supabase.from('driver_leaderboard').select('*').limit(10),
+        supabase.rpc('get_realtime_activity'),
+        supabase.rpc('get_community_growth', { period_days: days }),
       ]);
 
       if (growthData.data) {
@@ -114,6 +140,27 @@ export default function AdvancedAnalytics() {
 
       if (bookingStatsData.data) {
         setBookingStats(bookingStatsData.data);
+      }
+
+      // Set new Phase 6 data
+      if (rideTypeData.data) {
+        setRideTypeDistribution(rideTypeData.data);
+      }
+
+      if (cityData.data) {
+        setCityDistribution(cityData.data);
+      }
+
+      if (leaderboardData.data) {
+        setDriverLeaderboard(leaderboardData.data);
+      }
+
+      if (realtimeData.data) {
+        setRealtimeActivity(realtimeData.data);
+      }
+
+      if (communityData.data) {
+        setCommunityGrowth(communityData.data);
       }
 
       if (comparisonEnabled) {
@@ -589,6 +636,246 @@ export default function AdvancedAnalytics() {
               <p className="text-2xl font-bold text-blue-900">{bookingStats?.total_bookings || 0}</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Real-time Activity */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-red-500" />
+            Real-time Activity
+          </h3>
+          <span className="flex items-center gap-1 text-xs text-green-600">
+            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+            Live
+          </span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {realtimeActivity.map((item, idx) => (
+            <div key={idx} className="text-center p-3 bg-gray-50 rounded-lg">
+              <p className="text-2xl font-bold text-gray-900">{item.count}</p>
+              <p className="text-xs text-gray-600">{item.metric.replace(/_/g, ' ').replace(/1h/g, '(1h)')}</p>
+              <p className="text-xs text-gray-400">{item.time_period}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Ride Type Distribution */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 id="analytics-ride-types" className="font-semibold text-gray-900 flex items-center gap-2">
+            <Route className="w-5 h-5 text-indigo-500" />
+            Ride Type Distribution
+          </h3>
+          <button
+            onClick={() => exportToCSV(rideTypeDistribution, 'ride-type-distribution')}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            Export
+          </button>
+        </div>
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Pie Chart Visualization */}
+          <div className="space-y-3">
+            {rideTypeDistribution.map((type, idx) => {
+              const info = getRideTypeInfo(type.ride_type);
+              return (
+                <div key={idx} className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg ${info.color} flex items-center justify-center text-lg`}>
+                    {info.icon}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-gray-900">{info.label}</span>
+                      <span className="text-sm font-bold text-gray-900">{type.total_count} rides</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${info.color.replace('-100', '-500')}`}
+                        style={{ width: `${type.percentage || 0}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span className="text-sm text-gray-500 w-12 text-right">{type.percentage || 0}%</span>
+                </div>
+              );
+            })}
+          </div>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            {rideTypeDistribution.slice(0, 4).map((type, idx) => {
+              const info = getRideTypeInfo(type.ride_type);
+              return (
+                <div key={idx} className={`p-4 rounded-lg ${info.color}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">{info.icon}</span>
+                    <span className={`font-medium ${info.textColor}`}>{info.label}</span>
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className={info.textColor}>Completed:</span>
+                      <span className={`font-semibold ${info.textColor}`}>{type.completed_count || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className={info.textColor}>Active:</span>
+                      <span className={`font-semibold ${info.textColor}`}>{type.active_count || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className={info.textColor}>Avg Seats:</span>
+                      <span className={`font-semibold ${info.textColor}`}>{type.avg_seats_offered || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Community & City Analytics */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Users by City */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 id="analytics-cities" className="font-semibold text-gray-900 flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-purple-500" />
+              Community by City
+            </h3>
+            <button
+              onClick={() => exportToCSV(cityDistribution, 'city-distribution')}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Export
+            </button>
+          </div>
+          <div className="space-y-3">
+            {cityDistribution.slice(0, 10).map((city, idx) => (
+              <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900">{city.city_name}</p>
+                  <p className="text-xs text-gray-500">
+                    {city.driver_count} drivers • {city.rider_count} riders
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-purple-600">{city.user_count}</p>
+                  <p className="text-xs text-gray-400">{city.percentage}%</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Community Growth */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-green-500" />
+              Community Growth (Last {timeRange.replace('d', ' Days')})
+            </h3>
+          </div>
+          <div className="space-y-3">
+            {communityGrowth.slice(0, 8).map((city, idx) => (
+              <div key={idx} className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900">{city.city}</p>
+                </div>
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="text-center">
+                    <p className="font-bold text-green-600">{city.new_users}</p>
+                    <p className="text-xs text-gray-500">Users</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-bold text-blue-600">{city.new_drivers}</p>
+                    <p className="text-xs text-gray-500">Drivers</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-bold text-orange-600">{city.rides_created}</p>
+                    <p className="text-xs text-gray-500">Rides</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Driver Leaderboard */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 id="analytics-leaderboard" className="font-semibold text-gray-900 flex items-center gap-2">
+            <Star className="w-5 h-5 text-yellow-500" />
+            Top Drivers Leaderboard
+          </h3>
+          <button
+            onClick={() => exportToCSV(driverLeaderboard, 'driver-leaderboard')}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            Export
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="text-left text-sm text-gray-500 border-b border-gray-200">
+                <th className="pb-3 font-medium">#</th>
+                <th className="pb-3 font-medium">Driver</th>
+                <th className="pb-3 font-medium">City</th>
+                <th className="pb-3 font-medium text-center">Rides</th>
+                <th className="pb-3 font-medium text-center">Completed</th>
+                <th className="pb-3 font-medium text-center">Passengers</th>
+                <th className="pb-3 font-medium text-center">Rating</th>
+                <th className="pb-3 font-medium text-center">Reliability</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {driverLeaderboard.map((driver, idx) => (
+                <tr key={driver.driver_id} className="hover:bg-gray-50">
+                  <td className="py-3">
+                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-yellow-100 text-yellow-700' :
+                        idx === 1 ? 'bg-gray-200 text-gray-700' :
+                          idx === 2 ? 'bg-orange-100 text-orange-700' :
+                            'bg-gray-100 text-gray-600'
+                      }`}>
+                      {idx + 1}
+                    </span>
+                  </td>
+                  <td className="py-3">
+                    <div className="flex items-center gap-2">
+                      {driver.avatar_url ? (
+                        <img src={driver.avatar_url} alt="" className="w-8 h-8 rounded-full" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                          <Users className="w-4 h-4 text-blue-600" />
+                        </div>
+                      )}
+                      <span className="font-medium text-gray-900">{driver.full_name}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 text-sm text-gray-600">{driver.city || '-'}</td>
+                  <td className="py-3 text-center font-semibold text-gray-900">{driver.total_rides_offered}</td>
+                  <td className="py-3 text-center text-green-600 font-semibold">{driver.completed_rides}</td>
+                  <td className="py-3 text-center text-blue-600 font-semibold">{driver.total_passengers}</td>
+                  <td className="py-3 text-center">
+                    <span className="flex items-center justify-center gap-1">
+                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                      {driver.average_rating?.toFixed(1) || '-'}
+                    </span>
+                  </td>
+                  <td className="py-3 text-center">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${driver.reliability_score >= 90 ? 'bg-green-100 text-green-700' :
+                        driver.reliability_score >= 70 ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                      }`}>
+                      {driver.reliability_score?.toFixed(0) || 0}%
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </AdminLayout>

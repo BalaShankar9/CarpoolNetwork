@@ -24,6 +24,14 @@ import {
   Zap,
   Award,
   Search,
+  Flag,
+  Calendar,
+  Music,
+  Volume2,
+  PawPrint,
+  Cigarette,
+  Briefcase,
+  AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -32,7 +40,7 @@ import { normalizePhoneNumber } from '../utils/phone';
 import { getProfileMissingFields } from '../utils/profileCompleteness';
 import PhoneVerificationStep from '../components/onboarding/PhoneVerificationStep';
 
-type StepKey = 'welcome' | 'basics' | 'photo' | 'phone' | 'details' | 'complete';
+type StepKey = 'welcome' | 'basics' | 'photo' | 'phone' | 'preferences' | 'details' | 'complete';
 
 interface StepInfo {
   key: StepKey;
@@ -75,6 +83,14 @@ const steps: StepInfo[] = [
     icon: Shield,
     color: 'text-emerald-600',
     bgColor: 'bg-emerald-100',
+  },
+  {
+    key: 'preferences',
+    title: 'Ride Preferences',
+    subtitle: 'Set your comfort settings',
+    icon: Car,
+    color: 'text-indigo-600',
+    bgColor: 'bg-indigo-100',
   },
   {
     key: 'details',
@@ -124,7 +140,18 @@ export default function ProfileOnboarding() {
   const [basicForm, setBasicForm] = useState({
     full_name: '',
     country: '',
+    nationality: '',
     city: '',
+    date_of_birth: '',
+    gender: '' as '' | 'male' | 'female' | 'non-binary' | 'prefer-not-to-say',
+    occupation: '',
+  });
+  const [preferencesForm, setPreferencesForm] = useState({
+    smoking_policy: 'no-smoking' as 'no-smoking' | 'smoking-allowed' | 'ask-first',
+    pets_allowed: false,
+    music_preference: 'any' as 'any' | 'quiet' | 'radio' | 'podcasts',
+    conversation_level: 'chatty' as 'quiet' | 'some-chat' | 'chatty',
+    luggage_size: 'medium' as 'small' | 'medium' | 'large',
   });
   const [detailsForm, setDetailsForm] = useState({
     bio: '',
@@ -132,6 +159,8 @@ export default function ProfileOnboarding() {
     whatsapp_e164: '',
     phone_visibility: 'ride_only' as 'none' | 'friends' | 'ride_only' | 'anyone',
     whatsapp_visibility: 'friends' as 'none' | 'friends' | 'ride_only' | 'anyone',
+    emergency_contact_name: '',
+    emergency_contact_phone: '',
   });
 
   const returnTo = (location.state as { from?: string } | null)?.from || '/';
@@ -140,8 +169,19 @@ export default function ProfileOnboarding() {
     if (!profile) return;
     setBasicForm({
       full_name: profile.full_name || '',
-      country: profile.country_of_residence || profile.country || '',
+      country: profile.country || '',
+      nationality: (profile as any).nationality || '',
       city: profile.city || '',
+      date_of_birth: profile.date_of_birth || '',
+      gender: profile.gender || '',
+      occupation: (profile as any).occupation || '',
+    });
+    setPreferencesForm({
+      smoking_policy: (profile as any).smoking_policy || 'no-smoking',
+      pets_allowed: (profile as any).pets_allowed || false,
+      music_preference: (profile as any).music_preference || 'any',
+      conversation_level: (profile as any).conversation_level || 'chatty',
+      luggage_size: (profile as any).luggage_size || 'medium',
     });
     setDetailsForm({
       bio: profile.bio || '',
@@ -149,6 +189,8 @@ export default function ProfileOnboarding() {
       whatsapp_e164: profile.whatsapp_e164 || profile.whatsapp_number || '',
       phone_visibility: profile.phone_visibility || 'ride_only',
       whatsapp_visibility: profile.whatsapp_visibility || 'friends',
+      emergency_contact_name: (profile as any).emergency_contact_name || '',
+      emergency_contact_phone: (profile as any).emergency_contact_phone || '',
     });
     if (profile.avatar_url) {
       setPhotoPreview(profile.avatar_url);
@@ -167,7 +209,11 @@ export default function ProfileOnboarding() {
     if (missing.includes('phone') || missing.includes('phone_verified')) {
       return 3;
     }
-    return 4;
+    // Check if preferences are set
+    if (!(profile as any).smoking_policy) {
+      return 4;
+    }
+    return 5;
   }, [profile]);
 
   useEffect(() => {
@@ -191,12 +237,24 @@ export default function ProfileOnboarding() {
       setError('Please select your country of residence.');
       return;
     }
+    if (!basicForm.nationality.trim()) {
+      setError('Please select your nationality.');
+      return;
+    }
+    if (!basicForm.city.trim()) {
+      setError('Please enter your city. This is required to connect you with local carpoolers.');
+      return;
+    }
     setSaving(true);
-    const updates = {
+    const updates: Record<string, any> = {
       full_name: basicForm.full_name.trim(),
       country: basicForm.country.trim(),
-      country_of_residence: basicForm.country.trim(),
-      city: basicForm.city.trim() || null,
+      nationality: basicForm.nationality.trim(),
+      city: basicForm.city.trim(),
+      home_city: basicForm.city.trim(), // Also set home_city for matching
+      date_of_birth: basicForm.date_of_birth || null,
+      gender: basicForm.gender || null,
+      occupation: basicForm.occupation.trim() || null,
     };
     const { error: updateError } = await updateProfile(updates);
     setSaving(false);
@@ -293,7 +351,28 @@ export default function ProfileOnboarding() {
       return;
     }
 
-    setCurrentStep(4);
+    setCurrentStep(4); // Go to preferences step
+  };
+
+  const handlePreferencesSave = async () => {
+    setError('');
+    setSaving(true);
+    const updates: Record<string, any> = {
+      smoking_policy: preferencesForm.smoking_policy,
+      pets_allowed: preferencesForm.pets_allowed,
+      music_preference: preferencesForm.music_preference,
+      conversation_level: preferencesForm.conversation_level,
+      luggage_size: preferencesForm.luggage_size,
+    };
+    const { error: updateError } = await updateProfile(updates);
+    setSaving(false);
+
+    if (updateError) {
+      setError(updateError.message || 'Failed to save preferences. Please try again.');
+      return;
+    }
+
+    setCurrentStep(5); // Go to details step
   };
 
   const handleDetailsSave = async () => {
@@ -313,16 +392,30 @@ export default function ProfileOnboarding() {
       whatsappE164 = normalized.e164;
     }
 
+    // Validate emergency contact if name is provided
+    let emergencyPhone: string | null = null;
+    if (detailsForm.emergency_contact_name.trim() && detailsForm.emergency_contact_phone.trim()) {
+      const normalized = normalizePhoneNumber(detailsForm.emergency_contact_phone.trim());
+      if (!normalized.isValid || !normalized.e164) {
+        setError('Please enter a valid emergency contact phone number.');
+        return;
+      }
+      emergencyPhone = normalized.e164;
+    }
+
     setSaving(true);
-    const { error: updateError } = await updateProfile({
+    const updates: Record<string, any> = {
       bio: detailsForm.bio.trim() || null,
       languages: languages.length ? languages : null,
       whatsapp_e164: whatsappE164,
       whatsapp_number: whatsappE164,
       phone_visibility: detailsForm.phone_visibility,
       whatsapp_visibility: detailsForm.whatsapp_visibility,
+      emergency_contact_name: detailsForm.emergency_contact_name.trim() || null,
+      emergency_contact_phone: emergencyPhone,
       onboarding_completed: true,
-    });
+    };
+    const { error: updateError } = await updateProfile(updates);
     setSaving(false);
 
     if (updateError) {
@@ -331,7 +424,7 @@ export default function ProfileOnboarding() {
     }
 
     setShowConfetti(true);
-    setCurrentStep(5);
+    setCurrentStep(6);
   };
 
   const handleFinish = () => {
@@ -341,8 +434,8 @@ export default function ProfileOnboarding() {
   const progress = (currentStep / (steps.length - 1)) * 100;
   const step = steps[currentStep];
 
-  if (isProfileComplete && profileMissingFields.length === 0 && currentStep !== 5) {
-    setCurrentStep(5);
+  if (isProfileComplete && profileMissingFields.length === 0 && currentStep !== 6) {
+    setCurrentStep(6);
     setShowConfetti(true);
   }
 
@@ -455,13 +548,12 @@ export default function ProfileOnboarding() {
                 {steps.map((s, index) => (
                   <div
                     key={s.key}
-                    className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
-                      index < currentStep
-                        ? 'bg-green-500'
-                        : index === currentStep
+                    className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${index < currentStep
+                      ? 'bg-green-500'
+                      : index === currentStep
                         ? 'bg-blue-600'
                         : 'bg-gray-200'
-                    }`}
+                      }`}
                   />
                 ))}
               </div>
@@ -540,6 +632,7 @@ export default function ProfileOnboarding() {
                   </div>
 
                   <div className="space-y-6">
+                    {/* Full Name */}
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         What's your name? *
@@ -557,31 +650,56 @@ export default function ProfileOnboarding() {
                       </p>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Where are you based? *
-                      </label>
-                      <div className="relative">
-                        <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <select
-                          value={basicForm.country}
-                          onChange={(e) => setBasicForm({ ...basicForm, country: e.target.value })}
-                          data-testid="onboarding-country"
-                          className="w-full pl-12 pr-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all appearance-none bg-white"
-                        >
-                          <option value="">Select your country</option>
-                          {countryCodes.map((country) => (
-                            <option key={country.code} value={country.code}>
-                              {country.name}
-                            </option>
-                          ))}
-                        </select>
+                    {/* Country and Nationality - Side by Side */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Country of residence *
+                        </label>
+                        <div className="relative">
+                          <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                          <select
+                            value={basicForm.country}
+                            onChange={(e) => setBasicForm({ ...basicForm, country: e.target.value })}
+                            data-testid="onboarding-country"
+                            className="w-full pl-12 pr-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all appearance-none bg-white"
+                          >
+                            <option value="">Select country</option>
+                            {countryCodes.map((country) => (
+                              <option key={country.code} value={country.code}>
+                                {country.flag} {country.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Nationality *
+                        </label>
+                        <div className="relative">
+                          <Flag className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                          <select
+                            value={basicForm.nationality}
+                            onChange={(e) => setBasicForm({ ...basicForm, nationality: e.target.value })}
+                            data-testid="onboarding-nationality"
+                            className="w-full pl-12 pr-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all appearance-none bg-white"
+                          >
+                            <option value="">Select nationality</option>
+                            {countryCodes.map((country) => (
+                              <option key={country.code} value={country.code}>
+                                {country.flag} {country.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     </div>
 
+                    {/* City - REQUIRED for local matching */}
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Which city? <span className="font-normal text-gray-400">(Optional)</span>
+                        Your City *
                       </label>
                       <div className="relative">
                         <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -594,6 +712,64 @@ export default function ProfileOnboarding() {
                           className="w-full pl-12 pr-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
                         />
                       </div>
+                      <p className="mt-2 text-sm text-gray-500">
+                        Required - This helps match you with carpoolers in your area
+                      </p>
+                    </div>
+
+                    {/* Date of Birth and Gender - Side by Side */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Date of birth <span className="font-normal text-gray-400">(Optional)</span>
+                        </label>
+                        <div className="relative">
+                          <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                          <input
+                            type="date"
+                            value={basicForm.date_of_birth}
+                            onChange={(e) => setBasicForm({ ...basicForm, date_of_birth: e.target.value })}
+                            max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+                            className="w-full pl-12 pr-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                          />
+                        </div>
+                        <p className="mt-1 text-xs text-gray-400">Must be 18+ to use the platform</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Gender <span className="font-normal text-gray-400">(Optional)</span>
+                        </label>
+                        <select
+                          value={basicForm.gender}
+                          onChange={(e) => setBasicForm({ ...basicForm, gender: e.target.value as any })}
+                          className="w-full px-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all appearance-none bg-white"
+                        >
+                          <option value="">Prefer not to say</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="non-binary">Non-binary</option>
+                          <option value="prefer-not-to-say">Prefer not to say</option>
+                        </select>
+                        <p className="mt-1 text-xs text-gray-400">Used for matching preferences</p>
+                      </div>
+                    </div>
+
+                    {/* Occupation */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Occupation <span className="font-normal text-gray-400">(Optional)</span>
+                      </label>
+                      <div className="relative">
+                        <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <input
+                          type="text"
+                          value={basicForm.occupation}
+                          onChange={(e) => setBasicForm({ ...basicForm, occupation: e.target.value })}
+                          placeholder="e.g., Software Engineer, Teacher, Student"
+                          className="w-full pl-12 pr-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                        />
+                      </div>
+                      <p className="mt-1 text-xs text-gray-400">Helps build trust and conversation</p>
                     </div>
                   </div>
                 </div>
@@ -615,11 +791,10 @@ export default function ProfileOnboarding() {
                     onDragLeave={handleDrag}
                     onDragOver={handleDrag}
                     onDrop={handleDrop}
-                    className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
-                      dragActive
-                        ? 'border-purple-500 bg-purple-50'
-                        : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50/50'
-                    }`}
+                    className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all ${dragActive
+                      ? 'border-purple-500 bg-purple-50'
+                      : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50/50'
+                      }`}
                   >
                     {photoPreview ? (
                       <div className="flex flex-col items-center">
@@ -742,6 +917,177 @@ export default function ProfileOnboarding() {
                 </div>
               )}
 
+              {/* Preferences Step */}
+              {step.key === 'preferences' && (
+                <div className="space-y-8">
+                  <div className="text-center mb-8">
+                    <div className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-100">
+                      <Car className="w-10 h-10 text-indigo-600" />
+                    </div>
+                    <h2 className="text-3xl font-bold text-gray-900 mb-2">Your ride preferences</h2>
+                    <p className="text-gray-600">Help us match you with compatible riders</p>
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* Smoking Policy */}
+                    <div className="bg-white border-2 border-gray-100 rounded-xl p-5">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                          <Cigarette className="w-5 h-5 text-red-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">Smoking policy</h4>
+                          <p className="text-sm text-gray-500">Your preference for smoking in rides</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { value: 'no-smoking', label: 'No smoking', emoji: '🚭' },
+                          { value: 'ask-first', label: 'Ask first', emoji: '❓' },
+                          { value: 'smoking-allowed', label: 'Allowed', emoji: '🚬' },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => setPreferencesForm({ ...preferencesForm, smoking_policy: option.value as any })}
+                            className={`p-4 rounded-xl border-2 transition-all text-center ${preferencesForm.smoking_policy === option.value
+                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                              : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                              }`}
+                          >
+                            <span className="text-2xl block mb-1">{option.emoji}</span>
+                            <span className="text-sm font-medium">{option.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Pets Allowed */}
+                    <div className="bg-white border-2 border-gray-100 rounded-xl p-5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                            <PawPrint className="w-5 h-5 text-amber-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900">Pets welcome?</h4>
+                            <p className="text-sm text-gray-500">Do you allow pets in your rides?</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setPreferencesForm({ ...preferencesForm, pets_allowed: !preferencesForm.pets_allowed })}
+                          className={`relative w-14 h-8 rounded-full transition-colors ${preferencesForm.pets_allowed ? 'bg-indigo-600' : 'bg-gray-300'
+                            }`}
+                        >
+                          <span
+                            className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow transition-transform ${preferencesForm.pets_allowed ? 'left-7' : 'left-1'
+                              }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Music Preference */}
+                    <div className="bg-white border-2 border-gray-100 rounded-xl p-5">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                          <Music className="w-5 h-5 text-purple-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">Music preference</h4>
+                          <p className="text-sm text-gray-500">What do you like during rides?</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {[
+                          { value: 'quiet', label: 'Quiet', emoji: '🔇' },
+                          { value: 'radio', label: 'Radio', emoji: '📻' },
+                          { value: 'podcasts', label: 'Podcasts', emoji: '🎙️' },
+                          { value: 'any', label: 'Anything', emoji: '🎵' },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => setPreferencesForm({ ...preferencesForm, music_preference: option.value as any })}
+                            className={`p-3 rounded-xl border-2 transition-all text-center ${preferencesForm.music_preference === option.value
+                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                              : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                              }`}
+                          >
+                            <span className="text-xl block mb-1">{option.emoji}</span>
+                            <span className="text-xs font-medium">{option.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Conversation Level */}
+                    <div className="bg-white border-2 border-gray-100 rounded-xl p-5">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <Volume2 className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">Conversation level</h4>
+                          <p className="text-sm text-gray-500">How chatty are you during rides?</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { value: 'quiet', label: 'Quiet ride', emoji: '🤫', desc: 'Prefer silence' },
+                          { value: 'some-chat', label: 'Some chat', emoji: '💬', desc: 'Occasional talk' },
+                          { value: 'chatty', label: 'Chatty', emoji: '🗣️', desc: 'Love to talk!' },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => setPreferencesForm({ ...preferencesForm, conversation_level: option.value as any })}
+                            className={`p-4 rounded-xl border-2 transition-all text-center ${preferencesForm.conversation_level === option.value
+                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                              : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                              }`}
+                          >
+                            <span className="text-2xl block mb-1">{option.emoji}</span>
+                            <span className="text-sm font-medium block">{option.label}</span>
+                            <span className="text-xs text-gray-500">{option.desc}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Luggage Size */}
+                    <div className="bg-white border-2 border-gray-100 rounded-xl p-5">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                          <Briefcase className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">Typical luggage</h4>
+                          <p className="text-sm text-gray-500">How much space do you usually need?</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { value: 'small', label: 'Small', emoji: '🎒', desc: 'Backpack only' },
+                          { value: 'medium', label: 'Medium', emoji: '💼', desc: 'Carry-on bag' },
+                          { value: 'large', label: 'Large', emoji: '🧳', desc: 'Full suitcase' },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => setPreferencesForm({ ...preferencesForm, luggage_size: option.value as any })}
+                            className={`p-4 rounded-xl border-2 transition-all text-center ${preferencesForm.luggage_size === option.value
+                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                              : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                              }`}
+                          >
+                            <span className="text-2xl block mb-1">{option.emoji}</span>
+                            <span className="text-sm font-medium block">{option.label}</span>
+                            <span className="text-xs text-gray-500">{option.desc}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Details Step */}
               {step.key === 'details' && (
                 <div className="space-y-8">
@@ -850,6 +1196,44 @@ export default function ProfileOnboarding() {
                             <option value="anyone">Anyone</option>
                             <option value="none">No one</option>
                           </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Emergency Contact */}
+                    <div className="bg-red-50 border-2 border-red-100 rounded-xl p-5">
+                      <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                        <AlertTriangle className="w-5 h-5 text-red-600" />
+                        Emergency contact
+                      </h4>
+                      <p className="text-sm text-gray-600 mb-4">
+                        This person will be contacted in case of an emergency during your rides.
+                        <strong className="text-red-700"> Highly recommended for safety.</strong>
+                      </p>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Contact name
+                          </label>
+                          <input
+                            type="text"
+                            value={detailsForm.emergency_contact_name}
+                            onChange={(e) => setDetailsForm({ ...detailsForm, emergency_contact_name: e.target.value })}
+                            placeholder="e.g., Mum, Partner, John Smith"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-red-100 focus:border-red-400 transition-all"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Contact phone
+                          </label>
+                          <input
+                            type="tel"
+                            value={detailsForm.emergency_contact_phone}
+                            onChange={(e) => setDetailsForm({ ...detailsForm, emergency_contact_phone: e.target.value })}
+                            placeholder="+44 7700 900000"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-red-100 focus:border-red-400 transition-all"
+                          />
                         </div>
                       </div>
                     </div>
@@ -972,6 +1356,27 @@ export default function ProfileOnboarding() {
                   >
                     Continue
                     <ArrowRight className="w-5 h-5" />
+                  </button>
+                )}
+
+                {step.key === 'preferences' && (
+                  <button
+                    type="button"
+                    onClick={handlePreferencesSave}
+                    disabled={saving}
+                    className="flex-1 px-6 py-4 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl font-semibold hover:from-indigo-700 hover:to-indigo-800 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {saving ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        Continue
+                        <ArrowRight className="w-5 h-5" />
+                      </>
+                    )}
                   </button>
                 )}
 

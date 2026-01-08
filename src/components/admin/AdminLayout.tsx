@@ -22,6 +22,12 @@ import {
   Beaker,
   MessageSquare,
   Heart,
+  Car,
+  Calendar,
+  MessagesSquare,
+  Bell,
+  Settings,
+  HeartPulse,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Permission, AdminRole, ROLE_DISPLAY_NAMES, ROLE_COLORS } from '../../types/admin';
@@ -36,6 +42,11 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/admin', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
+  { path: '/admin/rides', label: 'Rides', icon: <Car className="w-5 h-5" />, permission: 'rides.view' },
+  { path: '/admin/bookings', label: 'Bookings', icon: <Calendar className="w-5 h-5" />, permission: 'bookings.view' },
+  { path: '/admin/messages', label: 'Messages', icon: <MessageSquare className="w-5 h-5" />, permission: 'messages.view' },
+  { path: '/admin/community', label: 'Community', icon: <MessagesSquare className="w-5 h-5" />, permission: 'community.view' },
+  { path: '/admin/notifications', label: 'Notifications', icon: <Bell className="w-5 h-5" />, permission: 'notifications.view' },
   { path: '/admin/users', label: 'Users', icon: <Users className="w-5 h-5" />, permission: 'users.view' },
   { path: '/admin/safety', label: 'Safety Reports', icon: <Shield className="w-5 h-5" />, permission: 'safety.view' },
   { path: '/admin/verification', label: 'Verification', icon: <CheckSquare className="w-5 h-5" />, permission: 'verification.view' },
@@ -45,6 +56,8 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/admin/feedback', label: 'Feedback', icon: <MessageSquare className="w-5 h-5" />, minRole: 'moderator' },
   { path: '/admin/beta', label: 'Beta Management', icon: <Beaker className="w-5 h-5" />, minRole: 'admin' },
   { path: '/admin/safety-dashboard', label: 'Safety Dashboard', icon: <Heart className="w-5 h-5" />, permission: 'safety.view' },
+  { path: '/admin/settings', label: 'Platform Settings', icon: <Settings className="w-5 h-5" />, minRole: 'super_admin' },
+  { path: '/admin/health', label: 'System Health', icon: <HeartPulse className="w-5 h-5" />, minRole: 'super_admin' },
   { path: '/admin/admins', label: 'Admin Management', icon: <UserCog className="w-5 h-5" />, minRole: 'super_admin' },
   { path: '/admin/audit', label: 'Audit Log', icon: <ClipboardList className="w-5 h-5" />, minRole: 'super_admin' },
   { path: '/admin/diagnostics', label: 'Diagnostics', icon: <Database className="w-5 h-5" />, permission: 'system.diagnostics' },
@@ -111,9 +124,8 @@ export default function AdminLayout({ children, title, subtitle, actions }: Admi
       <div className="flex">
         {/* Sidebar */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 bg-white border-r border-gray-200 transition-all duration-300 flex flex-col ${
-            sidebarCollapsed ? 'w-16' : 'w-64'
-          } ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+          className={`fixed inset-y-0 left-0 z-50 bg-white border-r border-gray-200 transition-all duration-300 flex flex-col ${sidebarCollapsed ? 'w-16' : 'w-64'
+            } ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
         >
           {/* Logo Area */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 shrink-0">
@@ -175,11 +187,10 @@ export default function AdminLayout({ children, title, subtitle, actions }: Admi
                 key={item.path}
                 to={item.path}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                  isActivePath(item.path)
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActivePath(item.path)
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
                 title={sidebarCollapsed ? item.label : undefined}
               >
                 <span className={isActivePath(item.path) ? 'text-blue-600' : ''}>
@@ -219,9 +230,8 @@ export default function AdminLayout({ children, title, subtitle, actions }: Admi
 
         {/* Main Content */}
         <main
-          className={`flex-1 min-h-screen transition-all duration-300 ${
-            sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
-          }`}
+          className={`flex-1 min-h-screen transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+            }`}
         >
           {/* Page Header */}
           {(title || actions) && (

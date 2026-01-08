@@ -42,7 +42,7 @@ export default function SignIn() {
     }
   };
 
-  const handlePasswordLogin = async (identifier: string, password: string) => {
+  const handlePasswordLogin = async (identifier: string, password: string, _rememberMe: boolean) => {
     setError('');
     try {
       const isEmail = identifier.includes('@');
@@ -56,14 +56,18 @@ export default function SignIn() {
       if (error) {
         if (error.message.includes('Email not confirmed')) {
           setError('Please verify your email before signing in. Check your inbox for the verification link.');
+        } else if (error.message.includes('Invalid login credentials')) {
+          setError('Incorrect email or password. Please try again or use the forgot password option.');
         } else {
           setError(error.message);
         }
+        throw error; // Re-throw to track failed attempts
       } else {
         navigate('/');
       }
     } catch {
-      setError('An unexpected error occurred');
+      // Error already set above
+      throw new Error('Login failed');
     }
   };
 

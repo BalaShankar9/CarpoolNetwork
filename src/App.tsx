@@ -60,6 +60,22 @@ const Favorites = lazy(() => import('./pages/Favorites'));
 const Pools = lazy(() => import('./pages/Pools'));
 const AdminManagement = lazy(() => import('./pages/admin/AdminManagement'));
 const AuditLog = lazy(() => import('./pages/admin/AuditLog'));
+const RidesManagement = lazy(() => import('./pages/admin/RidesManagement'));
+const RideDetailAdmin = lazy(() => import('./pages/admin/RideDetailAdmin'));
+const BookingsManagement = lazy(() => import('./pages/admin/BookingsManagement'));
+const BookingDetailAdmin = lazy(() => import('./pages/admin/BookingDetailAdmin'));
+const MessagesManagement = lazy(() => import('./pages/admin/MessagesManagement'));
+const ConversationDetailAdmin = lazy(() => import('./pages/admin/ConversationDetailAdmin'));
+const MutedUsersManagement = lazy(() => import('./pages/admin/MutedUsersManagement'));
+const CommunityManagement = lazy(() => import('./pages/admin/CommunityManagement'));
+const PostDetailAdmin = lazy(() => import('./pages/admin/PostDetailAdmin'));
+const ContentWarnings = lazy(() => import('./pages/admin/ContentWarnings'));
+const NotificationsManagement = lazy(() => import('./pages/admin/NotificationsManagement'));
+const AnnouncementsManagement = lazy(() => import('./pages/admin/AnnouncementsManagement'));
+const NotificationTemplates = lazy(() => import('./pages/admin/NotificationTemplates'));
+const UserDetailAdmin = lazy(() => import('./pages/admin/UserDetailAdmin'));
+const PlatformSettings = lazy(() => import('./pages/admin/PlatformSettings'));
+const SystemHealth = lazy(() => import('./pages/admin/SystemHealth'));
 
 const LoadingScreen = () => (
   <div className="min-h-screen bg-white flex items-center justify-center">
@@ -344,6 +360,11 @@ function AppContent() {
             <UserManagement />
           </ProtectedRoute>
         } />
+        <Route path="/admin/users/:userId" element={
+          <ProtectedRoute>
+            <UserDetailAdmin />
+          </ProtectedRoute>
+        } />
         <Route path="/admin/bugs" element={
           <ProtectedRoute>
             <BugReports />
@@ -389,6 +410,16 @@ function AppContent() {
             <PerformanceMonitor />
           </ProtectedRoute>
         } />
+        <Route path="/admin/settings" element={
+          <ProtectedRoute>
+            <PlatformSettings />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/health" element={
+          <ProtectedRoute>
+            <SystemHealth />
+          </ProtectedRoute>
+        } />
         <Route path="/admin/admins" element={
           <ProtectedRoute>
             <AdminManagement />
@@ -397,6 +428,71 @@ function AppContent() {
         <Route path="/admin/audit" element={
           <ProtectedRoute>
             <AuditLog />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/rides" element={
+          <ProtectedRoute>
+            <RidesManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/rides/:rideId" element={
+          <ProtectedRoute>
+            <RideDetailAdmin />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/bookings" element={
+          <ProtectedRoute>
+            <BookingsManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/bookings/:bookingId" element={
+          <ProtectedRoute>
+            <BookingDetailAdmin />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/messages" element={
+          <ProtectedRoute>
+            <MessagesManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/messages/muted" element={
+          <ProtectedRoute>
+            <MutedUsersManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/messages/:id" element={
+          <ProtectedRoute>
+            <ConversationDetailAdmin />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/community" element={
+          <ProtectedRoute>
+            <CommunityManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/community/warnings" element={
+          <ProtectedRoute>
+            <ContentWarnings />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/community/:postId" element={
+          <ProtectedRoute>
+            <PostDetailAdmin />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/notifications" element={
+          <ProtectedRoute>
+            <NotificationsManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/notifications/announcements" element={
+          <ProtectedRoute>
+            <AnnouncementsManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/notifications/templates" element={
+          <ProtectedRoute>
+            <NotificationTemplates />
           </ProtectedRoute>
         } />
       </Routes>

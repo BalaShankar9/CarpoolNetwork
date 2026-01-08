@@ -9,6 +9,7 @@ import UserAvatar from '../components/shared/UserAvatar';
 import { getUserProfilePath } from '../utils/profileNavigation';
 import { fetchPublicProfilesByIds, PublicProfile } from '../services/publicProfiles';
 import { toast } from '../lib/toast';
+import { RideType, RIDE_TYPE_LIST, getRideTypeInfo } from '../types/rideTypes';
 
 interface Ride {
   id: string;
@@ -39,6 +40,8 @@ interface Ride {
   };
   matchScore?: number;
   reliabilityScore?: number;
+  ride_type?: RideType;
+  is_recurring?: boolean;
 }
 
 interface TripRequest {
@@ -52,7 +55,7 @@ interface TripRequest {
 }
 
 export default function FindRides() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
@@ -70,6 +73,8 @@ export default function FindRides() {
   const [myTripRequests, setMyTripRequests] = useState<TripRequest[]>([]);
   const [showCreateRequest, setShowCreateRequest] = useState(false);
   const [eligibilityStatus, setEligibilityStatus] = useState<any>(null);
+  // New ride type filter
+  const [selectedRideTypes, setSelectedRideTypes] = useState<RideType[]>([]);
 
   useEffect(() => {
     checkEligibility();
@@ -211,6 +216,13 @@ export default function FindRides() {
 
       if (verifiedOnly) {
         filteredRides = filteredRides.filter(ride => ride.driver?.email_verified && ride.driver?.phone_verified);
+      }
+
+      // Filter by ride type
+      if (selectedRideTypes.length > 0) {
+        filteredRides = filteredRides.filter(ride =>
+          selectedRideTypes.includes((ride.ride_type || 'one_time') as RideType)
+        );
       }
 
       if (sortBy === 'rating') {
@@ -506,6 +518,48 @@ export default function FindRides() {
               </button>
             </div>
           </div>
+
+          {/* Ride Type Filter */}
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Filter by Ride Type
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {RIDE_TYPE_LIST.map((type) => {
+                const info = getRideTypeInfo(type.value);
+                const isSelected = selectedRideTypes.includes(type.value);
+                return (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedRideTypes(selectedRideTypes.filter(t => t !== type.value));
+                      } else {
+                        setSelectedRideTypes([...selectedRideTypes, type.value]);
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${isSelected
+                        ? `${info.color.replace('bg-', 'bg-').replace('-100', '-500')} text-white`
+                        : `${info.color} ${info.textColor} hover:opacity-80`
+                      }`}
+                  >
+                    <span>{info.icon}</span>
+                    <span>{type.label}</span>
+                  </button>
+                );
+              })}
+              {selectedRideTypes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedRideTypes([])}
+                  className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 underline"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          </div>
         </form>
       </div>
 
@@ -541,8 +595,8 @@ export default function FindRides() {
                   }
                 }}
                 className={`bg-white border rounded-xl p-6 hover:shadow-lg transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${ride.userBooking && ride.userBooking.status !== 'cancelled'
-                    ? 'border-green-300 bg-green-50'
-                    : 'border-gray-200'
+                  ? 'border-green-300 bg-green-50'
+                  : 'border-gray-200'
                   }`}
               >
                 {ride.userBooking && ride.userBooking.status !== 'cancelled' && (
@@ -593,9 +647,9 @@ export default function FindRides() {
                       {ride.matchScore && (
                         <div className="mt-1">
                           <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${ride.matchScore >= 80 ? 'bg-green-100 text-green-800' :
-                              ride.matchScore >= 60 ? 'bg-blue-100 text-blue-800' :
-                                ride.matchScore >= 40 ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-gray-100 text-gray-800'
+                            ride.matchScore >= 60 ? 'bg-blue-100 text-blue-800' :
+                              ride.matchScore >= 40 ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
                             }`}>
                             {ride.matchScore}% Match
                           </span>
@@ -629,6 +683,11 @@ export default function FindRides() {
                       {ride.vehicle && (
                         <span>
                           {ride.vehicle.color} {ride.vehicle.make} {ride.vehicle.model}
+                        </span>
+                      )}
+                      {ride.ride_type && (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getRideTypeInfo(ride.ride_type as RideType).color} ${getRideTypeInfo(ride.ride_type as RideType).textColor}`}>
+                          {getRideTypeInfo(ride.ride_type as RideType).icon} {getRideTypeInfo(ride.ride_type as RideType).label}
                         </span>
                       )}
                     </div>
