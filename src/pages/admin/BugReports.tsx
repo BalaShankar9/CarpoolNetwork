@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Bug, RefreshCw, ExternalLink, Clock, AlertCircle, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';
-import { useAuth } from '../../contexts/AuthContext';
 import { logApiError } from '../../services/errorTracking';
 import AdminLayout from '../../components/admin/AdminLayout';
 
@@ -21,8 +19,6 @@ interface BugReport {
 }
 
 export default function BugReports() {
-  const { isAdmin, hasRole } = useAuth();
-  const navigate = useNavigate();
   const [reports, setReports] = useState<BugReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,12 +26,8 @@ export default function BugReports() {
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isAdmin && !hasRole('moderator')) {
-      navigate('/');
-      return;
-    }
     fetchReports();
-  }, [isAdmin, hasRole, navigate]);
+  }, []);
 
   const fetchReports = async () => {
     setRefreshing(true);
@@ -114,8 +106,6 @@ export default function BugReports() {
       setTriaging(null);
     }
   };
-
-  if (!isAdmin && !hasRole('moderator')) return null;
 
   const statusBadge = (status: string) => {
     const colors: Record<string, string> = {

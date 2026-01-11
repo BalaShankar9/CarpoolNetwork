@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface MutedUser {
     id: string;
@@ -33,7 +32,6 @@ interface MutedUser {
 }
 
 export default function MutedUsersManagement() {
-    const { isAdmin } = useAuth();
     const navigate = useNavigate();
 
     // State
@@ -52,12 +50,8 @@ export default function MutedUsersManagement() {
     const [unmuteModal, setUnmuteModal] = useState<{ user: MutedUser } | null>(null);
 
     useEffect(() => {
-        if (!isAdmin) {
-            navigate('/');
-            return;
-        }
         fetchMutedUsers();
-    }, [isAdmin, currentPage]);
+    }, [currentPage]);
 
     const fetchMutedUsers = async () => {
         setLoading(true);
@@ -144,8 +138,6 @@ export default function MutedUsersManagement() {
         if (hours > 0) return { text: `${hours}h remaining`, color: 'yellow' };
         return { text: 'Less than 1 hour', color: 'green' };
     };
-
-    if (!isAdmin) return null;
 
     return (
         <AdminLayout

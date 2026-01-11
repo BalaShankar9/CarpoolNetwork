@@ -29,7 +29,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface BookingDetail {
     id: string;
@@ -94,7 +93,6 @@ interface BookingDetail {
 export default function BookingDetailAdmin() {
     const { bookingId } = useParams<{ bookingId: string }>();
     const navigate = useNavigate();
-    const { isAdmin } = useAuth();
 
     const [booking, setBooking] = useState<BookingDetail | null>(null);
     const [loading, setLoading] = useState(true);
@@ -108,14 +106,10 @@ export default function BookingDetailAdmin() {
     const [cancelReason, setCancelReason] = useState('');
 
     useEffect(() => {
-        if (!isAdmin) {
-            navigate('/');
-            return;
-        }
         if (bookingId) {
             fetchBooking();
         }
-    }, [bookingId, isAdmin]);
+    }, [bookingId]);
 
     const fetchBooking = async () => {
         setLoading(true);

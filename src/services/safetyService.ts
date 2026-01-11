@@ -203,9 +203,9 @@ export async function getTripShareByToken(token: string): Promise<{
 
     if (error || !tripShare) return null;
 
-    // Get current tracking location if ride is in progress
+    // Get current tracking location if ride is in progress (canonical state: 'in-progress')
     let currentLocation;
-    if (tripShare.ride.status === 'in_progress') {
+    if (tripShare.ride.status === 'in-progress') {
         const { data: tracking } = await supabase
             .from('ride_tracking')
             .select('current_location')

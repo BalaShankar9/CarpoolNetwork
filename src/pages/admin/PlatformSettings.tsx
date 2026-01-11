@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import {
     Settings,
@@ -31,8 +30,7 @@ interface SettingsByCategory {
 }
 
 export default function PlatformSettings() {
-    const { user, isAdmin } = useAuth();
-    const navigate = useNavigate();
+    const { user } = useAuth();
     const [settings, setSettings] = useState<PlatformSetting[]>([]);
     const [settingsByCategory, setSettingsByCategory] = useState<SettingsByCategory>({});
     const [loading, setLoading] = useState(true);
@@ -50,12 +48,8 @@ export default function PlatformSettings() {
     ];
 
     useEffect(() => {
-        if (!isAdmin) {
-            navigate('/admin');
-            return;
-        }
         loadSettings();
-    }, [isAdmin, navigate]);
+    }, []);
 
     const loadSettings = async () => {
         setLoading(true);
@@ -253,8 +247,6 @@ export default function PlatformSettings() {
                 );
         }
     };
-
-    if (!isAdmin) return null;
 
     if (loading) {
         return (

@@ -81,11 +81,12 @@ export default function EditRideModal({ ride, isOpen, onClose, onSaved }: EditRi
 
   const loadSeatConstraints = async (targetRide: Ride) => {
     try {
+      // CANONICAL booking states that reserve seats: pending, confirmed
       const { data: bookings, error: bookingError } = await supabase
         .from('ride_bookings')
         .select('seats_requested')
         .eq('ride_id', targetRide.id)
-        .in('status', ['pending', 'confirmed', 'paid']);
+        .in('status', ['pending', 'confirmed']);
 
       if (bookingError) throw bookingError;
 

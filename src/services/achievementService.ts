@@ -296,13 +296,16 @@ export async function checkAllAchievements(userId: string): Promise<string[]> {
       if (!error) {
         newlyUnlocked.push(achievement.id);
 
-        // Create notification
+        // Create notification using canonical SYSTEM type with original_type in data
         await supabase.from('notifications').insert({
           user_id: userId,
-          type: 'achievement_unlocked',
-          title: `Achievement Unlocked: ${achievement.name}`,
-          message: achievement.description,
-          data: { achievement_id: achievement.id },
+          type: 'SYSTEM',
+          data: {
+            original_type: 'ACHIEVEMENT_UNLOCKED',
+            achievement_id: achievement.id,
+            achievement_name: achievement.name,
+            message: achievement.description,
+          },
         });
       }
     }

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import {
   Activity,
@@ -25,7 +24,6 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface ActivityLog {
@@ -66,8 +64,6 @@ interface LiveMetrics {
 }
 
 export default function LiveActivityMonitor() {
-  const { isAdmin } = useAuth();
-  const navigate = useNavigate();
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [criticalAlerts, setCriticalAlerts] = useState<CriticalAlert[]>([]);
   const [metrics, setMetrics] = useState<LiveMetrics>({
@@ -92,11 +88,6 @@ export default function LiveActivityMonitor() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    if (!isAdmin) {
-      navigate('/admin');
-      return;
-    }
-
     loadInitialData();
     setupRealtimeSubscriptions();
 
@@ -110,7 +101,7 @@ export default function LiveActivityMonitor() {
       clearInterval(metricsInterval);
       cleanupSubscriptions();
     };
-  }, [isAdmin, isPaused, autoRefresh]);
+  }, [isPaused, autoRefresh]);
 
   const loadInitialData = async () => {
     setLoading(true);

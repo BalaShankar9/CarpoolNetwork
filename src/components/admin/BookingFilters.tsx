@@ -11,7 +11,8 @@ import {
 } from 'lucide-react';
 
 export interface BookingFiltersType {
-    status: 'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'declined';
+    // CANONICAL booking states only - 'declined' is display-only
+    status: 'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
     passengerSearch: string;
     driverSearch: string;
     rideSearch: string;

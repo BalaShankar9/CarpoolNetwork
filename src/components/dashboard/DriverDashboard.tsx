@@ -237,9 +237,14 @@ export default function DriverDashboard() {
 
     const handleRejectBooking = async (bookingId: string) => {
         try {
+            // CANONICAL: Use 'cancelled' status with cancellation_reason indicating driver declined
             const { error } = await supabase
                 .from('ride_bookings')
-                .update({ status: 'rejected' })
+                .update({
+                    status: 'cancelled',
+                    cancellation_reason: 'Declined by driver',
+                    cancelled_at: new Date().toISOString(),
+                })
                 .eq('id', bookingId);
 
             if (error) throw error;

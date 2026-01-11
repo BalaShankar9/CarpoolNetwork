@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import {
   LayoutDashboard,
@@ -58,8 +58,7 @@ interface RecentActivity {
 type TabType = 'overview' | 'moderation' | 'audit' | 'reports' | 'settings';
 
 export default function AdminDashboard() {
-  const { user, isAdmin } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,12 +66,8 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
   useEffect(() => {
-    if (!isAdmin) {
-      navigate('/');
-      return;
-    }
     fetchDashboardData();
-  }, [isAdmin, navigate]);
+  }, []);
 
   const fetchDashboardData = async () => {
     setRefreshing(true);
@@ -190,8 +185,6 @@ export default function AdminDashboard() {
       case 'feedback': return <MessageSquare className="w-4 h-4 text-teal-500" />;
     }
   };
-
-  if (!isAdmin) return null;
 
   const statCards = [
     { label: 'Total Users', value: stats?.totalUsers || 0, icon: Users, color: 'blue', link: '/admin/users' },
@@ -444,5 +437,4 @@ export default function AdminDashboard() {
     </AdminLayout>
   );
 }
-
 

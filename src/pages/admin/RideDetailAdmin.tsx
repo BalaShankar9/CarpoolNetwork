@@ -96,7 +96,7 @@ export default function RideDetailAdmin() {
     const { rideId } = useParams<{ rideId: string }>();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const { isAdmin, hasRole } = useAuth();
+    const { hasRole } = useAuth();
 
     const [ride, setRide] = useState<RideDetail | null>(null);
     const [bookings, setBookings] = useState<RideBooking[]>([]);
@@ -113,14 +113,10 @@ export default function RideDetailAdmin() {
     const [copiedId, setCopiedId] = useState(false);
 
     useEffect(() => {
-        if (!isAdmin) {
-            navigate('/');
-            return;
-        }
         if (rideId) {
             fetchRideDetails();
         }
-    }, [isAdmin, rideId]);
+    }, [rideId]);
 
     const fetchRideDetails = async () => {
         if (!rideId) return;
@@ -314,22 +310,28 @@ export default function RideDetailAdmin() {
         }
     };
 
-    const getStatusBadge = (status: string) => {
+    const getStatusBadge = (status: string, cancellationReason?: string | null) => {
+        // CANONICAL ride states: active, in-progress, completed, cancelled
+        // CANONICAL booking states: pending, confirmed, completed, cancelled ('Declined' is display-only)
+        let displayStatus = status;
+        if (status === 'cancelled' && cancellationReason?.toLowerCase().includes('driver')) {
+            displayStatus = 'Declined';
+        }
         const badges: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
             active: { bg: 'bg-green-100', text: 'text-green-800', icon: <CheckCircle className="w-4 h-4" /> },
             completed: { bg: 'bg-blue-100', text: 'text-blue-800', icon: <Check className="w-4 h-4" /> },
             cancelled: { bg: 'bg-red-100', text: 'text-red-800', icon: <XCircle className="w-4 h-4" /> },
-            in_progress: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: <Clock className="w-4 h-4" /> },
+            'in-progress': { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: <Clock className="w-4 h-4" /> },
             pending: { bg: 'bg-orange-100', text: 'text-orange-800', icon: <Clock className="w-4 h-4" /> },
             confirmed: { bg: 'bg-green-100', text: 'text-green-800', icon: <CheckCircle className="w-4 h-4" /> },
-            declined: { bg: 'bg-gray-100', text: 'text-gray-800', icon: <XCircle className="w-4 h-4" /> },
+            Declined: { bg: 'bg-gray-100', text: 'text-gray-800', icon: <XCircle className="w-4 h-4" /> },
         };
-        const badge = badges[status] || { bg: 'bg-gray-100', text: 'text-gray-800', icon: null };
+        const badge = badges[displayStatus] || { bg: 'bg-gray-100', text: 'text-gray-800', icon: null };
 
         return (
             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${badge.bg} ${badge.text}`}>
                 {badge.icon}
-                {status.replace('_', ' ')}
+                {displayStatus.replace('-', ' ')}
             </span>
         );
     };
@@ -355,8 +357,6 @@ export default function RideDetailAdmin() {
             return `in ${days} days`;
         }
     };
-
-    if (!isAdmin) return null;
 
     if (loading) {
         return (

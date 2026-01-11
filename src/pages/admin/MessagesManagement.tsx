@@ -23,7 +23,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface ConversationSummary {
     id: string;
@@ -79,7 +78,6 @@ interface FlaggedMessage {
 type TabType = 'conversations' | 'flagged' | 'muted' | 'system';
 
 export default function MessagesManagement() {
-    const { isAdmin } = useAuth();
     const navigate = useNavigate();
 
     // State
@@ -102,12 +100,8 @@ export default function MessagesManagement() {
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
-        if (!isAdmin) {
-            navigate('/');
-            return;
-        }
         fetchData();
-    }, [isAdmin, activeTab, currentPage, filters]);
+    }, [activeTab, currentPage, filters]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -225,8 +219,6 @@ export default function MessagesManagement() {
         { id: 'muted' as TabType, label: 'Muted Users', icon: VolumeX, count: stats?.currently_muted },
         { id: 'system' as TabType, label: 'System Messages', icon: Bell },
     ];
-
-    if (!isAdmin) return null;
 
     return (
         <AdminLayout

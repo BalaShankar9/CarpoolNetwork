@@ -80,7 +80,7 @@ interface RideStats {
 }
 
 export default function RidesManagement() {
-    const { isAdmin, hasRole } = useAuth();
+    const { hasRole } = useAuth();
     const navigate = useNavigate();
 
     // Data state
@@ -117,13 +117,9 @@ export default function RidesManagement() {
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!isAdmin) {
-            navigate('/');
-            return;
-        }
         fetchRides();
         fetchStats();
-    }, [isAdmin, currentPage, pageSize, sortField, sortOrder, filters]);
+    }, [currentPage, pageSize, sortField, sortOrder, filters]);
 
     const fetchRides = async () => {
         setLoading(true);
@@ -256,12 +252,13 @@ export default function RidesManagement() {
 
     const fetchStats = async () => {
         try {
+            // CANONICAL ride states: active, in-progress, completed, cancelled
             const [totalRes, activeRes, completedRes, cancelledRes, inProgressRes] = await Promise.all([
                 supabase.from('rides').select('id', { count: 'exact', head: true }),
                 supabase.from('rides').select('id', { count: 'exact', head: true }).eq('status', 'active'),
                 supabase.from('rides').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
                 supabase.from('rides').select('id', { count: 'exact', head: true }).eq('status', 'cancelled'),
-                supabase.from('rides').select('id', { count: 'exact', head: true }).eq('status', 'in_progress'),
+                supabase.from('rides').select('id', { count: 'exact', head: true }).eq('status', 'in-progress'),
             ]);
 
             setStats({
@@ -410,18 +407,19 @@ export default function RidesManagement() {
     };
 
     const getStatusBadge = (status: string) => {
+        // CANONICAL ride states: active, in-progress, completed, cancelled
         const badges: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
             active: { bg: 'bg-green-100', text: 'text-green-800', icon: <CheckCircle className="w-3.5 h-3.5" /> },
             completed: { bg: 'bg-blue-100', text: 'text-blue-800', icon: <Check className="w-3.5 h-3.5" /> },
             cancelled: { bg: 'bg-red-100', text: 'text-red-800', icon: <XCircle className="w-3.5 h-3.5" /> },
-            in_progress: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: <Clock className="w-3.5 h-3.5" /> },
+            'in-progress': { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: <Clock className="w-3.5 h-3.5" /> },
         };
         const badge = badges[status] || { bg: 'bg-gray-100', text: 'text-gray-800', icon: null };
 
         return (
             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
                 {badge.icon}
-                {status.replace('_', ' ')}
+                {status.replace('-', ' ')}
             </span>
         );
     };
@@ -435,8 +433,6 @@ export default function RidesManagement() {
     };
 
     const totalPages = Math.ceil(totalCount / pageSize);
-
-    if (!isAdmin) return null;
 
     return (
         <AdminLayout

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import {
   Activity,
@@ -44,21 +44,13 @@ interface DatabaseStats {
 }
 
 export default function Diagnostics() {
-  const { user, session, isAdmin } = useAuth();
-  const navigate = useNavigate();
+  const { user, session } = useAuth();
   const [results, setResults] = useState<TestResult[]>([]);
   const [running, setRunning] = useState(false);
   const [copied, setCopied] = useState(false);
   const [dbStats, setDbStats] = useState<DatabaseStats | null>(null);
   const [mapsApiConfigured, setMapsApiConfigured] = useState<boolean | null>(null);
   const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-
-  useEffect(() => {
-    if (!isAdmin) {
-      navigate('/');
-      return;
-    }
-  }, [isAdmin, navigate]);
 
   useEffect(() => {
     let active = true;
@@ -638,10 +630,6 @@ export default function Diagnostics() {
     };
     return colors[category] || 'border-l-gray-500';
   };
-
-  if (!isAdmin) {
-    return null;
-  }
 
   const passCount = results.filter(r => r.status === 'pass').length;
   const failCount = results.filter(r => r.status === 'fail').length;

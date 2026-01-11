@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   CheckCircle,
   XCircle,
@@ -17,7 +16,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';
-import { useAuth } from '../../contexts/AuthContext';
 import AdminLayout from '../../components/admin/AdminLayout';
 
 interface DriverLicense {
@@ -71,8 +69,6 @@ interface PendingVerification {
 }
 
 export default function VerificationQueue() {
-  const { isAdmin, hasPermission } = useAuth();
-  const navigate = useNavigate();
   const [pendingLicenses, setPendingLicenses] = useState<DriverLicense[]>([]);
   const [pendingInsurance, setPendingInsurance] = useState<VehicleInsurance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,12 +79,8 @@ export default function VerificationQueue() {
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
-    if (!isAdmin && !hasPermission('verification.view')) {
-      navigate('/');
-      return;
-    }
     fetchPendingVerifications();
-  }, [isAdmin, hasPermission, navigate]);
+  }, []);
 
   const fetchPendingVerifications = async () => {
     setLoading(true);

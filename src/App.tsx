@@ -34,6 +34,7 @@ const RideDetails = lazy(() => import('./pages/RideDetails'));
 const BookingDetails = lazy(() => import('./pages/BookingDetails'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const Unauthorized = lazy(() => import('./pages/Unauthorized'));
 const Preferences = lazy(() => import('./pages/Preferences'));
 const BetaManagement = lazy(() => import('./pages/admin/BetaManagement'));
 const FeedbackManagement = lazy(() => import('./pages/admin/FeedbackManagement'));
@@ -101,6 +102,29 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   // Require email verification to access protected routes
   if (!isEmailVerified) {
     return <Navigate to="/verify-email" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function AdminRoute({ children }: { children: ReactNode }) {
+  const { user, loading, isEmailVerified, isAdmin } = useAuth();
+
+  // P0 SECURITY FIX: Router-level admin guard
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (!user) {
+    return <Navigate to="/signin" replace />;
+  }
+
+  if (!isEmailVerified) {
+    return <Navigate to="/verify-email" replace />;
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return <>{children}</>;
@@ -343,165 +367,172 @@ function AppContent() {
         } />
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/admin/beta" element={
+        <Route path="/unauthorized" element={
           <ProtectedRoute>
-            <BetaManagement />
+            <Layout>
+              <Unauthorized />
+            </Layout>
           </ProtectedRoute>
+        } />
+        <Route path="/admin/beta" element={
+          <AdminRoute>
+            <BetaManagement />
+          </AdminRoute>
         } />
         <Route path="/admin/feedback" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <FeedbackManagement />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/diagnostics" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <Diagnostics />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <AdminDashboard />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/users" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <UserManagement />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/users/:userId" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <UserDetailAdmin />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/bugs" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <BugReports />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/verifications" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <VerificationQueue />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/safety" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <SafetyReports />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/safety/report/:reportId" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <SafetyReportDetail />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/safety/dashboard" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <SafetyDashboard />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/analytics" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <AdvancedAnalytics />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/activity" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <LiveActivityMonitor />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/bulk-operations" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <BulkOperations />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/performance" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <PerformanceMonitor />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/settings" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <PlatformSettings />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/health" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <SystemHealth />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/admins" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <AdminManagement />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/audit" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <AuditLog />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/rides" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <RidesManagement />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/rides/:rideId" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <RideDetailAdmin />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/bookings" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <BookingsManagement />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/bookings/:bookingId" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <BookingDetailAdmin />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/messages" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <MessagesManagement />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/messages/muted" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <MutedUsersManagement />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/messages/:id" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <ConversationDetailAdmin />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/community" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <CommunityManagement />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/community/warnings" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <ContentWarnings />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/community/:postId" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <PostDetailAdmin />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/notifications" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <NotificationsManagement />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/notifications/announcements" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <AnnouncementsManagement />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
         <Route path="/admin/notifications/templates" element={
-          <ProtectedRoute>
+          <AdminRoute>
             <NotificationTemplates />
-          </ProtectedRoute>
+          </AdminRoute>
         } />
       </Routes>
     </Suspense>

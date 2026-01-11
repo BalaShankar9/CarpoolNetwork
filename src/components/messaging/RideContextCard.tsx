@@ -6,7 +6,8 @@ interface RideInfo {
     origin: string;
     destination: string;
     departure_time: string;
-    status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+    // CANONICAL ride states: active, in-progress, completed, cancelled
+    status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
     available_seats?: number;
     driver?: {
         id: string;
@@ -31,9 +32,10 @@ interface RideContextCardProps {
     compact?: boolean;
 }
 
-const STATUS_STYLES = {
+const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
     scheduled: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Scheduled' },
-    in_progress: { bg: 'bg-green-100', text: 'text-green-700', label: 'In Progress' },
+    active: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Active' },
+    'in-progress': { bg: 'bg-green-100', text: 'text-green-700', label: 'In Progress' },
     completed: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Completed' },
     cancelled: { bg: 'bg-red-100', text: 'text-red-700', label: 'Cancelled' },
     pending: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Pending' },

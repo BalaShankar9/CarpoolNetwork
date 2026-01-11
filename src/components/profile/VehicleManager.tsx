@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Car, X, Edit, Trash2, Upload, Check, AlertCircle, Loader, Plus, Search, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { getUserVehicles, deactivateVehicle } from '../../services/vehicleService';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface Vehicle {
@@ -67,8 +68,10 @@ export default function VehicleManager() {
   });
 
   useEffect(() => {
-    loadVehicles();
-  }, []);
+    if (profile?.id) {
+      loadVehicles();
+    }
+  }, [profile?.id]);
 
   useEffect(() => {
     if (editingVehicle) {
@@ -87,15 +90,13 @@ export default function VehicleManager() {
   }, [editingVehicle]);
 
   const loadVehicles = async () => {
+    if (!profile?.id) return;
+
     try {
-      const { data, error } = await supabase
-        .from('vehicles')
-        .select('*')
-        .eq('user_id', profile?.id)
-        .order('created_at', { ascending: false });
+      const { data, error } = await getUserVehicles(profile.id, { activeOnly: true });
 
       if (error) throw error;
-      setVehicles(data || []);
+      setVehicles(data);
     } catch (err: any) {
       console.error('Failed to load vehicles:', err);
     }
@@ -332,39 +333,17 @@ export default function VehicleManager() {
     setSuccess('');
 
     try {
-      // First check if this vehicle is used in any active rides
-      const { data: activeRides, error: ridesError } = await supabase
-        .from('rides')
-        .select('id')
-        .eq('vehicle_id', vehicleId)
-        .in('status', ['pending', 'in_progress', 'scheduled', 'active'])
-        .limit(1);
+      const { error: deactivateError } = await deactivateVehicle(vehicleId);
 
-      if (ridesError) {
-        console.warn('Could not check for active rides:', ridesError);
-      }
-
-      if (activeRides && activeRides.length > 0) {
-        setError('Cannot delete this vehicle - it is currently assigned to active rides. Please complete or cancel those rides first.');
-        setDeleteConfirm({ show: false, vehicle: null });
-        setDeleting(false);
-        return;
-      }
-
-      const { error: deleteError } = await supabase
-        .from('vehicles')
-        .delete()
-        .eq('id', vehicleId)
-        .eq('user_id', profile?.id); // Extra safety check
-
-      if (deleteError) throw deleteError;
+      if (deactivateError) throw deactivateError;
 
       setSuccess('Vehicle deleted successfully!');
       setDeleteConfirm({ show: false, vehicle: null });
       await loadVehicles();
     } catch (err: any) {
       console.error('Delete error:', err);
-      setError(err.message || 'Failed to delete vehicle. Please try again.');
+      const message = err?.message || 'Failed to delete vehicle. Please try again.';
+      setError(message);
     } finally {
       setDeleting(false);
       setDeleteConfirm({ show: false, vehicle: null });
@@ -757,6 +736,7 @@ export default function VehicleManager() {
                 <button
                   onClick={() => handleDelete(vehicle.id)}
                   className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  aria-label="Delete vehicle"
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>

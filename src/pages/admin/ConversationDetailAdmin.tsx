@@ -62,7 +62,7 @@ interface ConversationDetail {
 
 export default function ConversationDetailAdmin() {
     const { id } = useParams<{ id: string }>();
-    const { isAdmin, user } = useAuth();
+    const { user } = useAuth();
     const navigate = useNavigate();
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -80,14 +80,10 @@ export default function ConversationDetailAdmin() {
     const [adminMessage, setAdminMessage] = useState('');
 
     useEffect(() => {
-        if (!isAdmin) {
-            navigate('/');
-            return;
-        }
         if (id) {
             fetchConversation();
         }
-    }, [id, isAdmin]);
+    }, [id]);
 
     useEffect(() => {
         // Scroll to bottom on new messages
@@ -219,8 +215,6 @@ export default function ConversationDetailAdmin() {
             minute: '2-digit',
         });
     };
-
-    if (!isAdmin) return null;
 
     return (
         <AdminLayout

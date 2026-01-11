@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Car, Calendar, MapPin, Users, Edit2, Trash2, Eye, AlertCircle, XCircle, CheckCircle, Star, Shield, MessageSquare, Phone, Navigation } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { deleteRideForDriver, syncExpiredRideState } from '../services/rideService';
 import { toast } from '../lib/toast';
 import { checkRateLimit, recordRateLimitAction } from '../lib/rateLimiting';
 import { getOrCreateRideConversation } from '../lib/chatHelpers';
@@ -32,6 +33,7 @@ interface Ride {
   destination_lat?: number | null;
   destination_lng?: number | null;
   departure_time: string;
+  available_until?: string | null;
   time_type?: string | null;
   available_seats: number;
   total_seats: number;
@@ -52,6 +54,7 @@ interface Booking {
     origin: string;
     destination: string;
     departure_time: string;
+    available_until?: string | null;
     driver: {
       id: string;
       full_name: string;
@@ -88,6 +91,7 @@ interface BookingRequest {
     origin: string;
     destination: string;
     departure_time: string;
+    available_until?: string | null;
     available_seats: number;
   };
 }
@@ -201,11 +205,26 @@ export default function MyRides() {
     }
   };
 
+  const syncExpiredRides = async () => {
+    try {
+      const { error } = await syncExpiredRideState();
+      if (error && import.meta.env.DEV) {
+        console.warn('Failed to sync expired rides:', error);
+      }
+    } catch (error) {
+      console.error('Failed to sync expired rides:', error);
+    }
+  };
+
   const loadRides = async () => {
     if (!user) return;
 
     setLoading(true);
     try {
+      if (activeTab === 'offered' || activeTab === 'passengers' || activeTab === 'requests') {
+        await syncExpiredRides();
+      }
+
       if (activeTab === 'offered') {
         const { data, error } = await supabase
           .from('rides')
@@ -225,6 +244,7 @@ export default function MyRides() {
               origin,
               destination,
               departure_time,
+              available_until,
               driver:profiles!rides_driver_id_fkey(
                 id,
                 full_name,
@@ -270,6 +290,7 @@ export default function MyRides() {
                 origin,
                 destination,
                 departure_time,
+                available_until,
                 available_seats
               )
             `)
@@ -318,6 +339,7 @@ export default function MyRides() {
                 origin,
                 destination,
                 departure_time,
+                available_until,
                 available_seats
               )
             `)
@@ -393,7 +415,7 @@ export default function MyRides() {
       .from('ride_bookings')
       .select('id')
       .eq('ride_id', rideId)
-      .eq('status', 'confirmed');
+      .in('status', ['confirmed', 'active']);
 
     if (bookings && bookings.length > 0) {
       toast.error('Cannot delete a ride with confirmed passengers. Cancel the ride instead.');
@@ -407,18 +429,15 @@ export default function MyRides() {
     setDeletingId(rideId);
     setConfirmLoading(true);
     try {
-      const { error } = await supabase
-        .from('rides')
-        .delete()
-        .eq('id', rideId);
+      const { error } = await deleteRideForDriver(rideId);
 
       if (error) throw error;
 
       setOfferedRides(prev => prev.filter(ride => ride.id !== rideId));
       toast.success('Ride deleted successfully!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting ride:', error);
-      toast.error('Failed to delete ride. Please try again.');
+      toast.error(error?.message || 'Failed to delete ride. Please try again.');
     } finally {
       setDeletingId(null);
       setConfirmLoading(false);
@@ -432,7 +451,7 @@ export default function MyRides() {
       .from('ride_bookings')
       .select('id')
       .eq('ride_id', rideId)
-      .eq('status', 'confirmed');
+      .in('status', ['confirmed', 'active']);
 
     const hasPassengers = bookings && bookings.length > 0;
     setConfirmAction({ type: 'cancel-ride', rideId, hasPassengers } as ConfirmAction);
@@ -672,8 +691,12 @@ export default function MyRides() {
     });
   };
 
-  const isExpired = (departureTime: string) => {
-    return new Date(departureTime) < new Date();
+  const isExpired = (departureTime: string, availableUntil?: string | null) => {
+    const now = new Date();
+    if (availableUntil) {
+      return new Date(availableUntil) < now;
+    }
+    return new Date(departureTime) < now;
   };
 
   const getStatusColor = (status: string, expired: boolean = false) => {
@@ -701,6 +724,143 @@ export default function MyRides() {
   const getStatusLabel = (status: string, expired: boolean = false) => {
     if (expired) return 'expired';
     return status;
+  };
+
+  const activePassengers = confirmedPassengers.filter((passenger) => (
+    !isExpired(passenger.ride.departure_time, passenger.ride.available_until)
+  ));
+  const archivedPassengers = confirmedPassengers.filter((passenger) => (
+    isExpired(passenger.ride.departure_time, passenger.ride.available_until)
+  ));
+
+  const renderPassengerCard = (passenger: BookingRequest, archived: boolean) => {
+    if (!passenger.passenger || !passenger.ride) {
+      return null;
+    }
+
+    return (
+      <div
+        key={passenger.id}
+        className={`rounded-xl p-6 border ${archived
+          ? 'bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200'
+          : 'bg-gradient-to-r from-green-50 to-blue-50 border-green-200'}`}
+      >
+        <div className="flex items-start gap-4 mb-4">
+          <ClickableUserProfile
+            user={{
+              id: passenger.passenger.id,
+              full_name: passenger.passenger.full_name,
+              avatar_url: passenger.passenger.avatar_url,
+              profile_photo_url: passenger.passenger.profile_photo_url
+            }}
+            size="xl"
+            rating={passenger.passenger.average_rating}
+          />
+          <div className="flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <h3
+                className="font-bold text-xl text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+                onClick={() => navigate(`/user/${passenger.passenger.id}`)}
+              >
+                {passenger.passenger.full_name}
+              </h3>
+              {archived && (
+                <span className="px-2 py-1 text-xs font-semibold uppercase tracking-wide bg-gray-200 text-gray-700 rounded-full">
+                  Archived
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-3 mt-1 text-sm">
+              <span className="flex items-center gap-1">
+                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                {passenger.passenger.average_rating.toFixed(1)}
+              </span>
+              <span className="text-gray-600">
+                {passenger.passenger.total_bookings} bookings
+              </span>
+              <span className="flex items-center gap-1 font-medium text-green-600">
+                <Shield className="w-4 h-4" />
+                {passenger.passenger.reliability_score.toFixed(1)} reliability
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg p-4 mb-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-blue-600" />
+                Ride Details
+              </h4>
+              <div className="space-y-1 text-sm text-gray-700">
+                <p><span className="font-medium">Route:</span> {passenger.ride.origin} → {passenger.ride.destination}</p>
+                <p><span className="font-medium">Departure:</span> {formatDateTime(passenger.ride.departure_time)}</p>
+                <p><span className="font-medium">Seats Booked:</span> {passenger.seats_requested}</p>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-blue-600" />
+                Pickup & Drop-off
+              </h4>
+              <div className="space-y-1 text-sm text-gray-700">
+                <p><span className="font-medium">Pickup:</span> {passenger.pickup_location}</p>
+                <p><span className="font-medium">Drop-off:</span> {passenger.dropoff_location}</p>
+                <p><span className="font-medium">Confirmed:</span> {new Date(passenger.updated_at).toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={async () => {
+              if (archived || !user?.id) return;
+              const rateLimitCheck = await checkRateLimit(user.id, 'conversation');
+              if (!rateLimitCheck.allowed) {
+                toast.error(rateLimitCheck.error || 'Too many new conversations. Please wait.');
+                return;
+              }
+              const conversationId = await getOrCreateRideConversation(
+                passenger.ride.id,
+                user.id,
+                passenger.passenger.id
+              );
+              if (!conversationId) {
+                toast.error('Unable to start this conversation.');
+                return;
+              }
+              await recordRateLimitAction(user.id, user.id, 'conversation');
+              navigate(`/messages?c=${conversationId}`, { state: { conversationId } });
+            }}
+            disabled={archived}
+            className={`flex-1 px-6 py-3 rounded-lg font-medium flex items-center justify-center gap-2 ${archived
+              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700 transition-colors'}`}
+          >
+            <MessageSquare className="w-5 h-5" />
+            {archived ? 'Messaging Closed' : 'Message Passenger'}
+          </button>
+          {!archived && passenger.passenger.phone && (
+            <a
+              href={`tel:${passenger.passenger.phone}`}
+              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+            >
+              <Phone className="w-5 h-5" />
+              Call
+            </a>
+          )}
+        </div>
+
+        {archived && (
+          <p className="mt-3 text-xs text-gray-500 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            Ride has expired. Messaging is closed for archived passengers.
+          </p>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -746,9 +906,9 @@ export default function MyRides() {
             }`}
           >
             Passengers
-            {confirmedPassengers.length > 0 && (
+            {activePassengers.length > 0 && (
               <span className="ml-2 inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-green-600 rounded-full">
-                {confirmedPassengers.length}
+                {activePassengers.length}
               </span>
             )}
           </button>
@@ -819,7 +979,7 @@ export default function MyRides() {
                 </div>
               ) : (
                 offeredRides.map((ride) => {
-                  const expired = isExpired(ride.departure_time);
+                  const expired = isExpired(ride.departure_time, ride.available_until);
                   const isCancelled = ride.status === 'cancelled';
 
                   return (
@@ -1094,116 +1254,32 @@ export default function MyRides() {
               )}
             </div>
           ) : activeTab === 'passengers' ? (
-            <div className="space-y-4">
-              {confirmedPassengers.length === 0 ? (
+            <div className="space-y-6">
+              {activePassengers.length === 0 && archivedPassengers.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <Users className="w-16 h-16 mx-auto mb-4 text-gray-400" />
                   <p className="font-medium mb-2">No confirmed passengers</p>
                   <p className="text-sm">Passengers will appear here after you accept booking requests</p>
                 </div>
               ) : (
-                confirmedPassengers.map((passenger) => {
-                  if (!passenger.passenger || !passenger.ride) {
-                    return null;
-                  }
-
-                  return (
-                    <div key={passenger.id} className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6 border border-green-200">
-                      <div className="flex items-start gap-4 mb-4">
-                        <ClickableUserProfile
-                          user={{
-                            id: passenger.passenger.id,
-                            full_name: passenger.passenger.full_name,
-                            avatar_url: passenger.passenger.avatar_url,
-                            profile_photo_url: passenger.passenger.profile_photo_url
-                          }}
-                          size="xl"
-                          rating={passenger.passenger.average_rating}
-                        />
-                        <div className="flex-1">
-                          <h3 className="font-bold text-xl text-gray-900 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => navigate(`/user/${passenger.passenger.id}`)}>{passenger.passenger.full_name}</h3>
-                          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm">
-                            <span className="flex items-center gap-1">
-                              <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                              {passenger.passenger.average_rating.toFixed(1)}
-                            </span>
-                            <span className="text-gray-600">
-                              {passenger.passenger.total_bookings} bookings
-                            </span>
-                            <span className="flex items-center gap-1 font-medium text-green-600">
-                              <Shield className="w-4 h-4" />
-                              {passenger.passenger.reliability_score.toFixed(1)} reliability
-                            </span>
-                          </div>
-                        </div>
+                <>
+                  <div className="space-y-4">
+                    {activePassengers.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500 border border-dashed border-gray-200 rounded-xl">
+                        <p className="font-medium mb-1">No active passengers</p>
+                        <p className="text-sm">Confirmed passengers appear here before departure</p>
                       </div>
-
-                      <div className="bg-white rounded-lg p-4 mb-4">
-                        <div className="grid md:grid-cols-2 gap-4">
-                          <div>
-                            <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                              <MapPin className="w-4 h-4 text-blue-600" />
-                              Ride Details
-                            </h4>
-                            <div className="space-y-1 text-sm text-gray-700">
-                              <p><span className="font-medium">Route:</span> {passenger.ride.origin} → {passenger.ride.destination}</p>
-                              <p><span className="font-medium">Departure:</span> {formatDateTime(passenger.ride.departure_time)}</p>
-                              <p><span className="font-medium">Seats Booked:</span> {passenger.seats_requested}</p>
-                            </div>
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-blue-600" />
-                              Pickup & Drop-off
-                            </h4>
-                            <div className="space-y-1 text-sm text-gray-700">
-                              <p><span className="font-medium">Pickup:</span> {passenger.pickup_location}</p>
-                              <p><span className="font-medium">Drop-off:</span> {passenger.dropoff_location}</p>
-                              <p><span className="font-medium">Confirmed:</span> {new Date(passenger.updated_at).toLocaleString()}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-3">
-                        <button
-                          onClick={async () => {
-                            if (!user?.id) return;
-                            const rateLimitCheck = await checkRateLimit(user.id, 'conversation');
-                            if (!rateLimitCheck.allowed) {
-                              toast.error(rateLimitCheck.error || 'Too many new conversations. Please wait.');
-                              return;
-                            }
-                            const conversationId = await getOrCreateRideConversation(
-                              passenger.ride.id,
-                              user.id,
-                              passenger.passenger.id
-                            );
-                            if (!conversationId) {
-                              toast.error('Unable to start this conversation.');
-                              return;
-                            }
-                            await recordRateLimitAction(user.id, user.id, 'conversation');
-                            navigate(`/messages?c=${conversationId}`, { state: { conversationId } });
-                          }}
-                          className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
-                        >
-                          <MessageSquare className="w-5 h-5" />
-                          Message Passenger
-                        </button>
-                        {passenger.passenger.phone && (
-                          <a
-                            href={`tel:${passenger.passenger.phone}`}
-                            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
-                          >
-                            <Phone className="w-5 h-5" />
-                            Call
-                          </a>
-                        )}
-                      </div>
+                    ) : (
+                      activePassengers.map((passenger) => renderPassengerCard(passenger, false))
+                    )}
+                  </div>
+                  {archivedPassengers.length > 0 && (
+                    <div className="space-y-4">
+                      <div className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Archived</div>
+                      {archivedPassengers.map((passenger) => renderPassengerCard(passenger, true))}
                     </div>
-                  );
-                })
+                  )}
+                </>
               )}
             </div>
           ) : activeTab === 'booked' ? (
@@ -1216,7 +1292,7 @@ export default function MyRides() {
                 </div>
               ) : (
                 bookedRides.map((booking) => {
-                  const expired = isExpired(booking.ride.departure_time);
+                  const expired = isExpired(booking.ride.departure_time, booking.ride.available_until);
                   const isCancelled = booking.status === 'cancelled';
                   const canCancel = !expired && !isCancelled && (booking.status === 'pending' || booking.status === 'confirmed');
 

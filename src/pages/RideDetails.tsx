@@ -137,6 +137,8 @@ export default function RideDetails() {
     setSelectedRoute(route);
   };
 
+  // P0 ATOMICITY GUARANTEE: If RPC succeeds → booking + notification both exist
+  // If RPC fails → neither booking nor notification exist (transaction rollback)
   const requestRide = async (seats: number = 1) => {
     if (!user || !ride) return;
 
@@ -545,7 +547,7 @@ export default function RideDetails() {
 
         {ride.driver_id !== user?.id && (
           <div className="p-6 bg-gray-50">
-            {ride.available_seats === 0 && (!userBooking || userBooking.status === 'cancelled') ? (
+            {ride.available_seats === 0 && (!userBooking || userBooking.status === 'cancelled') && (
               <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-6 text-center">
                 <h3 className="font-bold text-amber-900 text-lg mb-2">Fully Booked</h3>
                 <p className="text-amber-800 mb-4">
@@ -558,7 +560,8 @@ export default function RideDetails() {
                   Browse Other Rides
                 </button>
               </div>
-            ) : userBooking && userBooking.status !== 'cancelled' ? (
+            )}
+            {userBooking && userBooking.status !== 'cancelled' && (
               <div className="space-y-4">
                 <div className="bg-white border-2 border-green-500 rounded-xl p-6">
                   <div className="flex items-center gap-3 mb-3">
@@ -596,7 +599,8 @@ export default function RideDetails() {
                   </button>
                 )}
               </div>
-            ) : userBooking && userBooking.status === 'cancelled' ? (
+            )}
+            {userBooking && userBooking.status === 'cancelled' && (
               <div className="bg-white border-2 border-red-200 rounded-xl p-6">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
@@ -607,19 +611,9 @@ export default function RideDetails() {
                     <p className="text-sm text-gray-600">You cancelled this booking</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setShowSeatSelector(true)}
-                  disabled={requesting || ride.available_seats === 0}
-                  className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-3"
-                >
-                  {requesting
-                    ? 'Sending Request...'
-                    : ride.available_seats === 0
-                      ? 'No Seats Available'
-                      : 'Request Again'}
-                </button>
               </div>
-            ) : (
+            )}
+            {ride.available_seats > 0 && (
               <button
                 onClick={() => setShowSeatSelector(true)}
                 disabled={requesting || ride.available_seats === 0}

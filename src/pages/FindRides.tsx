@@ -320,6 +320,9 @@ export default function FindRides() {
     }
   };
 
+  // P0 FIX: Booking creation routed through request_booking() RPC (seat-safe)
+  // P0 ATOMICITY GUARANTEE: If RPC succeeds → booking + notification both exist
+  // If RPC fails → neither booking nor notification exist (transaction rollback)
   const requestRide = async (rideId: string) => {
     if (!user) return;
 
@@ -330,29 +333,36 @@ export default function FindRides() {
     }
 
     try {
-      const { error } = await supabase
-        .from('ride_bookings')
-        .insert([{
-          ride_id: rideId,
-          passenger_id: user.id,
-          pickup_location: origin || ride.origin,
-          pickup_lat: ride.origin_lat,
-          pickup_lng: ride.origin_lng,
-          dropoff_location: destination || ride.destination,
-          dropoff_lat: ride.destination_lat,
-          dropoff_lng: ride.destination_lng,
-          seats_requested: seats,
-        }]);
+      const { data: bookingId, error } = await supabase.rpc('request_booking', {
+        p_ride_id: rideId,
+        p_pickup_location: origin || ride.origin,
+        p_pickup_lat: ride.origin_lat,
+        p_pickup_lng: ride.origin_lng,
+        p_dropoff_location: destination || ride.destination,
+        p_dropoff_lat: ride.destination_lat,
+        p_dropoff_lng: ride.destination_lng,
+        p_seats_requested: seats,
+      });
 
-      if (error) throw error;
-      toast.success('Ride request sent successfully!');
+      if (error) {
+        const errorMsg = error.message.toLowerCase();
+
+        if (errorMsg.includes('not enough seats')) {
+          toast.error('Sorry, not enough seats available. Please try fewer seats or refresh the page.');
+        } else if (errorMsg.includes('not active')) {
+          toast.error('This ride is no longer active.');
+        } else if (errorMsg.includes('already requested') || error.code === '23505') {
+          toast.info('You have already requested this ride');
+        } else {
+          toast.error('Failed to request ride. Please try again.');
+        }
+      } else {
+        toast.success('Ride request sent successfully!');
+      }
       loadAllRides();
     } catch (error: any) {
-      if (error.code === '23505') {
-        toast.info('You have already requested this ride');
-      } else {
-        toast.error('Failed to request ride. Please try again.');
-      }
+      toast.error('Failed to request ride. Please try again.');
+      loadAllRides();
     }
   };
 
@@ -708,7 +718,7 @@ export default function FindRides() {
                       <Eye className="w-4 h-4" />
                       View Details
                     </button>
-                    {ride.userBooking && ride.userBooking.status !== 'cancelled' ? (
+                    {ride.userBooking && ride.userBooking.status !== 'cancelled' && (
                       <button
                         type="button"
                         onClick={(event) => {
@@ -719,18 +729,17 @@ export default function FindRides() {
                       >
                         View Booking
                       </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          requestRide(ride.id);
-                        }}
-                        className="flex-1 lg:flex-none px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium whitespace-nowrap"
-                      >
-                        Request Ride
-                      </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        requestRide(ride.id);
+                      }}
+                      className="flex-1 lg:flex-none px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium whitespace-nowrap"
+                    >
+                      Request Ride
+                    </button>
                   </div>
                 </div>
               </div>

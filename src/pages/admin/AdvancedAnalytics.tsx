@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import type { KeyboardEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import {
   TrendingUp,
@@ -24,7 +23,6 @@ import {
   Route,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 import { getRideTypeInfo, RIDE_TYPE_LIST } from '../../types/rideTypes';
 
 interface MetricCard {
@@ -42,8 +40,6 @@ interface ChartData {
 }
 
 export default function AdvancedAnalytics() {
-  const { isAdmin } = useAuth();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
   const [comparisonEnabled, setComparisonEnabled] = useState(false);
@@ -66,12 +62,8 @@ export default function AdvancedAnalytics() {
   const [communityGrowth, setCommunityGrowth] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!isAdmin) {
-      navigate('/admin');
-      return;
-    }
     loadAnalytics();
-  }, [isAdmin, timeRange]);
+  }, [timeRange]);
 
   const loadAnalytics = async () => {
     setLoading(true);

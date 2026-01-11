@@ -326,7 +326,7 @@ export default function RideEditModal({ ride, onClose, onSaved }: RideEditModalP
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                             <option value="active">Active</option>
-                            <option value="in_progress">In Progress</option>
+                            <option value="in-progress">In Progress</option>
                             <option value="completed">Completed</option>
                             <option value="cancelled">Cancelled</option>
                         </select>

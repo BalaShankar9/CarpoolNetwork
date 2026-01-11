@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import {
   TrendingUp,
@@ -15,7 +14,6 @@ import {
   Calendar,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface SafetyMetrics {
   total_reports: number;
@@ -35,8 +33,6 @@ interface TrendData {
 }
 
 export default function SafetyDashboard() {
-  const { isAdmin } = useAuth();
-  const navigate = useNavigate();
   const [metrics, setMetrics] = useState<SafetyMetrics | null>(null);
   const [severityBreakdown, setSeverityBreakdown] = useState<any[]>([]);
   const [categoryBreakdown, setCategoryBreakdown] = useState<any[]>([]);
@@ -44,12 +40,8 @@ export default function SafetyDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAdmin) {
-      navigate('/admin');
-      return;
-    }
     loadMetrics();
-  }, [isAdmin]);
+  }, []);
 
   const loadMetrics = async () => {
     try {

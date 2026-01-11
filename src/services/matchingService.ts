@@ -545,7 +545,11 @@ class MatchingService {
         }));
     }
 
-    // Process wait list when seat becomes available
+    // P0 FIX: Booking creation routed through request_booking() RPC (seat-safe)
+    // NOTE: Auto-booking from waitlist is DISABLED because request_booking() uses auth.uid()
+    // internally, but waitlist auto-booking needs to create bookings for a different user.
+    // A backend RPC (e.g., system_process_waitlist) is required to enable auto-booking safely.
+    // For now, users are notified when a seat becomes available and must book manually.
     async processWaitList(rideId: string): Promise<void> {
         const waitList = await this.getRideWaitList(rideId);
         if (waitList.length === 0) return;
@@ -562,37 +566,18 @@ class MatchingService {
         // Process first in queue
         const first = waitList[0];
 
-        if (first.autoBook) {
-            // Auto-book for them
-            await supabase.from('ride_bookings').insert({
-                ride_id: rideId,
-                passenger_id: first.userId,
-                status: 'confirmed',
-                seats_booked: 1,
-                created_at: new Date().toISOString(),
-            });
-
-            // Update available seats
-            await supabase
-                .from('rides')
-                .update({ available_seats: ride.available_seats - 1 })
-                .eq('id', rideId);
-        }
-
-        // Notify user
+        // Notify user - they must book manually since auto-booking requires backend RPC
         if (first.notifyOnAvailable) {
             await supabase.from('notifications').insert({
                 user_id: first.userId,
-                type: 'waitlist_available',
+                type: 'WAITLIST_SEAT_AVAILABLE',
                 title: 'Seat Available!',
-                message: first.autoBook
-                    ? 'A seat became available and was automatically booked for you!'
-                    : 'A seat is now available for a ride you were waiting for.',
-                data: { ride_id: rideId, auto_booked: first.autoBook },
+                message: 'A seat is now available for a ride you were waiting for. Book now before it fills up!',
+                data: { ride_id: rideId },
             });
         }
 
-        // Remove from wait list
+        // Remove from wait list after notification
         await this.leaveWaitList(first.userId, rideId);
 
         // Re-order remaining entries

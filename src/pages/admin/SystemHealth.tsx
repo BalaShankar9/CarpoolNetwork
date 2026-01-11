@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import {
     Activity,
@@ -13,7 +12,6 @@ import {
     XCircle,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 import { toast } from '../../lib/toast';
 
 interface DatabaseStats {
@@ -46,8 +44,6 @@ interface HealthScore {
 }
 
 export default function SystemHealth() {
-    const { isAdmin } = useAuth();
-    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -57,12 +53,8 @@ export default function SystemHealth() {
     const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
 
     useEffect(() => {
-        if (!isAdmin) {
-            navigate('/admin');
-            return;
-        }
         loadHealthData();
-    }, [isAdmin, navigate]);
+    }, []);
 
     const loadHealthData = async () => {
         if (loading) {
@@ -127,8 +119,6 @@ export default function SystemHealth() {
                 return <Activity className="w-6 h-6 text-gray-600" />;
         }
     };
-
-    if (!isAdmin) return null;
 
     if (loading) {
         return (

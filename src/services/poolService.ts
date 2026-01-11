@@ -55,7 +55,8 @@ export interface PoolRide {
     ride_id: string;
     scheduled_for: string;
     driver_id: string;
-    status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+    // CANONICAL ride states: active, in-progress, completed, cancelled
+    status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
     created_at: string;
 }
 

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   Shield,
@@ -17,7 +16,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';
-import { useAuth } from '../../contexts/AuthContext';
 import AdminLayout from '../../components/admin/AdminLayout';
 
 interface SafetyReport {
@@ -42,8 +40,6 @@ interface SafetyReport {
 }
 
 export default function SafetyReports() {
-  const { isAdmin, hasPermission } = useAuth();
-  const navigate = useNavigate();
   const [reports, setReports] = useState<SafetyReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -52,12 +48,8 @@ export default function SafetyReports() {
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    if (!isAdmin && !hasPermission('safety.view')) {
-      navigate('/');
-      return;
-    }
     loadReports();
-  }, [isAdmin, hasPermission, filterStatus, filterSeverity]);
+  }, [filterStatus, filterSeverity]);
 
   const loadReports = async () => {
     setLoading(true);

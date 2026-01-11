@@ -448,13 +448,16 @@ class TrustVerificationService {
             .select()
             .single();
 
-        // Notify user
+        // Notify user using canonical SYSTEM type with original_type in data
         await supabase.from('notifications').insert({
             user_id: userId,
-            type: 'badge_earned',
-            title: '🏆 New Badge Earned!',
-            message: `You've earned the "${badgeInfo.name}" badge!`,
-            data: { badge_type: badgeType },
+            type: 'SYSTEM',
+            data: {
+                original_type: 'BADGE_EARNED',
+                badge_type: badgeType,
+                badge_name: badgeInfo.name,
+                message: `You've earned the "${badgeInfo.name}" badge!`,
+            },
         });
 
         return data

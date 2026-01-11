@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import {
   User,
@@ -51,8 +51,7 @@ interface UserHistory {
 
 export default function SafetyReportDetail() {
   const { reportId } = useParams();
-  const navigate = useNavigate();
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const [report, setReport] = useState<ReportDetails | null>(null);
   const [userHistory, setUserHistory] = useState<UserHistory | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,14 +66,10 @@ export default function SafetyReportDetail() {
   const [warningLevel, setWarningLevel] = useState('1');
 
   useEffect(() => {
-    if (!isAdmin) {
-      navigate('/admin');
-      return;
-    }
     if (reportId) {
       loadReportDetails();
     }
-  }, [reportId, isAdmin]);
+  }, [reportId]);
 
   const loadReportDetails = async () => {
     try {

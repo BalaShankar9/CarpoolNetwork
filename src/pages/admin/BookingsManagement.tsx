@@ -29,7 +29,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface AdminBooking {
     id: string;
@@ -74,17 +73,16 @@ interface BookingStats {
     confirmed: number;
     completed: number;
     cancelled: number;
-    declined: number;
+    // Note: 'declined' is display-only. Count driver-declined as cancelled with cancellation_reason containing 'driver'
 }
 
 export default function BookingsManagement() {
-    const { isAdmin } = useAuth();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
 
     // Data state
     const [bookings, setBookings] = useState<AdminBooking[]>([]);
-    const [stats, setStats] = useState<BookingStats>({ total: 0, pending: 0, confirmed: 0, completed: 0, cancelled: 0, declined: 0 });
+    const [stats, setStats] = useState<BookingStats>({ total: 0, pending: 0, confirmed: 0, completed: 0, cancelled: 0 });
     const [totalCount, setTotalCount] = useState(0);
 
     // Loading states
@@ -120,13 +118,9 @@ export default function BookingsManagement() {
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!isAdmin) {
-            navigate('/');
-            return;
-        }
         fetchBookings();
         fetchStats();
-    }, [isAdmin, currentPage, pageSize, sortField, sortOrder, filters]);
+    }, [currentPage, pageSize, sortField, sortOrder, filters]);
 
     const fetchBookings = async () => {
         setLoading(true);
@@ -242,13 +236,14 @@ export default function BookingsManagement() {
 
     const fetchStats = async () => {
         try {
-            const [totalRes, pendingRes, confirmedRes, completedRes, cancelledRes, declinedRes] = await Promise.all([
+            // CANONICAL booking states only: pending, confirmed, completed, cancelled
+            // 'declined' is display-only (cancelled + cancellation_reason contains 'driver')
+            const [totalRes, pendingRes, confirmedRes, completedRes, cancelledRes] = await Promise.all([
                 supabase.from('ride_bookings').select('id', { count: 'exact', head: true }),
                 supabase.from('ride_bookings').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
                 supabase.from('ride_bookings').select('id', { count: 'exact', head: true }).eq('status', 'confirmed'),
                 supabase.from('ride_bookings').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
                 supabase.from('ride_bookings').select('id', { count: 'exact', head: true }).eq('status', 'cancelled'),
-                supabase.from('ride_bookings').select('id', { count: 'exact', head: true }).eq('status', 'declined'),
             ]);
 
             setStats({
@@ -257,7 +252,6 @@ export default function BookingsManagement() {
                 confirmed: confirmedRes.count || 0,
                 completed: completedRes.count || 0,
                 cancelled: cancelledRes.count || 0,
-                declined: declinedRes.count || 0,
             });
         } catch (error) {
             console.error('Error fetching stats:', error);
@@ -404,20 +398,29 @@ export default function BookingsManagement() {
         }
     };
 
-    const getStatusBadge = (status: string) => {
+    // Helper to determine display status (handles 'Declined' as display-only)
+    const getDisplayStatus = (booking: AdminBooking): string => {
+        if (booking.status === 'cancelled' && booking.cancellation_reason?.toLowerCase().includes('driver')) {
+            return 'Declined';
+        }
+        return booking.status.charAt(0).toUpperCase() + booking.status.slice(1);
+    };
+
+    const getStatusBadge = (booking: AdminBooking) => {
+        const displayStatus = getDisplayStatus(booking);
         const badges: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
-            pending: { bg: 'bg-orange-100', text: 'text-orange-800', icon: <Clock className="w-3.5 h-3.5" /> },
-            confirmed: { bg: 'bg-green-100', text: 'text-green-800', icon: <CheckCircle className="w-3.5 h-3.5" /> },
-            completed: { bg: 'bg-blue-100', text: 'text-blue-800', icon: <Check className="w-3.5 h-3.5" /> },
-            cancelled: { bg: 'bg-red-100', text: 'text-red-800', icon: <XCircle className="w-3.5 h-3.5" /> },
-            declined: { bg: 'bg-gray-100', text: 'text-gray-800', icon: <XCircle className="w-3.5 h-3.5" /> },
+            Pending: { bg: 'bg-orange-100', text: 'text-orange-800', icon: <Clock className="w-3.5 h-3.5" /> },
+            Confirmed: { bg: 'bg-green-100', text: 'text-green-800', icon: <CheckCircle className="w-3.5 h-3.5" /> },
+            Completed: { bg: 'bg-blue-100', text: 'text-blue-800', icon: <Check className="w-3.5 h-3.5" /> },
+            Cancelled: { bg: 'bg-red-100', text: 'text-red-800', icon: <XCircle className="w-3.5 h-3.5" /> },
+            Declined: { bg: 'bg-gray-100', text: 'text-gray-800', icon: <XCircle className="w-3.5 h-3.5" /> },
         };
-        const badge = badges[status] || { bg: 'bg-gray-100', text: 'text-gray-800', icon: null };
+        const badge = badges[displayStatus] || { bg: 'bg-gray-100', text: 'text-gray-800', icon: null };
 
         return (
             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
                 {badge.icon}
-                {status}
+                {displayStatus}
             </span>
         );
     };
@@ -431,8 +434,6 @@ export default function BookingsManagement() {
     };
 
     const totalPages = Math.ceil(totalCount / pageSize);
-
-    if (!isAdmin) return null;
 
     return (
         <AdminLayout
@@ -459,14 +460,13 @@ export default function BookingsManagement() {
                 </div>
             }
         >
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+            {/* Stats Cards - CANONICAL booking states only */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                 <StatCard label="Total" value={stats.total} color="gray" />
                 <StatCard label="Pending" value={stats.pending} color="orange" highlight={stats.pending > 0} />
                 <StatCard label="Confirmed" value={stats.confirmed} color="green" />
                 <StatCard label="Completed" value={stats.completed} color="blue" />
                 <StatCard label="Cancelled" value={stats.cancelled} color="red" />
-                <StatCard label="Declined" value={stats.declined} color="gray" />
             </div>
 
             {/* Search Bar */}
@@ -688,7 +688,7 @@ export default function BookingsManagement() {
 
                                             {/* Status */}
                                             <td className="px-4 py-4">
-                                                {getStatusBadge(booking.status)}
+                                                {getStatusBadge(booking)}
                                             </td>
 
                                             {/* Created */}

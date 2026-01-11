@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Car, AlertCircle, CheckCircle, Repeat, MapPin, Clock, Calendar as CalendarIcon, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { getUserVehicles, VehicleRow } from '../services/vehicleService';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from '../components/shared/LocationAutocomplete';
 import EmailVerificationBanner from '../components/shared/EmailVerificationBanner';
@@ -17,6 +18,9 @@ export default function PostRide() {
   const { checkAccess, ServiceGatingModal } = useServiceGating();
   const [hasVehicle, setHasVehicle] = useState(false);
   const [checkingVehicle, setCheckingVehicle] = useState(true);
+  const [vehicleLoadError, setVehicleLoadError] = useState('');
+  const [vehicles, setVehicles] = useState<VehicleRow[]>([]);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [vehicleCapacity, setVehicleCapacity] = useState(4);
   const [rideType, setRideType] = useState<RideType>('daily_commute');
   const [formData, setFormData] = useState({
@@ -41,6 +45,9 @@ export default function PostRide() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
+  const selectedVehicle =
+    vehicles.find((vehicle) => vehicle.id === selectedVehicleId) ?? vehicles[0] ?? null;
+
   useEffect(() => {
     checkForVehicle();
   }, [user]);
@@ -54,27 +61,42 @@ export default function PostRide() {
     }));
   }, [rideType]);
 
+  useEffect(() => {
+    if (!selectedVehicle) return;
+    const passengerSeats = Math.max((selectedVehicle.capacity || 5) - 1, 1);
+    setVehicleCapacity(passengerSeats);
+    setFormData(prev => ({
+      ...prev,
+      availableSeats: Math.min(prev.availableSeats, passengerSeats),
+    }));
+  }, [selectedVehicle?.id, selectedVehicle?.capacity]);
+
   const checkForVehicle = async () => {
     if (!user) return;
 
+    setCheckingVehicle(true);
+    setVehicleLoadError('');
+
     try {
-      const { data, error } = await supabase
-        .from('vehicles')
-        .select('id, capacity')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .limit(1)
-        .maybeSingle();
+      const { data, error } = await getUserVehicles(user.id, { activeOnly: true });
 
       if (error) throw error;
-      setHasVehicle(!!data);
-      if (data?.capacity) {
-        const passengerSeats = data.capacity - 1;
-        setVehicleCapacity(passengerSeats);
-        setFormData(prev => ({ ...prev, availableSeats: Math.min(prev.availableSeats, passengerSeats) }));
-      }
+
+      setVehicles(data);
+      setHasVehicle(data.length > 0);
+
+      const nextVehicleId =
+        selectedVehicleId && data.some(vehicle => vehicle.id === selectedVehicleId)
+          ? selectedVehicleId
+          : data[0]?.id ?? null;
+
+      setSelectedVehicleId(nextVehicleId);
     } catch (error) {
       console.error('Error checking vehicle:', error);
+      setVehicleLoadError('Unable to load your vehicles. Please try again.');
+      setVehicles([]);
+      setHasVehicle(false);
+      setSelectedVehicleId(null);
     } finally {
       setCheckingVehicle(false);
     }
@@ -112,23 +134,27 @@ export default function PostRide() {
         throw new Error('Invalid date or time. Please pick a valid departure time.');
       }
 
-      const { data: vehicles } = await supabase
-        .from('vehicles')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .limit(1)
-        .maybeSingle();
+      let vehicleToUse = selectedVehicle;
 
-      if (!vehicles) {
-        setError('Please add a vehicle to your profile first');
-        setLoading(false);
-        return;
+      if (!vehicleToUse) {
+        const { data, error: vehiclesError } = await getUserVehicles(user.id, { activeOnly: true });
+
+        if (vehiclesError) throw vehiclesError;
+
+        if (!data.length) {
+          setError('Please add a vehicle to your profile first');
+          setLoading(false);
+          return;
+        }
+
+        vehicleToUse = data[0];
+        setVehicles(data);
+        setSelectedVehicleId(vehicleToUse.id);
       }
 
       const departureDateTime = departure.toISOString();
 
-      const passengerSeats = (vehicles.capacity || 5) - 1;
+      const passengerSeats = Math.max((vehicleToUse.capacity || 5) - 1, 1);
       const seatsToOffer = Math.min(formData.availableSeats, passengerSeats);
 
       // Check if this is a recurring ride with a pattern
@@ -138,7 +164,7 @@ export default function PostRide() {
           .from('recurring_ride_patterns')
           .insert([{
             driver_id: user.id,
-            vehicle_id: vehicles.id,
+            vehicle_id: vehicleToUse.id,
             origin: formData.origin,
             origin_lat: originCoords.lat,
             origin_lng: originCoords.lng,
@@ -177,7 +203,7 @@ export default function PostRide() {
         // Single ride
         const { error } = await supabase.from('rides').insert([{
           driver_id: user.id,
-          vehicle_id: vehicles.id,
+          vehicle_id: vehicleToUse.id,
           origin: formData.origin,
           origin_lat: originCoords.lat,
           origin_lng: originCoords.lng,
@@ -241,6 +267,32 @@ export default function PostRide() {
     );
   }
 
+  if (vehicleLoadError) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+          <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Unable to Load Vehicles</h2>
+          <p className="text-gray-700 mb-6">{vehicleLoadError}</p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={checkForVehicle}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => navigate('/profile?section=vehicles')}
+              className="bg-white text-gray-700 px-6 py-3 rounded-lg font-medium border border-gray-300 hover:bg-gray-50 transition-colors"
+            >
+              Manage Vehicles
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!hasVehicle) {
     return (
       <div className="max-w-2xl mx-auto">
@@ -251,7 +303,7 @@ export default function PostRide() {
             You need to add a vehicle to your profile before you can offer rides.
           </p>
           <button
-            onClick={() => navigate('/profile')}
+            onClick={() => navigate('/profile?section=vehicles')}
             className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
           >
             Go to Profile
@@ -335,6 +387,31 @@ export default function PostRide() {
                   </p>
                   <p className="text-xs text-blue-600">Riders in your area will see this ride first</p>
                 </div>
+              </div>
+            )}
+
+            {vehicles.length > 0 && (
+              <div>
+                <label htmlFor="vehicle-select" className="block text-sm font-medium text-gray-700 mb-2">
+                  Vehicle
+                </label>
+                <select
+                  id="vehicle-select"
+                  value={selectedVehicleId ?? ''}
+                  onChange={(e) => setSelectedVehicleId(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {vehicles.map((vehicle) => (
+                    <option key={vehicle.id} value={vehicle.id}>
+                      {vehicle.make} {vehicle.model} • {vehicle.license_plate}
+                    </option>
+                  ))}
+                </select>
+                {selectedVehicle && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    {selectedVehicle.year} {selectedVehicle.color} • {selectedVehicle.capacity} total seats
+                  </p>
+                )}
               </div>
             )}
 

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import {
   Activity,
@@ -15,7 +14,6 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 import { performanceMonitor } from '../../services/performanceMonitoring';
 
 interface SystemHealth {
@@ -37,24 +35,17 @@ interface PerformanceMetric {
 }
 
 export default function PerformanceMonitor() {
-  const { isAdmin } = useAuth();
-  const navigate = useNavigate();
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [metrics, setMetrics] = useState<PerformanceMetric[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'1h' | '6h' | '24h' | '7d'>('1h');
 
   useEffect(() => {
-    if (!isAdmin) {
-      navigate('/admin');
-      return;
-    }
-
     loadData();
     const interval = setInterval(loadData, 30000);
 
     return () => clearInterval(interval);
-  }, [isAdmin, timeRange]);
+  }, [timeRange]);
 
   const loadData = async () => {
     setLoading(true);

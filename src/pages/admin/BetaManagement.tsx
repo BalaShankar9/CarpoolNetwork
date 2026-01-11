@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { Plus, Trash2, Users, Shield, LayoutDashboard } from 'lucide-react';
 import ConfirmModal from '../../components/shared/ConfirmModal';
@@ -13,8 +12,7 @@ interface AllowlistEntry {
 }
 
 export default function BetaManagement() {
-  const { user, isAdmin } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [entries, setEntries] = useState<AllowlistEntry[]>([]);
   const [newEmail, setNewEmail] = useState('');
   const [loading, setLoading] = useState(true);
@@ -23,12 +21,8 @@ export default function BetaManagement() {
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    if (!isAdmin) {
-      navigate('/');
-      return;
-    }
     fetchAllowlist();
-  }, [isAdmin, navigate]);
+  }, []);
 
   const fetchAllowlist = async () => {
     const { data, error } = await supabase
@@ -96,10 +90,6 @@ export default function BetaManagement() {
     setDeleting(false);
     setDeleteConfirmEmail(null);
   };
-
-  if (!isAdmin) {
-    return null;
-  }
 
   return (
     <AdminLayout

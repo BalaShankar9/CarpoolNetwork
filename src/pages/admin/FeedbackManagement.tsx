@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { MessageSquare, User, Calendar, ExternalLink, Trash2, LayoutDashboard } from 'lucide-react';
 import ConfirmModal from '../../components/shared/ConfirmModal';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface BugReport {
   id: string;
@@ -19,19 +17,13 @@ interface BugReport {
 }
 
 export default function FeedbackManagement() {
-  const { user, isAdmin } = useAuth();
-  const navigate = useNavigate();
   const [reports, setReports] = useState<BugReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!isAdmin) {
-      navigate('/');
-      return;
-    }
     fetchReports();
-  }, [isAdmin, navigate]);
+  }, []);
 
   const fetchReports = async () => {
     const { data, error } = await supabase
@@ -92,10 +84,6 @@ export default function FeedbackManagement() {
       minute: '2-digit',
     });
   };
-
-  if (!isAdmin) {
-    return null;
-  }
 
   return (
     <AdminLayout

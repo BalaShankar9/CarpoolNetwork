@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import {
   Layers,
@@ -30,7 +29,6 @@ import {
 import ConfirmModal from '../../components/shared/ConfirmModal';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface BulkOperation {
   id: string;
@@ -55,8 +53,6 @@ interface OperationPreview {
 }
 
 export default function BulkOperations() {
-  const { isAdmin } = useAuth();
-  const navigate = useNavigate();
   const [operations, setOperations] = useState<BulkOperation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<'new' | 'history'>('new');
@@ -73,13 +69,8 @@ export default function BulkOperations() {
   const [notificationType, setNotificationType] = useState('info');
 
   useEffect(() => {
-    if (!isAdmin) {
-      navigate('/admin');
-      return;
-    }
-
     loadOperationHistory();
-  }, [isAdmin]);
+  }, []);
 
   const loadOperationHistory = async () => {
     setLoading(true);

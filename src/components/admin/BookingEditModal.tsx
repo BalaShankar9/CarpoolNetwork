@@ -47,12 +47,12 @@ export default function BookingEditModal({ booking, onClose, onSave }: BookingEd
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
+    // CANONICAL booking states only - 'declined' is display-only (status='cancelled' + cancellation_reason contains 'driver')
     const statusOptions = [
         { value: 'pending', label: 'Pending', color: 'orange' },
         { value: 'confirmed', label: 'Confirmed', color: 'green' },
         { value: 'completed', label: 'Completed', color: 'blue' },
         { value: 'cancelled', label: 'Cancelled', color: 'red' },
-        { value: 'declined', label: 'Declined', color: 'gray' },
     ];
 
     const validate = () => {

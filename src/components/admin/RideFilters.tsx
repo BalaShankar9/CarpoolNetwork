@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 
 export interface RideFiltersType {
-    status: 'all' | 'active' | 'completed' | 'cancelled' | 'in_progress';
+    // CANONICAL ride states: active, in-progress, completed, cancelled
+    status: 'all' | 'active' | 'completed' | 'cancelled' | 'in-progress';
     dateFrom: string;
     dateTo: string;
     driverSearch: string;
@@ -123,7 +124,7 @@ export default function RideFilters({
                             >
                                 <option value="all">All Statuses</option>
                                 <option value="active">Active</option>
-                                <option value="in_progress">In Progress</option>
+                                <option value="in-progress">In Progress</option>
                                 <option value="completed">Completed</option>
                                 <option value="cancelled">Cancelled</option>
                             </select>
