@@ -674,14 +674,19 @@ export default function FindRides() {
                     </div>
                   </div>
 
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2 text-gray-700">
-                      <MapPin className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                      <span className="font-medium">{ride.origin}</span>
-                      <span className="text-gray-400">→</span>
-                      <span className="font-medium">{ride.destination}</span>
+                  <div className="flex-1 space-y-2 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-gray-700">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <MapPin className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                        <span className="font-medium truncate">{ride.origin}</span>
+                      </div>
+                      <span className="text-gray-400 hidden sm:inline">→</span>
+                      <div className="flex items-center gap-2 min-w-0 pl-7 sm:pl-0">
+                        <span className="text-gray-400 sm:hidden">↓</span>
+                        <span className="font-medium truncate">{ride.destination}</span>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
                         {formatDateTime(ride.departure_time)}

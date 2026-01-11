@@ -716,41 +716,69 @@ export default function VehicleManager() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {vehicles.map((vehicle) => (
-          <div key={vehicle.id} className="bg-white border border-gray-200 rounded-lg p-4">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <h4 className="font-bold text-lg text-gray-900">
-                  {vehicle.make} {vehicle.model}
-                </h4>
-                <p className="text-sm text-gray-600">
-                  {vehicle.year} • {vehicle.color}
-                </p>
+          <div key={vehicle.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            {/* Vehicle Image */}
+            {(vehicle.image_url || vehicle.vehicle_photo_url) ? (
+              <div className="w-full h-40 bg-gray-100">
+                <img 
+                  src={vehicle.image_url || vehicle.vehicle_photo_url} 
+                  alt={`${vehicle.make} ${vehicle.model}`} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Hide broken image and show placeholder
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    (e.target as HTMLImageElement).parentElement!.innerHTML = `
+                      <div class="w-full h-full flex items-center justify-center bg-gray-100">
+                        <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                      </div>
+                    `;
+                  }}
+                />
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setEditingVehicle(vehicle)}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                >
-                  <Edit className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => handleDelete(vehicle.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  aria-label="Delete vehicle"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
+            ) : (
+              <div className="w-full h-40 bg-gray-100 flex items-center justify-center">
+                <Car className="w-12 h-12 text-gray-400" />
               </div>
-            </div>
-            <div className="space-y-2 text-sm text-gray-700">
-              <p><span className="font-medium">License Plate:</span> {vehicle.license_plate}</p>
-              <p><span className="font-medium">Capacity:</span> {vehicle.capacity} seats</p>
-              {vehicle.fuel_type && (
-                <p><span className="font-medium">Fuel:</span> {vehicle.fuel_type}</p>
-              )}
-              {vehicle.vehicle_type && (
-                <p><span className="font-medium">Type:</span> {vehicle.vehicle_type}</p>
-              )}
+            )}
+            
+            <div className="p-4">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h4 className="font-bold text-lg text-gray-900">
+                    {vehicle.make} {vehicle.model}
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    {vehicle.year} • {vehicle.color}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setEditingVehicle(vehicle)}
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  >
+                    <Edit className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(vehicle.id)}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    aria-label="Delete vehicle"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm text-gray-700">
+                <p><span className="font-medium">License Plate:</span> {vehicle.license_plate}</p>
+                <p><span className="font-medium">Capacity:</span> {vehicle.capacity} seats</p>
+                {vehicle.fuel_type && (
+                  <p><span className="font-medium">Fuel:</span> {vehicle.fuel_type}</p>
+                )}
+                {vehicle.vehicle_type && (
+                  <p><span className="font-medium">Type:</span> {vehicle.vehicle_type}</p>
+                )}
+              </div>
             </div>
           </div>
         ))}

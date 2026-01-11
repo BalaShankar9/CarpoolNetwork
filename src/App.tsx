@@ -108,9 +108,10 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 }
 
 function AdminRoute({ children }: { children: ReactNode }) {
-  const { user, loading, isEmailVerified, isAdmin } = useAuth();
+  const { user, profile, loading, isEmailVerified, isAdmin, adminRole } = useAuth();
 
-  // P0 SECURITY FIX: Router-level admin guard
+  // P0 SECURITY FIX: Router-level admin guard with strict checks
+  // Must wait for BOTH auth loading AND profile loading to complete
   if (loading) {
     return <LoadingScreen />;
   }
@@ -123,7 +124,17 @@ function AdminRoute({ children }: { children: ReactNode }) {
     return <Navigate to="/verify-email" replace />;
   }
 
-  if (!isAdmin) {
+  // CRITICAL: Wait for profile to load before checking admin status
+  // This prevents race condition where isAdmin is false during profile fetch
+  if (!profile) {
+    return <LoadingScreen />;
+  }
+
+  // Double-check admin status with explicit profile check
+  const hasAdminAccess = profile.is_admin === true || adminRole !== null;
+  
+  if (!hasAdminAccess) {
+    console.warn('[AdminRoute] Access denied for user:', user.id, 'isAdmin:', isAdmin, 'adminRole:', adminRole);
     return <Navigate to="/unauthorized" replace />;
   }
 

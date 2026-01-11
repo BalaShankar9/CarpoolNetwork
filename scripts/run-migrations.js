@@ -1,8 +1,16 @@
 // Script to run database migrations using Supabase service role
+// SECURITY: Service role key must be provided via environment variable
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://uqofmsreosfjflmgurzb.supabase.co';
-const serviceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxb2Ztc3Jlb3NmamZsbWd1cnpiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDc2Nzc0OCwiZXhwIjoyMDc2MzQzNzQ4fQ.SdMJqgDPPlWx7wZ7PLRoAQiJe58OSotUchYSYlKaD68';
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !serviceKey) {
+    console.error('ERROR: Missing required environment variables');
+    console.error('Required: SUPABASE_URL (or VITE_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY');
+    console.error('\nUsage: SUPABASE_SERVICE_ROLE_KEY=your_key node scripts/run-migrations.js');
+    process.exit(1);
+}
 
 const supabase = createClient(supabaseUrl, serviceKey, {
     auth: {

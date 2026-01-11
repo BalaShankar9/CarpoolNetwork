@@ -5,11 +5,13 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const supabaseUrl = 'https://uqofmsreosfjflmgurzb.supabase.co';
+// SECURITY: Both URL and service role key must come from environment
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!serviceRoleKey) {
-    console.error('SUPABASE_SERVICE_ROLE_KEY environment variable is required');
+if (!supabaseUrl || !serviceRoleKey) {
+    console.error('ERROR: Missing required environment variables');
+    console.error('Required: SUPABASE_URL (or VITE_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY');
     process.exit(1);
 }
 
