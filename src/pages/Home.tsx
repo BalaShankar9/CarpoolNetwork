@@ -139,9 +139,40 @@ export default function Home() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Welcome back, {profile?.full_name?.split(' ')[0]}!</h1>
-        <p className="text-gray-600 mt-1">Here's your carpooling activity</p>
+      {/* Welcome Header with Clickable Avatar */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => navigate('/profile')}
+          className="flex items-center gap-3 hover:opacity-80 transition-opacity group"
+          aria-label="Go to profile"
+        >
+          {/* Avatar */}
+          <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center border-2 border-blue-200 overflow-hidden group-hover:border-blue-400 transition-colors">
+            {profile?.profile_photo_url || profile?.avatar_url ? (
+              <img 
+                src={profile.profile_photo_url || profile.avatar_url} 
+                alt={profile?.full_name || 'Profile'} 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback to initials on image error
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <span className="text-lg font-bold text-blue-600">
+                {profile?.full_name?.charAt(0)?.toUpperCase() || '?'}
+              </span>
+            )}
+          </div>
+          
+          {/* Welcome Text */}
+          <div className="text-left">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              Welcome back, {profile?.full_name?.split(' ')[0] || 'there'}!
+            </h1>
+            <p className="text-gray-600 text-sm">Here's your carpooling activity</p>
+          </div>
+        </button>
       </div>
 
       <SmartRecommendations />

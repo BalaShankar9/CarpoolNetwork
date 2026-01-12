@@ -6,6 +6,7 @@ import AuthLayout from '../../components/auth/AuthLayout';
 import AuthCard from '../../components/auth/AuthCard';
 import SocialAuthButtons from '../../components/auth/SocialAuthButtons';
 import PasswordSignupForm from '../../components/auth/PasswordSignupForm';
+import { analytics } from '../../lib/analytics';
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -19,9 +20,22 @@ export default function SignUp() {
       const { error } = await signInWithGoogle();
       if (error) {
         setError(error.message);
+        // Track auth error
+        analytics.track.errorStateShown({
+          error_type: 'auth',
+          error_source: 'signup_google',
+          error_code: error.message,
+        });
+      } else {
+        // Track successful signup
+        analytics.track.signUpComplete({ signup_method: 'google' });
       }
     } catch {
       setError('An unexpected error occurred');
+      analytics.track.errorStateShown({
+        error_type: 'unknown',
+        error_source: 'signup_google',
+      });
     }
   };
 
@@ -31,9 +45,20 @@ export default function SignUp() {
       const { error } = await signInWithGitHub();
       if (error) {
         setError(error.message);
+        analytics.track.errorStateShown({
+          error_type: 'auth',
+          error_source: 'signup_github',
+          error_code: error.message,
+        });
+      } else {
+        analytics.track.signUpComplete({ signup_method: 'github' });
       }
     } catch {
       setError('An unexpected error occurred');
+      analytics.track.errorStateShown({
+        error_type: 'unknown',
+        error_source: 'signup_github',
+      });
     }
   };
 
@@ -44,13 +69,25 @@ export default function SignUp() {
       const { error, requiresEmailConfirmation } = await signUp(email, password, fullName, phone);
       if (error) {
         setError(error.message);
+        analytics.track.errorStateShown({
+          error_type: 'auth',
+          error_source: 'signup_email',
+          error_code: error.message,
+        });
       } else if (requiresEmailConfirmation) {
         setSuccessMessage('Check your email to confirm your account before signing in.');
+        // Track signup - user still needs to verify email
+        analytics.track.signUpComplete({ signup_method: 'email' });
       } else {
+        analytics.track.signUpComplete({ signup_method: 'email' });
         navigate('/');
       }
     } catch {
       setError('An unexpected error occurred');
+      analytics.track.errorStateShown({
+        error_type: 'unknown',
+        error_source: 'signup_email',
+      });
     }
   };
 

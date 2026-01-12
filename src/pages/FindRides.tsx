@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Calendar, Users, Star, Eye, Cloud, CheckCircle, AlertCircle, TrendingUp, Filter, X, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -10,6 +10,7 @@ import { getUserProfilePath } from '../utils/profileNavigation';
 import { fetchPublicProfilesByIds, PublicProfile } from '../services/publicProfiles';
 import { toast } from '../lib/toast';
 import { RideType, RIDE_TYPE_LIST, getRideTypeInfo } from '../types/rideTypes';
+import { analytics, useFlowStage, useSearchTracking, useEmptyStateTracking } from '../lib/analytics';
 
 interface Ride {
   id: string;
@@ -75,6 +76,22 @@ export default function FindRides() {
   const [eligibilityStatus, setEligibilityStatus] = useState<any>(null);
   // New ride type filter
   const [selectedRideTypes, setSelectedRideTypes] = useState<RideType[]>([]);
+
+  // Analytics: Set flow stage and track search behavior
+  useFlowStage('ride_search');
+  const { trackSearch, trackEmptyResults, trackResultClicked } = useSearchTracking({ searchContext: 'rides' });
+  const hasTrackedEmpty = useRef(false);
+
+  // Track empty state after search
+  useEffect(() => {
+    if (searched && !loading && rides.length === 0 && !hasTrackedEmpty.current) {
+      trackEmptyResults();
+      hasTrackedEmpty.current = true;
+    }
+    if (rides.length > 0) {
+      hasTrackedEmpty.current = false;
+    }
+  }, [searched, loading, rides.length, trackEmptyResults]);
 
   useEffect(() => {
     checkEligibility();
@@ -313,8 +330,16 @@ export default function FindRides() {
 
       const availableRides = ridesWithBookings.filter(ride => ride.available_seats > 0);
       setRides(availableRides);
+      
+      // Analytics: Track search results
+      trackSearch(availableRides.length);
     } catch (error) {
       console.error('Error searching rides:', error);
+      // Analytics: Track search error
+      analytics.track.errorStateShown({
+        error_type: 'server',
+        error_source: 'ride_search',
+      });
     } finally {
       setLoading(false);
     }
@@ -349,15 +374,34 @@ export default function FindRides() {
 
         if (errorMsg.includes('not enough seats')) {
           toast.error('Sorry, not enough seats available. Please try fewer seats or refresh the page.');
+          analytics.track.errorStateShown({
+            error_type: 'validation',
+            error_source: 'ride_request',
+            error_code: 'NOT_ENOUGH_SEATS',
+          });
         } else if (errorMsg.includes('not active')) {
           toast.error('This ride is no longer active.');
+          analytics.track.errorStateShown({
+            error_type: 'validation',
+            error_source: 'ride_request',
+            error_code: 'RIDE_INACTIVE',
+          });
         } else if (errorMsg.includes('already requested') || error.code === '23505') {
           toast.info('You have already requested this ride');
         } else {
           toast.error('Failed to request ride. Please try again.');
+          analytics.track.errorStateShown({
+            error_type: 'server',
+            error_source: 'ride_request',
+          });
         }
       } else {
         toast.success('Ride request sent successfully!');
+        // Analytics: Track successful ride request
+        analytics.track.rideRequested({
+          seats_requested: seats,
+          has_target_ride: true,
+        });
       }
       loadAllRides();
     } catch (error: any) {

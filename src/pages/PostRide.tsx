@@ -11,6 +11,7 @@ import RecurringPatternForm from '../components/rides/RecurringPatternForm';
 import { useServiceGating } from '../hooks/useServiceGating';
 import { RecurringPatternConfig, formatPatternDescription } from '../types/recurring';
 import { RideType, RIDE_TYPE_LIST, getRideTypeInfo } from '../types/rideTypes';
+import { analytics } from '../lib/analytics';
 
 export default function PostRide() {
   const { user, isEmailVerified, profile } = useAuth();
@@ -160,73 +161,103 @@ export default function PostRide() {
       // Check if this is a recurring ride with a pattern
       if (formData.isRecurring && recurringPattern) {
         // Create recurring pattern first
-        const { data: patternData, error: patternError } = await supabase
-          .from('recurring_ride_patterns')
-          .insert([{
-            driver_id: user.id,
-            vehicle_id: vehicleToUse.id,
-            origin: formData.origin,
-            origin_lat: originCoords.lat,
-            origin_lng: originCoords.lng,
-            destination: formData.destination,
-            destination_lat: destCoords.lat,
-            destination_lng: destCoords.lng,
-            departure_time: dateTime.time,
-            available_seats: seatsToOffer,
-            notes: formData.notes,
-            pattern_type: recurringPattern.patternType,
-            days_of_week: recurringPattern.patternType === 'weekly' ? recurringPattern.daysOfWeek : null,
-            day_of_month: recurringPattern.patternType === 'monthly' ? recurringPattern.dayOfMonth : null,
-            start_date: recurringPattern.startDate || dateTime.date,
-            end_date: recurringPattern.endType === 'date' ? recurringPattern.endDate : null,
-            max_occurrences: recurringPattern.endType === 'occurrences' ? recurringPattern.maxOccurrences : null,
-            is_active: true,
-          }])
-          .select()
-          .single();
+        try {
+          const { data: patternData, error: patternError } = await supabase
+            .from('recurring_ride_patterns')
+            .insert([{
+              driver_id: user.id,
+              vehicle_id: vehicleToUse.id,
+              origin: formData.origin,
+              origin_lat: originCoords.lat,
+              origin_lng: originCoords.lng,
+              destination: formData.destination,
+              destination_lat: destCoords.lat,
+              destination_lng: destCoords.lng,
+              departure_time: dateTime.time,
+              available_seats: seatsToOffer,
+              notes: formData.notes,
+              pattern_type: recurringPattern.patternType,
+              days_of_week: recurringPattern.patternType === 'weekly' ? recurringPattern.daysOfWeek : null,
+              day_of_month: recurringPattern.patternType === 'monthly' ? recurringPattern.dayOfMonth : null,
+              start_date: recurringPattern.startDate || dateTime.date,
+              end_date: recurringPattern.endType === 'date' ? recurringPattern.endDate : null,
+              max_occurrences: recurringPattern.endType === 'occurrences' ? recurringPattern.maxOccurrences : null,
+              is_active: true,
+            }])
+            .select()
+            .single();
 
-        if (patternError) throw patternError;
+          if (patternError) {
+            // Check if this is a schema cache error (table doesn't exist)
+            if (patternError.message?.includes('schema cache') || patternError.code === 'PGRST204') {
+              console.error('Recurring patterns table not available, falling back to single ride:', patternError);
+              // Fall through to create a single ride instead
+            } else {
+              throw patternError;
+            }
+          } else if (patternData) {
+            // Generate rides using RPC function
+            const { error: generateError } = await supabase.rpc('generate_recurring_rides', {
+              pattern_id: patternData.id,
+              days_ahead: 30, // Generate rides for next 30 days
+            });
 
-        // Generate rides using RPC function
-        if (patternData) {
-          const { error: generateError } = await supabase.rpc('generate_recurring_rides', {
-            pattern_id: patternData.id,
-            days_ahead: 30, // Generate rides for next 30 days
-          });
-
-          if (generateError) {
-            console.error('Error generating recurring rides:', generateError);
-            // Don't throw - pattern was created, rides can be generated later
+            if (generateError) {
+              console.error('Error generating recurring rides:', generateError);
+              // Don't throw - pattern was created, rides can be generated later
+            }
+            
+            // Skip creating single ride since recurring pattern was created
+            setSuccess('Recurring ride pattern created successfully!');
+            setLoading(false);
+            navigate('/my-rides?tab=driving');
+            return;
+          }
+        } catch (recurringError: any) {
+          // If recurring ride creation fails with schema error, fall back to single ride
+          if (recurringError?.message?.includes('schema cache') || recurringError?.code === 'PGRST204') {
+            console.warn('Recurring rides feature not available, creating single ride instead');
+          } else {
+            throw recurringError;
           }
         }
-      } else {
-        // Single ride
-        const { error } = await supabase.from('rides').insert([{
-          driver_id: user.id,
-          vehicle_id: vehicleToUse.id,
-          origin: formData.origin,
-          origin_lat: originCoords.lat,
-          origin_lng: originCoords.lng,
-          destination: formData.destination,
-          destination_lat: destCoords.lat,
-          destination_lng: destCoords.lng,
-          departure_time: departureDateTime,
-          time_type: dateTime.timeType,
-          available_seats: seatsToOffer,
-          total_seats: seatsToOffer,
-          notes: formData.notes,
-          is_recurring: formData.isRecurring,
-          ride_type: rideType,
-          available_until: rideType === 'flexible' && formData.availableUntil
-            ? new Date(formData.availableUntil).toISOString()
-            : null,
-          pickup_radius_km: formData.pickupRadius,
-        }]);
-
-        if (error) throw error;
       }
+      
+      // Single ride (or fallback from failed recurring ride creation)
+      const { error } = await supabase.from('rides').insert([{
+        driver_id: user.id,
+        vehicle_id: vehicleToUse.id,
+        origin: formData.origin,
+        origin_lat: originCoords.lat,
+        origin_lng: originCoords.lng,
+        destination: formData.destination,
+        destination_lat: destCoords.lat,
+        destination_lng: destCoords.lng,
+        departure_time: departureDateTime,
+        time_type: dateTime.timeType,
+        available_seats: seatsToOffer,
+        total_seats: seatsToOffer,
+        notes: formData.notes,
+        is_recurring: formData.isRecurring,
+        ride_type: rideType,
+        available_until: rideType === 'flexible' && formData.availableUntil
+          ? new Date(formData.availableUntil).toISOString()
+          : null,
+        pickup_radius_km: formData.pickupRadius,
+      }]);
+
+      if (error) throw error;
 
       setSuccess(true);
+      
+      // Track ride creation success
+      analytics.track.rideCreated({
+        seats: seatsToOffer,
+        is_recurring: formData.isRecurring || !!recurringPattern,
+        // Distance would need to be calculated from coords - using placeholder for now
+        distance_km: undefined,
+      });
+      
       setFormData({
         origin: '',
         destination: '',
@@ -254,6 +285,13 @@ export default function PostRide() {
           ? error.message
           : 'Failed to post ride. Please try again.';
       setError(message);
+      
+      // Track ride creation error
+      analytics.track.errorStateShown({
+        error_type: 'server',
+        error_source: 'post_ride',
+        error_code: error?.code || error?.message,
+      });
     } finally {
       setLoading(false);
     }

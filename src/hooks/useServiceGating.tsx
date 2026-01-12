@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Camera, X } from 'lucide-react';
+import { UserCheck, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface ServiceGatingModalProps {
@@ -27,10 +27,10 @@ function ServiceGatingModal({ isOpen, onClose, onCompleteSetup }: ServiceGatingM
 
         <div className="mb-6">
           <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Camera className="w-8 h-8 text-amber-600" />
+            <UserCheck className="w-8 h-8 text-amber-600" />
           </div>
           <p className="text-gray-600 text-center">
-            To use this feature, please complete your profile by adding a profile picture. This helps maintain trust and safety in our community.
+            To use this feature, please complete your profile setup including your name, photo, verified phone number, and country. This helps maintain trust and safety in our community.
           </p>
         </div>
 
@@ -45,7 +45,7 @@ function ServiceGatingModal({ isOpen, onClose, onCompleteSetup }: ServiceGatingM
             onClick={onCompleteSetup}
             className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium flex items-center justify-center gap-2"
           >
-            <Camera className="w-4 h-4" />
+            <UserCheck className="w-4 h-4" />
             Complete Setup
           </button>
         </div>

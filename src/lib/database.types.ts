@@ -921,6 +921,268 @@ export type Database = {
           updated_at?: string;
         };
       };
+      // ============================================================================
+      // MESSAGING TABLES (Required for chat functionality)
+      // ============================================================================
+      conversations: {
+        Row: {
+          id: string;
+          type: 'RIDE' | 'TRIP' | 'FRIENDS_DM' | 'GROUP';
+          ride_id: string | null;
+          created_at: string;
+          updated_at: string;
+          last_message_id: string | null;
+          last_message_at: string | null;
+          last_message_preview: string | null;
+          last_sender_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          type: 'RIDE' | 'TRIP' | 'FRIENDS_DM' | 'GROUP';
+          ride_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          last_message_id?: string | null;
+          last_message_at?: string | null;
+          last_message_preview?: string | null;
+          last_sender_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          type?: 'RIDE' | 'TRIP' | 'FRIENDS_DM' | 'GROUP';
+          ride_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          last_message_id?: string | null;
+          last_message_at?: string | null;
+          last_message_preview?: string | null;
+          last_sender_id?: string | null;
+        };
+      };
+      conversation_members: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          user_id: string;
+          role: 'DRIVER' | 'RIDER' | 'FRIEND' | 'ADMIN' | 'MEMBER';
+          joined_at: string;
+          last_read_at: string | null;
+          last_seen_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          user_id: string;
+          role: 'DRIVER' | 'RIDER' | 'FRIEND' | 'ADMIN' | 'MEMBER';
+          joined_at?: string;
+          last_read_at?: string | null;
+          last_seen_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          conversation_id?: string;
+          user_id?: string;
+          role?: 'DRIVER' | 'RIDER' | 'FRIEND' | 'ADMIN' | 'MEMBER';
+          joined_at?: string;
+          last_read_at?: string | null;
+          last_seen_at?: string | null;
+        };
+      };
+      chat_messages: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          sender_id: string;
+          content: string;
+          message_type: 'TEXT' | 'IMAGE' | 'LOCATION' | 'SYSTEM' | 'RIDE_UPDATE';
+          metadata: Json | null;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          sender_id: string;
+          content: string;
+          message_type?: 'TEXT' | 'IMAGE' | 'LOCATION' | 'SYSTEM' | 'RIDE_UPDATE';
+          metadata?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          conversation_id?: string;
+          sender_id?: string;
+          content?: string;
+          message_type?: 'TEXT' | 'IMAGE' | 'LOCATION' | 'SYSTEM' | 'RIDE_UPDATE';
+          metadata?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+        };
+      };
+      message_reads: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          user_id: string;
+          last_read_message_id: string | null;
+          last_read_at: string;
+        };
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          user_id: string;
+          last_read_message_id?: string | null;
+          last_read_at?: string;
+        };
+        Update: {
+          id?: string;
+          conversation_id?: string;
+          user_id?: string;
+          last_read_message_id?: string | null;
+          last_read_at?: string;
+        };
+      };
+      blocks: {
+        Row: {
+          blocker_id: string;
+          blocked_id: string;
+          created_at: string;
+        };
+        Insert: {
+          blocker_id: string;
+          blocked_id: string;
+          created_at?: string;
+        };
+        Update: {
+          blocker_id?: string;
+          blocked_id?: string;
+          created_at?: string;
+        };
+      };
+      // ============================================================================
+      // RECURRING RIDES TABLE (Required for recurring ride patterns)
+      // ============================================================================
+      recurring_ride_patterns: {
+        Row: {
+          id: string;
+          driver_id: string;
+          vehicle_id: string;
+          origin: string;
+          origin_lat: number;
+          origin_lng: number;
+          destination: string;
+          destination_lat: number;
+          destination_lng: number;
+          departure_time: string;
+          days_of_week: number[];
+          available_seats: number;
+          notes: string | null;
+          is_active: boolean;
+          valid_from: string;
+          valid_until: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          driver_id: string;
+          vehicle_id: string;
+          origin: string;
+          origin_lat: number;
+          origin_lng: number;
+          destination: string;
+          destination_lat: number;
+          destination_lng: number;
+          departure_time: string;
+          days_of_week: number[];
+          available_seats: number;
+          notes?: string | null;
+          is_active?: boolean;
+          valid_from?: string;
+          valid_until?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          driver_id?: string;
+          vehicle_id?: string;
+          origin?: string;
+          origin_lat?: number;
+          origin_lng?: number;
+          destination?: string;
+          destination_lat?: number;
+          destination_lng?: number;
+          departure_time?: string;
+          days_of_week?: number[];
+          available_seats?: number;
+          notes?: string | null;
+          is_active?: boolean;
+          valid_from?: string;
+          valid_until?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      // ============================================================================
+      // ADMIN TABLES (Required for RBAC)
+      // ============================================================================
+      admin_permissions: {
+        Row: {
+          id: string;
+          role: 'super_admin' | 'admin' | 'moderator' | 'analyst';
+          permission: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          role: 'super_admin' | 'admin' | 'moderator' | 'analyst';
+          permission: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          role?: 'super_admin' | 'admin' | 'moderator' | 'analyst';
+          permission?: string;
+          created_at?: string;
+        };
+      };
+      admin_audit_log: {
+        Row: {
+          id: string;
+          admin_id: string | null;
+          admin_role: 'super_admin' | 'admin' | 'moderator' | 'analyst';
+          action: string;
+          target_type: string | null;
+          target_id: string | null;
+          details: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          admin_id?: string | null;
+          admin_role: 'super_admin' | 'admin' | 'moderator' | 'analyst';
+          action: string;
+          target_type?: string | null;
+          target_id?: string | null;
+          details?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          admin_id?: string | null;
+          admin_role?: 'super_admin' | 'admin' | 'moderator' | 'analyst';
+          action?: string;
+          target_type?: string | null;
+          target_id?: string | null;
+          details?: Json;
+          created_at?: string;
+        };
+      };
       };
       Views: {
         profile_public_v: {
@@ -993,9 +1255,101 @@ export type Database = {
           };
           Returns: boolean;
         };
+        // ============================================================================
+        // MESSAGING RPC FUNCTIONS
+        // ============================================================================
+        get_conversations_overview: {
+          Args: Record<string, never>;
+          Returns: {
+            conversation_id: string;
+            conversation_type: string;
+            ride_id: string | null;
+            other_user_id: string;
+            other_user_name: string;
+            other_user_avatar: string | null;
+            last_message_content: string | null;
+            last_message_at: string | null;
+            last_sender_id: string | null;
+            unread_count: number;
+            my_role: string;
+          }[];
+        };
+        get_or_create_dm_conversation: {
+          Args: {
+            p_other_user_id: string;
+          };
+          Returns: string;
+        };
+        get_or_create_ride_conversation: {
+          Args: {
+            p_ride_id: string;
+            p_driver_id: string;
+            p_rider_id: string;
+          };
+          Returns: string;
+        };
+        mark_conversation_read: {
+          Args: {
+            p_conversation_id: string;
+          };
+          Returns: void;
+        };
+        is_blocked: {
+          Args: {
+            p_user_id: string;
+            p_other_user_id: string;
+          };
+          Returns: boolean;
+        };
+        // ============================================================================
+        // BOOKING RPC FUNCTIONS
+        // ============================================================================
+        request_booking: {
+          Args: {
+            p_ride_id: string;
+            p_pickup_location: string;
+            p_pickup_lat: number;
+            p_pickup_lng: number;
+            p_dropoff_location: string;
+            p_dropoff_lat: number;
+            p_dropoff_lng: number;
+            p_seats_requested?: number;
+          };
+          Returns: string;
+        };
+        cancel_booking: {
+          Args: {
+            p_booking_id: string;
+            p_reason?: string;
+          };
+          Returns: void;
+        };
+        driver_decide_booking: {
+          Args: {
+            p_booking_id: string;
+            p_decision: 'confirm' | 'decline';
+          };
+          Returns: void;
+        };
+        // ============================================================================
+        // ADMIN RPC FUNCTIONS
+        // ============================================================================
+        has_admin_permission: {
+          Args: {
+            p_permission: string;
+          };
+          Returns: boolean;
+        };
+        user_can_view_ride: {
+          Args: {
+            p_ride_id: string;
+          };
+          Returns: boolean;
+        };
       };
     Enums: {
-      [_ in never]: never;
+      admin_role: 'super_admin' | 'admin' | 'moderator' | 'analyst';
     };
   };
 };
+

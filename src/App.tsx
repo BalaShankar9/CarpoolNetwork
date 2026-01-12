@@ -8,6 +8,7 @@ import Layout from './components/layout/Layout';
 import { AppErrorBoundary } from './components/shared/ProductionErrorBoundary';
 import { LoadingProvider } from './components/shared/LoadingStateManager';
 import { InstallPrompt, UpdatePrompt, OfflineIndicator } from './components/pwa';
+import { AnalyticsProvider } from './lib/analytics/AnalyticsProvider';
 
 const Router = Capacitor.isNativePlatform() ? HashRouter : BrowserRouter;
 
@@ -558,7 +559,10 @@ function App() {
           <RealtimeProvider>
             <Router>
               <AppErrorBoundary>
-                <AppContent />
+                {/* Analytics must be inside Router for useLocation */}
+                <AnalyticsProvider>
+                  <AppContent />
+                </AnalyticsProvider>
                 {/* PWA Components */}
                 <InstallPrompt />
                 <UpdatePrompt />

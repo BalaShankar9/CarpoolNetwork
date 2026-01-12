@@ -13,6 +13,7 @@ import ToastContainer from '../shared/ToastContainer';
 import { NotificationsBell } from '../notifications/NotificationsBell';
 import { NotificationsPanel } from '../notifications/NotificationsPanel';
 import { useRealtime } from '../../contexts/RealtimeContext';
+import DevDiagnosticsPanel from '../shared/DevDiagnosticsPanel';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut, isAdmin } = useAuth();
@@ -188,70 +189,55 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <FeedbackButton />
 
       <nav
-        className="md:hidden bg-white/95 backdrop-blur border-t border-gray-200 fixed bottom-0 left-0 right-0 z-50 shadow-lg"
-        style={{ height: 'var(--app-bottom-nav-height)', paddingBottom: 'var(--safe-area-inset-bottom)' }}
+        className="md:hidden bg-white/95 backdrop-blur border-t border-gray-200 fixed bottom-0 left-0 right-0 z-50 shadow-lg safe-area-bottom"
+        style={{ height: 'var(--app-bottom-nav-height)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        <div className="grid grid-cols-5 h-full">
+        <div className="grid grid-cols-5 h-full max-w-md mx-auto">
           {[
             { to: '/', icon: Home, label: 'Home' },
             { to: '/find-rides', icon: Search, label: 'Find' },
             { to: '/post-ride', icon: PlusCircle, label: 'Post' },
-            { to: '/messages', icon: MessageSquare, label: 'Messages' },
+            { to: '/messages', icon: MessageSquare, label: 'Chat', badge: unreadMessages },
             { to: '/profile', icon: User, label: 'Profile' },
           ].map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center gap-1 transition-colors ${
-                  isActive ? 'text-blue-600' : 'text-gray-600'
+                `flex flex-col items-center justify-center gap-0.5 transition-colors py-1 ${
+                  isActive ? 'text-blue-600' : 'text-gray-500'
                 }`
               }
             >
               {({ isActive }) => (
                 <>
                   <div
-                    className={`w-11 h-11 flex items-center justify-center rounded-2xl ${
-                      isActive ? 'bg-blue-50 text-blue-600 shadow-sm border border-blue-100' : 'text-gray-600'
+                    className={`w-10 h-10 flex items-center justify-center rounded-xl ${
+                      isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-500'
                     }`}
                   >
                     <div className="relative">
                       <item.icon className="w-5 h-5" />
-                      {item.to === '/messages' && unreadMessages > 0 && (
+                      {'badge' in item && item.badge > 0 && (
                         <span
                           data-testid="messages-badge"
-                          className="absolute -top-2 -right-2 bg-green-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center"
+                          className="absolute -top-1.5 -right-1.5 bg-green-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1"
                         >
-                          {unreadMessages > 9 ? '9+' : unreadMessages}
+                          {item.badge > 9 ? '9+' : item.badge}
                         </span>
                       )}
                     </div>
                   </div>
-                  <span className="text-xs font-medium">{item.label}</span>
+                  <span className="text-[10px] font-medium leading-tight">{item.label}</span>
                 </>
               )}
             </NavLink>
           ))}
-          <button
-            onClick={() => setNotificationsOpen((open) => !open)}
-            className="flex flex-col items-center justify-center gap-1 text-gray-600 hover:text-blue-600 transition-colors relative"
-            aria-label="Notifications"
-          >
-            <div className="w-11 h-11 flex items-center justify-center rounded-2xl text-gray-600">
-              <Bell className="w-5 h-5" />
-            </div>
-            <span className="text-xs font-medium">Alerts</span>
-            {unreadNotifications > 0 && (
-              <span
-                data-testid="notification-badge"
-                className="absolute top-1 right-5 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center"
-              >
-                {unreadNotifications > 99 ? '99+' : unreadNotifications}
-              </span>
-            )}
-          </button>
         </div>
       </nav>
+      
+      {/* Dev-only diagnostics panel */}
+      <DevDiagnosticsPanel />
     </div>
   );
 }

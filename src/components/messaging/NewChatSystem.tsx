@@ -40,6 +40,7 @@ import {
 import { NotificationsService } from '../../services/notificationsService';
 import ClickableUserProfile from '../shared/ClickableUserProfile';
 import ReportUserModal from '../shared/ReportUserModal';
+import { analytics } from '../../lib/analytics';
 
 interface Profile {
   id: string;
@@ -227,6 +228,8 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
   const [loading, setLoading] = useState(true);
   const [conversationsError, setConversationsError] = useState<string | null>(null);
   const [schemaCacheError, setSchemaCacheError] = useState(false);
+  const [fallbackFailed, setFallbackFailed] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -372,10 +375,17 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
     rowVirtualizer.scrollToIndex(renderedItems.length - 1, { align: 'end', behavior: behavior as 'smooth' | 'auto' });
   };
 
-  const loadConversations = async () => {
+  const loadConversations = async (isRetry = false) => {
     if (!user) return;
     setConversationsError(null);
     setSchemaCacheError(false);
+    setFallbackFailed(false);
+    
+    // Track retry count to prevent infinite retry loops
+    if (isRetry) {
+      setRetryCount(prev => prev + 1);
+    }
+    
     try {
       if (import.meta.env.DEV) {
         console.log('[DEV] loadConversations - Calling RPC: get_conversations_overview');
@@ -412,26 +422,166 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
       setConversations(normalized);
       setConversationsError(null);
       setSchemaCacheError(false);
+      setFallbackFailed(false);
+      setRetryCount(0); // Reset retry count on success
     } catch (error: any) {
-      console.error('Error loading conversations:', error);
-      const errorMsg = error?.message || 'Failed to load conversations';
+      console.error('Error loading conversations via RPC:', error);
       const errorCode = error?.code || 'UNKNOWN';
-      if (errorCode === 'PGRST202') {
-        console.warn('DB function missing or schema cache not refreshed. Ensure public.get_conversations_overview() exists.');
-        setConversationsError('Messages are updating. Tap Retry.');
+      
+      // FALLBACK: If RPC fails with PGRST202 or schema errors, use direct queries
+      if (errorCode === 'PGRST202' || errorCode === '42883' || error?.message?.includes('schema') || error?.message?.includes('function')) {
+        console.warn('[Messaging] RPC unavailable, attempting fallback query...');
         setSchemaCacheError(true);
+        await loadConversationsFallback();
+        return;
+      }
+      
+      const errorMsg = error?.message || 'Failed to load conversations';
+      setConversationsError(`${errorMsg} (${errorCode})`);
+      setSchemaCacheError(false);
+
+      if (import.meta.env.DEV) {
+        toast.error(`Unable to load conversations. Error: ${errorCode}`);
       } else {
-        setConversationsError(`${errorMsg} (${errorCode})`);
-        setSchemaCacheError(false);
+        toast.error('Unable to load conversations. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fallback function when RPC is unavailable - direct RLS-safe queries
+  const loadConversationsFallback = async () => {
+    if (!user) return;
+    try {
+      if (import.meta.env.DEV) {
+        console.log('[DEV] loadConversationsFallback - Using direct queries');
       }
 
-      if (errorCode !== 'PGRST202') {
-        if (import.meta.env.DEV) {
-          toast.error(`Unable to load conversations. Error: ${errorCode}`);
-        } else {
-          toast.error('Unable to load conversations. Please try again.');
-        }
+      // Step 1: Get conversations where user is a member
+      const { data: memberRows, error: memberError } = await supabase
+        .from('conversation_members')
+        .select('conversation_id, role, last_seen_at')
+        .eq('user_id', user.id);
+
+      if (memberError) throw memberError;
+      if (!memberRows || memberRows.length === 0) {
+        setConversations([]);
+        setConversationsError(null);
+        setLoading(false);
+        return;
       }
+
+      const conversationIds = memberRows.map(m => m.conversation_id);
+
+      // Step 2: Get conversation details
+      const { data: convData, error: convError } = await supabase
+        .from('conversations')
+        .select('id, type, ride_id, trip_request_id, created_at, updated_at')
+        .in('id', conversationIds);
+
+      if (convError) throw convError;
+
+      // Step 3: Get all members for these conversations (for names/avatars)
+      const { data: allMembers, error: allMembersError } = await supabase
+        .from('conversation_members')
+        .select(`
+          conversation_id,
+          user_id,
+          role,
+          last_seen_at,
+          profile:profiles(id, full_name, avatar_url, profile_photo_url)
+        `)
+        .in('conversation_id', conversationIds);
+
+      if (allMembersError) throw allMembersError;
+
+      // Step 4: Get last message per conversation
+      const { data: lastMessages, error: lastMsgError } = await supabase
+        .from('chat_messages')
+        .select('conversation_id, body, sender_id, created_at, message_type')
+        .in('conversation_id', conversationIds)
+        .order('created_at', { ascending: false });
+
+      // Don't throw on last message error - just continue without previews
+      const lastMessageMap = new Map<string, any>();
+      if (!lastMsgError && lastMessages) {
+        // Get first (most recent) message per conversation
+        lastMessages.forEach(msg => {
+          if (!lastMessageMap.has(msg.conversation_id)) {
+            lastMessageMap.set(msg.conversation_id, msg);
+          }
+        });
+      }
+
+      // Step 5: Compute unread counts (messages after last_seen_at)
+      const userMemberMap = new Map(memberRows.map(m => [m.conversation_id, m]));
+
+      // Build conversation summaries
+      const summaries: ConversationSummary[] = (convData || []).map(conv => {
+        const userMember = userMemberMap.get(conv.id);
+        const lastSeenAt = userMember?.last_seen_at;
+        const members = (allMembers || [])
+          .filter(m => m.conversation_id === conv.id)
+          .map(m => ({
+            user_id: m.user_id,
+            role: m.role,
+            last_seen_at: m.last_seen_at,
+            profile: m.profile as Profile || { id: m.user_id, full_name: 'Unknown' },
+          }));
+
+        const lastMsg = lastMessageMap.get(conv.id);
+        
+        // Estimate unread count (0 if no last message or if last seen is after last message)
+        let unreadCount = 0;
+        if (lastMsg && lastSeenAt) {
+          const lastMsgTime = new Date(lastMsg.created_at).getTime();
+          const lastSeenTime = new Date(lastSeenAt).getTime();
+          if (lastMsgTime > lastSeenTime && lastMsg.sender_id !== user.id) {
+            unreadCount = 1; // Simplified - just indicate there are unreads
+          }
+        } else if (lastMsg && !lastSeenAt && lastMsg.sender_id !== user.id) {
+          unreadCount = 1;
+        }
+
+        return {
+          id: conv.id,
+          type: conv.type || 'DM',
+          ride_id: conv.ride_id,
+          trip_request_id: conv.trip_request_id,
+          created_at: conv.created_at,
+          updated_at: conv.updated_at,
+          last_message_at: lastMsg?.created_at || null,
+          last_message_preview: lastMsg?.body ? formatMessagePreview(lastMsg.body, lastMsg.message_type as MessageType) : null,
+          last_sender_id: lastMsg?.sender_id || null,
+          pinned: false,
+          muted: false,
+          archived: false,
+          unread_count: unreadCount,
+          members,
+        };
+      });
+
+      // Sort by last message time
+      summaries.sort((a, b) => {
+        const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+        const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+        return bTime - aTime;
+      });
+
+      setConversations(summaries);
+      setConversationsError(null);
+      setFallbackFailed(false);
+      // Keep schema error flag true to show the "updating" banner but fallback worked
+      if (import.meta.env.DEV) {
+        console.log('[DEV] loadConversationsFallback - Success, conversations:', summaries.length);
+      }
+    } catch (fallbackError: any) {
+      console.error('Fallback query also failed:', fallbackError);
+      const errorMsg = fallbackError?.message || 'Unable to load messages';
+      setConversationsError(`${errorMsg}. The messaging system may be temporarily unavailable.`);
+      setSchemaCacheError(true);
+      setFallbackFailed(true);
     } finally {
       setLoading(false);
     }
@@ -1107,6 +1257,18 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
       await sendNotifications(selectedConversation, message);
       await recordRateLimitAction(user.id, user.id, 'message');
       refreshUnreadMessages();
+      
+      // Track message sent - determine if first message by checking message count
+      const isFirstMessage = messages.filter(m => 
+        m.sender_id === user.id && !m.id.startsWith('temp-')
+      ).length === 0;
+      
+      analytics.track.messageSent({
+        message_context: selectedConversation.type === 'RIDE_MATCH' ? 'ride_inquiry' : 
+                        selectedConversation.type === 'TRIP_MATCH' ? 'booking_chat' : 'general',
+        is_first_message: isFirstMessage,
+      });
+      
       resolveAttachmentUrls([message]);
       const urls = extractUrls(message.body || '');
       if (urls.length) {
@@ -1699,37 +1861,92 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
         </div>
 
         <div className="flex-1 overflow-y-auto" data-testid="conversationList">
-          {conversationsError ? (
+          {/* Schema cache updating banner */}
+          {schemaCacheError && conversations.length > 0 && (
+            <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-amber-800 text-sm flex items-center gap-2">
+              <Loader className="w-4 h-4 animate-spin" />
+              <span>System updating... Some features may be limited</span>
+            </div>
+          )}
+
+          {conversationsError && conversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-700 p-6">
               <XCircle className="w-16 h-16 mb-4 text-red-400" />
               <p className="text-center font-semibold mb-2">
-                {schemaCacheError ? 'Messages are updating' : 'Failed to Load Conversations'}
+                {fallbackFailed 
+                  ? 'Messaging Unavailable' 
+                  : schemaCacheError 
+                    ? 'System Updating' 
+                    : 'Failed to Load Messages'}
               </p>
-              <p className="text-sm text-gray-500 text-center mb-4 max-w-md">
-                {schemaCacheError ? 'Messages are updating. Tap Retry.' : conversationsError}
+              <p className="text-sm text-gray-500 text-center mb-4 max-w-xs">
+                {fallbackFailed 
+                  ? 'The messaging system is currently experiencing issues. This may be due to a database update in progress. Please try again in a few minutes.'
+                  : schemaCacheError 
+                    ? 'Messages are temporarily unavailable while the system updates. This usually takes less than a minute.' 
+                    : 'We couldn\'t load your conversations. Please check your connection and try again.'}
               </p>
-              <button
-                onClick={() => {
-                  setLoading(true);
-                  loadConversations();
-                }}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-              >
-                Retry
-              </button>
-              {import.meta.env.DEV && (
-                <p className="text-xs text-gray-400 mt-4 font-mono">
-                  Check console for detailed error logs
-                </p>
+              <div className="flex flex-col gap-2 w-full max-w-xs">
+                {retryCount < 3 ? (
+                  <button
+                    onClick={() => {
+                      setLoading(true);
+                      loadConversations(true);
+                    }}
+                    className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium"
+                  >
+                    Retry {retryCount > 0 ? `(${3 - retryCount} attempts left)` : ''}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                  >
+                    Refresh Page
+                  </button>
+                )}
+                <button
+                  onClick={() => window.location.href = '/find-rides'}
+                  className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Browse Rides Instead
+                </button>
+              </div>
+              {(import.meta.env.DEV || fallbackFailed) && (
+                <details className="mt-4 text-xs text-gray-400">
+                  <summary className="cursor-pointer hover:text-gray-600">Debug Info</summary>
+                  <pre className="mt-2 p-2 bg-gray-100 rounded text-left overflow-auto max-w-xs">
+                    Error: {conversationsError}
+                    {'\n'}Retry count: {retryCount}
+                    {'\n'}Schema cache error: {schemaCacheError ? 'yes' : 'no'}
+                    {'\n'}Fallback failed: {fallbackFailed ? 'yes' : 'no'}
+                  </pre>
+                </details>
               )}
             </div>
           ) : filteredConversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-500 p-6">
-              <Search className="w-16 h-16 mb-4 text-gray-300" />
-              <p className="text-center">No conversations yet</p>
-              <p className="text-sm text-gray-400 text-center mt-2">
-                Start a chat from a ride / request
+              <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                <Search className="w-10 h-10 text-gray-300" />
+              </div>
+              <p className="text-center font-medium text-gray-700 mb-1">No conversations yet</p>
+              <p className="text-sm text-gray-400 text-center mb-6 max-w-xs">
+                Start chatting with drivers or passengers by requesting or offering a ride
               </p>
+              <div className="flex flex-col sm:flex-row gap-2 w-full max-w-xs">
+                <button
+                  onClick={() => window.location.href = '/find-rides'}
+                  className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
+                >
+                  Find a Ride
+                </button>
+                <button
+                  onClick={() => window.location.href = '/post-ride'}
+                  className="flex-1 px-4 py-2 border border-green-500 text-green-600 rounded-lg hover:bg-green-50 transition-colors text-sm font-medium"
+                >
+                  Offer a Ride
+                </button>
+              </div>
             </div>
           ) : (
             filteredConversations.map((conv) => {

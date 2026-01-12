@@ -2,7 +2,88 @@
 
 ## Overview
 
-This guide covers deploying the Carpool Network application to production.
+This guide covers deploying the Carpool Network application to production with zero-regression guarantees.
+
+## ⚠️ CRITICAL: Pre-Deployment Checklist
+
+Before ANY deployment, complete these steps IN ORDER:
+
+1. ✅ Verify Netlify env vars match your Supabase project
+2. ✅ Run schema contract verification
+3. ✅ Apply missing migrations
+4. ✅ Reload PostgREST schema cache
+5. ✅ Re-verify schema contract (all ✅)
+6. ✅ Build and deploy
+
+---
+
+## Phase 0: Database ↔ App Contract Sync
+
+### Step 1: Verify Environment Variable Match
+
+**This is the #1 cause of "works locally, breaks in prod" issues.**
+
+```bash
+# Get your Netlify env vars
+netlify env:list
+```
+
+Compare `VITE_SUPABASE_URL` with your Supabase project URL:
+- Supabase Dashboard → Project → Settings → API → Project URL
+
+**If they don't match**: You've been deploying against the wrong database!
+```bash
+netlify env:set VITE_SUPABASE_URL "https://YOUR_CORRECT_PROJECT.supabase.co"
+netlify env:set VITE_SUPABASE_ANON_KEY "your_correct_anon_key"
+```
+
+### Step 2: Run Schema Contract Verification
+
+Open Supabase SQL Editor for your **production** project:
+```
+https://supabase.com/dashboard/project/YOUR_PROJECT_REF/sql/new
+```
+
+Copy and run the contents of `scripts/verify_schema_contract.sql`
+
+Expected output: All items show ✅
+
+If any show ❌, proceed to Step 3.
+
+### Step 3: Apply Missing Migrations (IN ORDER)
+
+The verification script tells you exactly which migrations to apply. Common ones:
+
+| Missing Object | Migration File |
+|---------------|----------------|
+| `conversations`, `chat_messages` | `20260105120000_upgrade_messaging_system.sql` |
+| `get_conversations_overview()` | `20260106120000_fix_messaging_overview_rpc.sql` |
+| `profile_public_v` | `20260108100000_fix_profile_public_view.sql` |
+| `recurring_ride_patterns` | `20260109120000_phase2_rbac_achievements_subscriptions.sql` |
+| `user_can_view_ride()` | `20260116100000_fix_rides_rls_visibility.sql` |
+
+**Apply each migration in Supabase SQL Editor, one at a time, in timestamp order.**
+
+### Step 4: Reload PostgREST Schema Cache
+
+After applying migrations, run `scripts/reload_postgrest_schema_cache.sql`:
+
+```sql
+SELECT pg_notify('pgrst', 'reload schema');
+NOTIFY pgrst, 'reload schema';
+```
+
+Wait 10 seconds.
+
+### Step 5: Re-verify Schema Contract
+
+Run `scripts/verify_schema_contract.sql` again.
+
+**EXIT CRITERIA**: All items show ✅
+
+If any items still show ❌, repeat steps 3-5.
+
+---
 
 ## Prerequisites
 
@@ -124,11 +205,79 @@ npm run preview
 
 ## Database Migration
 
-### Apply All Migrations
+### ⚠️ CRITICAL: Verify Environment Variables Match Production
 
+Before applying any migrations, **confirm your Netlify environment variables point to the correct Supabase project**:
+
+1. **Get your Netlify env vars:**
+   ```bash
+   netlify env:list
+   ```
+   Or check: Netlify Dashboard → Site → Site configuration → Environment variables
+
+2. **Compare with your Supabase project:**
+   - The `VITE_SUPABASE_URL` should match your Supabase project URL
+   - Go to: https://supabase.com/dashboard → Your Project → Settings → API
+
+3. **⚠️ If they don't match, you've been deploying to a different database!**
+   Update Netlify env vars to point to the correct project.
+
+### Step-by-Step Migration Process
+
+**Step 1: Run Schema Verification**
+
+Open the Supabase SQL Editor for your production project:
+```
+https://supabase.com/dashboard/project/YOUR_PROJECT_REF/sql/new
+```
+
+Copy and run `scripts/verify_prod_schema.sql` to see what's missing.
+
+**Step 2: Apply Missing Migrations**
+
+For messaging to work, these migrations must be applied IN ORDER:
+
+1. **Messaging Tables & Functions** (if conversations table missing):
+   ```
+   supabase/migrations/20260105120000_upgrade_messaging_system.sql
+   ```
+
+2. **Profile Public View** (if profile_public_v missing):
+   ```
+   supabase/migrations/20260108100000_fix_profile_public_view.sql
+   ```
+
+3. **Messaging RPC Fix** (if get_conversations_overview missing):
+   ```
+   supabase/migrations/20260106120000_fix_messaging_overview_rpc.sql
+   ```
+
+4. **RLS Visibility Fix** (if user_can_view_ride missing):
+   ```
+   supabase/migrations/20260116100000_fix_rides_rls_visibility.sql
+   ```
+
+**Step 3: Reload PostgREST Schema Cache**
+
+After applying migrations, run in Supabase SQL Editor:
+```sql
+NOTIFY pgrst, 'reload schema';
+```
+Or use `scripts/reload_postgrest_schema_cache.sql`
+
+**Step 4: Verify Again**
+
+Re-run `scripts/verify_prod_schema.sql` - all items should show ✅
+
+### Apply All Migrations (Supabase CLI)
+
+If you have Supabase CLI linked to your project:
 ```bash
-# Ensure your Supabase connection is configured
-supabase db push
+# Link to your production project
+npx supabase link --project-ref YOUR_PROJECT_REF
+
+# Push all migrations
+npx supabase db push
 ```
 
 ### Verify Tables
@@ -138,6 +287,28 @@ SELECT table_name
 FROM information_schema.tables
 WHERE table_schema = 'public';
 ```
+
+### Troubleshooting PGRST202 Errors
+
+If you see `PGRST202` errors after migrations:
+
+1. **Check function exists:**
+   ```sql
+   SELECT routine_name FROM information_schema.routines 
+   WHERE routine_schema = 'public' AND routine_name = 'get_conversations_overview';
+   ```
+
+2. **Reload schema cache:**
+   ```sql
+   NOTIFY pgrst, 'reload schema';
+   ```
+
+3. **Check function permissions:**
+   ```sql
+   GRANT EXECUTE ON FUNCTION get_conversations_overview TO authenticated;
+   ```
+
+4. **Wait 30 seconds** and test again - PostgREST may need time to refresh
 
 ## Edge Functions Deployment
 

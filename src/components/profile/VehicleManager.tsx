@@ -52,6 +52,8 @@ export default function VehicleManager() {
   const [licensePlateInput, setLicensePlateInput] = useState('');
   const [vehicleImage, setVehicleImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; vehicle: Vehicle | null }>({ show: false, vehicle: null });
   const [deleting, setDeleting] = useState(false);
@@ -185,9 +187,17 @@ export default function VehicleManager() {
     if (!vehicleImage) return null;
 
     try {
+      setIsUploading(true);
+      setUploadProgress(0);
+      
       const fileExt = vehicleImage.name.split('.').pop();
       const fileName = `${vehicleId}-${Date.now()}.${fileExt}`;
       const filePath = `${profile?.id}/${fileName}`;
+
+      // Simulate progress since Supabase storage doesn't provide real progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => Math.min(prev + 10, 90));
+      }, 200);
 
       const { error: uploadError } = await supabase.storage
         .from('vehicle-images')
@@ -196,7 +206,14 @@ export default function VehicleManager() {
           upsert: false
         });
 
-      if (uploadError) throw uploadError;
+      clearInterval(progressInterval);
+
+      if (uploadError) {
+        setUploadProgress(0);
+        throw uploadError;
+      }
+      
+      setUploadProgress(100);
 
       const { data: { publicUrl } } = supabase.storage
         .from('vehicle-images')
@@ -206,6 +223,10 @@ export default function VehicleManager() {
     } catch (err: any) {
       console.error('Error uploading image:', err);
       return null;
+    } finally {
+      setIsUploading(false);
+      // Reset progress after a short delay
+      setTimeout(() => setUploadProgress(0), 1000);
     }
   };
 
@@ -659,18 +680,41 @@ export default function VehicleManager() {
                   accept="image/*"
                   onChange={handleImageChange}
                   className="hidden"
+                  disabled={isUploading}
                 />
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
                   className={`w-full border-2 border-dashed rounded-lg p-6 transition-colors ${!editingVehicle && !vehicleImage
                     ? 'border-red-300 hover:border-red-500 bg-red-50'
                     : 'border-gray-300 hover:border-blue-500'
-                    }`}
+                    } ${isUploading ? 'opacity-75 cursor-not-allowed' : ''}`}
                 >
                   <div className="flex flex-col items-center gap-2">
                     {imagePreview ? (
-                      <img src={imagePreview} alt="Preview" className="w-full h-40 object-cover rounded-lg" />
+                      <div className="relative w-full">
+                        <img src={imagePreview} alt="Preview" className="w-full h-40 object-cover rounded-lg" />
+                        {isUploading && (
+                          <div className="absolute inset-0 bg-black bg-opacity-40 flex flex-col items-center justify-center rounded-lg">
+                            <Loader className="w-8 h-8 text-white animate-spin mb-2" />
+                            <span className="text-white text-sm font-medium">Uploading... {uploadProgress}%</span>
+                            <div className="w-3/4 h-2 bg-gray-300 rounded-full mt-2 overflow-hidden">
+                              <div 
+                                className="h-full bg-blue-500 transition-all duration-300 rounded-full"
+                                style={{ width: `${uploadProgress}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                        {!isUploading && (
+                          <div className="absolute top-2 right-2">
+                            <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                              <Check className="w-3 h-3" /> Ready
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <>
                         <Upload className={`w-8 h-8 ${!editingVehicle ? 'text-red-400' : 'text-gray-400'}`} />

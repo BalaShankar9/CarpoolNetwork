@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Car, Calendar, MapPin, Users, Edit2, Trash2, Eye, AlertCircle, XCircle, CheckCircle, Star, Shield, MessageSquare, Phone, Navigation } from 'lucide-react';
+import { Car, Calendar, MapPin, Users, Edit2, Trash2, Eye, AlertCircle, XCircle, CheckCircle, Star, Shield, MessageSquare, Phone, Navigation, Archive } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { deleteRideForDriver, syncExpiredRideState } from '../services/rideService';
 import { toast } from '../lib/toast';
@@ -12,6 +12,7 @@ import EditRideModal from '../components/rides/EditRideModal';
 import RideTracking from '../components/rides/RideTracking';
 import ClickableUserProfile from '../components/shared/ClickableUserProfile';
 import ConfirmDialog from '../components/shared/ConfirmDialog';
+import { analytics, useFlowStage } from '../lib/analytics';
 
 type ConfirmAction =
   | { type: 'delete-ride'; rideId: string }
@@ -480,6 +481,27 @@ export default function MyRides() {
     }
   };
 
+  const archiveExpiredRide = async (rideId: string) => {
+    setDeletingId(rideId);
+    try {
+      // Mark ride as completed if it's expired - this removes it from active list
+      const { error } = await supabase
+        .from('rides')
+        .update({ status: 'completed' })
+        .eq('id', rideId);
+
+      if (error) throw error;
+
+      loadRides();
+      toast.success('Expired ride archived successfully!');
+    } catch (error) {
+      console.error('Error archiving ride:', error);
+      toast.error('Failed to archive ride. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const acceptBookingRequest = async (request: BookingRequest) => {
     setConfirmAction({ type: 'accept-booking', request });
   };
@@ -496,10 +518,20 @@ export default function MyRides() {
       if (error) throw error;
 
       toast.success('Booking request accepted!');
+      
+      // Analytics: Track successful booking acceptance
+      analytics.track.rideAccepted({});
+      
       loadRides();
     } catch (error: any) {
       console.error('Error accepting request:', error);
       toast.error(error.message || 'Failed to accept request. Please try again.');
+      
+      // Analytics: Track booking acceptance error
+      analytics.track.errorStateShown({
+        error_type: 'server',
+        error_source: 'booking_accept',
+      });
     } finally {
       setProcessingRequestId(null);
       setConfirmLoading(false);
@@ -1048,6 +1080,19 @@ export default function MyRides() {
                                 <AlertCircle className="w-4 h-4" />
                               </button>
                             </>
+                          )}
+                          {expired && !isCancelled && ride.status !== 'completed' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                archiveExpiredRide(ride.id);
+                              }}
+                              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                              title="Archive Expired Ride"
+                              disabled={deletingId === ride.id}
+                            >
+                              <Archive className="w-4 h-4" />
+                            </button>
                           )}
                           <button
                             onClick={(e) => {
