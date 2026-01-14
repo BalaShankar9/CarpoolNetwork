@@ -1,9 +1,66 @@
 # Production Deployment Runbook
 
-> **Date**: January 11, 2026  
+> **Date**: January 14, 2026  
 > **Status**: READY FOR EXECUTION  
 > **Owner**: Release Manager  
 > **Rollback Ready**: Yes
+
+---
+
+## CRITICAL: Environment Variable Verification (UPDATED 2026-01-14)
+
+Before any deployment, verify these **required** environment variables are set in Netlify:
+
+### Required Environment Variables
+
+| Variable | Required | Purpose | How to Verify |
+|----------|----------|---------|---------------|
+| `VITE_SUPABASE_URL` | ✅ CRITICAL | Supabase project URL | Netlify Dashboard → Site settings → Environment variables |
+| `VITE_SUPABASE_ANON_KEY` | ✅ CRITICAL | Supabase anonymous key | Netlify Dashboard → Site settings → Environment variables |
+| `VITE_GOOGLE_MAPS_API_KEY` | Optional | Google Maps integration | Maps won't work if missing |
+| `VITE_SENTRY_DSN` | Optional | Error tracking | Sentry won't initialize if missing |
+| `VITE_GA4_MEASUREMENT_ID` | Optional | Analytics | Analytics disabled if missing |
+
+### Verification Checklist
+
+```bash
+# In Netlify Dashboard: Site settings → Environment variables
+# Verify ALL of these are set (not empty):
+- [ ] VITE_SUPABASE_URL starts with "https://" and ends with "supabase.co"
+- [ ] VITE_SUPABASE_ANON_KEY is a valid JWT (starts with "eyJ")
+- [ ] No trailing whitespace or quotes around values
+```
+
+### What Happens If Environment Variables Are Missing
+
+If `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY` are missing:
+1. The app will NOT crash (fixed 2026-01-14)
+2. A user-friendly error page will be displayed
+3. Users will see "Unable to Start Application" with retry options
+4. The error will indicate it's a configuration issue
+
+---
+
+## Service Worker Status
+
+**Current Status**: DISABLED (as of 2026-01-14)
+
+The service worker has been temporarily disabled to prevent stale cache issues after deployments.
+
+### Why It's Disabled
+
+A race condition was causing blank screens:
+1. `index.html` unregisters service workers on load
+2. `pwaService.ts` was re-registering the SW immediately
+3. Old cached chunks would be served, causing ChunkLoadError
+
+### Re-enabling Service Worker (Future)
+
+To re-enable the service worker:
+1. Implement proper cache versioning in `public/sw.js`
+2. Remove the unregister code from `index.html`
+3. Set `SW_ENABLED = true` in `src/services/pwaService.ts`
+4. Ensure `netlify.toml` has no-cache headers for `sw.js`
 
 ---
 

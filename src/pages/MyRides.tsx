@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { deleteRideForDriver, syncExpiredRideState } from '../services/rideService';
 import { toast } from '../lib/toast';
 import { checkRateLimit, recordRateLimitAction } from '../lib/rateLimiting';
+import { getRideLifecyclePhase, getRideActions, isRideExpired } from '../lib/rideLifecycle';
 import { getOrCreateRideConversation } from '../lib/chatHelpers';
 import { useAuth } from '../contexts/AuthContext';
 import RecurringRidesManager from '../components/rides/RecurringRidesManager';
@@ -1011,8 +1012,11 @@ export default function MyRides() {
                 </div>
               ) : (
                 offeredRides.map((ride) => {
-                  const expired = isExpired(ride.departure_time, ride.available_until);
+                  const expired = isRideExpired(ride.departure_time, ride.available_until);
                   const isCancelled = ride.status === 'cancelled';
+                  const isCompleted = ride.status === 'completed';
+                  const phase = getRideLifecyclePhase(ride.departure_time, ride.available_until);
+                  const actions = getRideActions(ride.departure_time, ride.available_until, ride.status, false);
 
                   return (
                     <div
@@ -1038,62 +1042,77 @@ export default function MyRides() {
                               Recurring
                             </span>
                           )}
-                          {expired && !isCancelled && (
+                          {expired && !isCancelled && !isCompleted && (
                             <span className="flex items-center gap-1 text-xs text-gray-500">
                               <AlertCircle className="w-3 h-3" />
                               Past departure time
                             </span>
                           )}
+                          {phase === 'grace' && !isCancelled && !isCompleted && (
+                            <span className="flex items-center gap-1 text-xs text-amber-600">
+                              <AlertCircle className="w-3 h-3" />
+                              In grace period
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
-                          {!expired && !isCancelled && (
-                            <>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/rides/${ride.id}`);
-                                }}
-                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                title="View Details"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toast.info('Edit functionality coming soon!');
-                                }}
-                                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                                title="Edit Ride"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  cancelRide(ride.id);
-                                }}
-                                className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                                title="Cancel Ride"
-                                disabled={deletingId === ride.id}
-                              >
-                                <AlertCircle className="w-4 h-4" />
-                              </button>
-                            </>
+                          {/* View Details - always available */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/rides/${ride.id}`);
+                            }}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+
+                          {/* Edit - only for upcoming non-terminal rides */}
+                          {actions.canEdit && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toast.info('Edit functionality coming soon!');
+                              }}
+                              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                              title="Edit Ride"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
                           )}
-                          {expired && !isCancelled && ride.status !== 'completed' && (
+
+                          {/* Cancel - available for non-terminal rides (even expired) */}
+                          {actions.canCancel && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                cancelRide(ride.id);
+                              }}
+                              className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                              title={expired ? "Cancel Expired Ride" : "Cancel Ride"}
+                              disabled={deletingId === ride.id}
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </button>
+                          )}
+
+                          {/* Archive - for expired non-terminal rides */}
+                          {actions.canArchive && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 archiveExpiredRide(ride.id);
                               }}
                               className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                              title="Archive Expired Ride"
+                              title="Archive as Completed"
                               disabled={deletingId === ride.id}
                             >
                               <Archive className="w-4 h-4" />
                             </button>
                           )}
+
+                          {/* Delete - always shown but DB enforces passenger check */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

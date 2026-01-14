@@ -5,22 +5,89 @@
 [build.environment]
   NODE_VERSION = "20"
 
-# SPA routing support (React Router): all routes go to index.html
+# ==========================================================
+# CANONICAL HOST: Redirect www to non-www (SEO best practice)
+# ==========================================================
+[[redirects]]
+  from = "https://www.carpoolnetwork.co.uk/*"
+  to = "https://carpoolnetwork.co.uk/:splat"
+  status = 301
+  force = true
+
+# ==========================================================
+# STATIC FILES: Serve robots.txt and sitemap.xml directly
+# ==========================================================
+[[redirects]]
+  from = "/robots.txt"
+  to = "/robots.txt"
+  status = 200
+
+[[redirects]]
+  from = "/sitemap.xml"
+  to = "/sitemap.xml"
+  status = 200
+
+# ==========================================================
+# SPA ROUTING: React Router fallback (must be after static files)
+# ==========================================================
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# Cache built assets aggressively (Vite outputs hashed files)
+# ==========================================================
+# CACHE HEADERS: Aggressive caching for built assets
+# ==========================================================
 [[headers]]
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# Basic security headers
+# Prevent caching of index.html to avoid stale app shell
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+# Prevent caching of service worker to avoid stale SW issues
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+# Static SEO files - moderate cache, allow revalidation
+[[headers]]
+  for = "/robots.txt"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+    Content-Type = "text/plain; charset=utf-8"
+
+[[headers]]
+  for = "/sitemap.xml"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+    Content-Type = "application/xml; charset=utf-8"
+
+# ==========================================================
+# SECURITY HEADERS: Applied to all routes
+# ==========================================================
 [[headers]]
   for = "/*"
   [headers.values]
+    # Prevent MIME type sniffing
     X-Content-Type-Options = "nosniff"
+    
+    # Prevent clickjacking
     X-Frame-Options = "DENY"
+    
+    # Control referrer information
     Referrer-Policy = "strict-origin-when-cross-origin"
+    
+    # XSS Protection (legacy browsers)
+    X-XSS-Protection = "1; mode=block"
+    
+    # HSTS: Force HTTPS for 1 year (includeSubDomains removed for initial rollout)
+    Strict-Transport-Security = "max-age=31536000"
+    
+    # Permissions Policy: Disable unnecessary browser features
+    Permissions-Policy = "geolocation=(self), camera=(), microphone=(), payment=()"

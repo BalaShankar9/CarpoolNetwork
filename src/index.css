@@ -44,6 +44,28 @@
   }
 }
 
+/* Content padding to avoid bottom nav overlap */
+@layer utilities {
+  .pb-bottom-nav {
+    padding-bottom: calc(var(--app-bottom-nav-height) + var(--safe-area-inset-bottom) + 16px);
+  }
+
+  .mb-bottom-nav {
+    margin-bottom: calc(var(--app-bottom-nav-height) + var(--safe-area-inset-bottom));
+  }
+
+  /* Position floating elements above bottom nav */
+  .bottom-above-nav {
+    bottom: calc(var(--app-bottom-nav-height) + var(--safe-area-inset-bottom) + 16px);
+  }
+
+  /* Scrollable container that respects bottom nav */
+  .scroll-container-mobile {
+    max-height: calc(100vh - var(--app-bottom-nav-height) - var(--safe-area-inset-bottom) - 80px);
+    overflow-y: auto;
+  }
+}
+
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;

@@ -1,6 +1,7 @@
 ﻿import { Suspense, lazy, ReactNode } from 'react';
 import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
+import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { RealtimeProvider } from './contexts/RealtimeContext';
 import { PremiumProvider } from './contexts/PremiumContext';
@@ -12,6 +13,14 @@ import { AnalyticsProvider } from './lib/analytics/AnalyticsProvider';
 
 const Router = Capacitor.isNativePlatform() ? HashRouter : BrowserRouter;
 
+// Public SEO Marketing Pages (indexed by search engines)
+const LandingPage = lazy(() => import('./pages/public/LandingPage'));
+const HowItWorks = lazy(() => import('./pages/public/HowItWorks'));
+const SafetyInfo = lazy(() => import('./pages/public/SafetyInfo'));
+const Communities = lazy(() => import('./pages/public/Communities'));
+const CityPage = lazy(() => import('./pages/public/CityPage'));
+
+// Auth pages
 const SignIn = lazy(() => import('./pages/auth/SignIn'));
 const SignUp = lazy(() => import('./pages/auth/SignUp'));
 const VerifyOtp = lazy(() => import('./pages/auth/VerifyOtp'));
@@ -48,6 +57,11 @@ const SafetyReports = lazy(() => import('./pages/admin/SafetyReports'));
 const SafetyReportDetail = lazy(() => import('./pages/admin/SafetyReportDetail'));
 const SafetyDashboard = lazy(() => import('./pages/admin/SafetyDashboard'));
 const AdvancedAnalytics = lazy(() => import('./pages/admin/AdvancedAnalytics'));
+const AnalyticsSummary = lazy(() => import('./pages/admin/analytics/AnalyticsSummary'));
+const UserAnalytics = lazy(() => import('./pages/admin/analytics/UserAnalytics'));
+const RideAnalytics = lazy(() => import('./pages/admin/analytics/RideAnalytics'));
+const GeoAnalytics = lazy(() => import('./pages/admin/analytics/GeoAnalytics'));
+const OpsHealthAnalytics = lazy(() => import('./pages/admin/analytics/OpsHealthAnalytics'));
 const LiveActivityMonitor = lazy(() => import('./pages/admin/LiveActivityMonitor'));
 const BulkOperations = lazy(() => import('./pages/admin/BulkOperations'));
 const PerformanceMonitor = lazy(() => import('./pages/admin/PerformanceMonitor'));
@@ -179,10 +193,44 @@ function PublicRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Route that shows different content based on auth status
+ * - Authenticated users: show protected content
+ * - Unauthenticated users: show public landing page
+ */
+function HomeRoute() {
+  const { user, loading, isEmailVerified } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (!user) {
+    return <LandingPage />;
+  }
+
+  if (!isEmailVerified) {
+    return <Navigate to="/verify-email" replace />;
+  }
+
+  return (
+    <Layout>
+      <Home />
+    </Layout>
+  );
+}
+
 function AppContent() {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
+        {/* Public SEO Marketing Pages - Always accessible, indexed by search engines */}
+        <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/safety-info" element={<SafetyInfo />} />
+        <Route path="/communities" element={<Communities />} />
+        <Route path="/cities/:city" element={<CityPage />} />
+        
+        {/* Auth routes */}
         <Route path="/signin" element={
           <PublicRoute>
             <SignIn />
@@ -207,13 +255,10 @@ function AppContent() {
         <Route path="/reset-password" element={
           <ResetPassword />
         } />
-        <Route path="/" element={
-          <ProtectedRoute>
-            <Layout>
-              <Home />
-            </Layout>
-          </ProtectedRoute>
-        } />
+        
+        {/* Home - shows landing page for unauthenticated, dashboard for authenticated */}
+        <Route path="/" element={<HomeRoute />} />
+        
         <Route path="/find-rides" element={
           <ProtectedRoute>
             <Layout>
@@ -446,6 +491,31 @@ function AppContent() {
             <AdvancedAnalytics />
           </AdminRoute>
         } />
+        <Route path="/admin/analytics/summary" element={
+          <AdminRoute>
+            <AnalyticsSummary />
+          </AdminRoute>
+        } />
+        <Route path="/admin/analytics/users" element={
+          <AdminRoute>
+            <UserAnalytics />
+          </AdminRoute>
+        } />
+        <Route path="/admin/analytics/rides" element={
+          <AdminRoute>
+            <RideAnalytics />
+          </AdminRoute>
+        } />
+        <Route path="/admin/analytics/geo" element={
+          <AdminRoute>
+            <GeoAnalytics />
+          </AdminRoute>
+        } />
+        <Route path="/admin/analytics/ops" element={
+          <AdminRoute>
+            <OpsHealthAnalytics />
+          </AdminRoute>
+        } />
         <Route path="/admin/activity" element={
           <AdminRoute>
             <LiveActivityMonitor />
@@ -553,26 +623,28 @@ function AppContent() {
 
 function App() {
   return (
-    <LoadingProvider>
-      <AuthProvider>
-        <PremiumProvider>
-          <RealtimeProvider>
-            <Router>
-              <AppErrorBoundary>
-                {/* Analytics must be inside Router for useLocation */}
-                <AnalyticsProvider>
-                  <AppContent />
-                </AnalyticsProvider>
-                {/* PWA Components */}
-                <InstallPrompt />
-                <UpdatePrompt />
-                <OfflineIndicator />
-              </AppErrorBoundary>
-            </Router>
-          </RealtimeProvider>
-        </PremiumProvider>
-      </AuthProvider>
-    </LoadingProvider>
+    <HelmetProvider>
+      <LoadingProvider>
+        <AuthProvider>
+          <PremiumProvider>
+            <RealtimeProvider>
+              <Router>
+                <AppErrorBoundary>
+                  {/* Analytics must be inside Router for useLocation */}
+                  <AnalyticsProvider>
+                    <AppContent />
+                  </AnalyticsProvider>
+                  {/* PWA Components */}
+                  <InstallPrompt />
+                  <UpdatePrompt />
+                  <OfflineIndicator />
+                </AppErrorBoundary>
+              </Router>
+            </RealtimeProvider>
+          </PremiumProvider>
+        </AuthProvider>
+      </LoadingProvider>
+    </HelmetProvider>
   );
 }
 

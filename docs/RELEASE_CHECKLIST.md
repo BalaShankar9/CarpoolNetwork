@@ -69,11 +69,42 @@
 - [ ] User can sign in
 - [ ] Real-time features working
 
+### Schema Health Verification
+Run these SQL queries in Supabase SQL Editor to verify schema integrity:
+
+```sql
+-- Quick health check - all should return 'EXISTS'
+SELECT
+  'profile_public_v' as object,
+  CASE WHEN to_regclass('public.profile_public_v') IS NOT NULL THEN 'EXISTS' ELSE 'MISSING' END as status
+UNION ALL SELECT 'get_conversations_overview',
+  CASE WHEN EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'get_conversations_overview') THEN 'EXISTS' ELSE 'MISSING' END
+UNION ALL SELECT 'sync_expired_ride_state',
+  CASE WHEN EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'sync_expired_ride_state') THEN 'EXISTS' ELSE 'MISSING' END
+UNION ALL SELECT 'delete_ride_for_driver',
+  CASE WHEN EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'delete_ride_for_driver') THEN 'EXISTS' ELSE 'MISSING' END;
+```
+
+If any show 'MISSING':
+1. Apply the missing migration from `supabase/migrations/`
+2. Reload schema cache: Settings > API > Reload schema cache
+3. Re-run the check
+
+See `docs/PROD_MIGRATION_CHECKLIST.md` for detailed verification.
+
+### Critical Feature Verification
+- [ ] **Messaging**: Navigate to /messages, verify conversations load (no PGRST202 error)
+- [ ] **Ride Search**: Navigate to /find-rides, verify rides within grace period visible
+- [ ] **My Rides**: Navigate to /my-rides, verify expired rides show cancel/archive options
+- [ ] **Admin Access**: Admin user can access /admin, non-admin redirected to /unauthorized
+- [ ] **Profile**: Navigate to /profile, verify tabs load correctly
+
 ### Extended Checks (within 1 hour)
 - [ ] Monitor error tracking for new errors
 - [ ] Verify critical user flows work
 - [ ] Check database for any anomalies
 - [ ] Review Supabase dashboard for errors
+- [ ] Check for PGRST202/PGRST204 errors in API logs
 
 ---
 

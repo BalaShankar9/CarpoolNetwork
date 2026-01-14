@@ -14,6 +14,23 @@ interface PushSubscriptionJSON {
     };
 }
 
+// =============================================================================
+// SERVICE WORKER DISABLED - 2026-01-14
+// =============================================================================
+// The service worker is temporarily disabled to fix a race condition that was
+// causing blank screens after deploys. The issue was:
+// 1. index.html unregisters service workers on load
+// 2. pwaService.ts was re-registering the SW immediately after
+// 3. Old cached chunks would be served, causing ChunkLoadError
+//
+// To re-enable the service worker in the future:
+// 1. Implement proper cache versioning in sw.js
+// 2. Remove the unregister code from index.html
+// 3. Set SW_ENABLED = true below
+// 4. Add cache-busting headers in netlify.toml for sw.js
+// =============================================================================
+const SW_ENABLED = false;
+
 class PWAService {
     private deferredPrompt: BeforeInstallPromptEvent | null = null;
     private installPromptShown = false;
@@ -30,7 +47,7 @@ class PWAService {
             return;
         }
 
-        // Listen for install prompt
+        // Listen for install prompt (still works for PWA install even without SW)
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             this.deferredPrompt = e as BeforeInstallPromptEvent;
@@ -43,6 +60,13 @@ class PWAService {
             this.dispatchEvent('installed');
             this.trackInstall();
         });
+
+        // SERVICE WORKER REGISTRATION DISABLED
+        // See comment at top of class for explanation
+        if (!SW_ENABLED) {
+            console.log('[PWAService] Service worker registration disabled to prevent cache issues');
+            return;
+        }
 
         // Register service worker and check for updates
         try {

@@ -11,6 +11,7 @@ import { fetchPublicProfilesByIds, PublicProfile } from '../services/publicProfi
 import { toast } from '../lib/toast';
 import { RideType, RIDE_TYPE_LIST, getRideTypeInfo } from '../types/rideTypes';
 import { analytics, useFlowStage, useSearchTracking, useEmptyStateTracking } from '../lib/analytics';
+import { GRACE_PERIOD_MINUTES } from '../lib/rideLifecycle';
 
 interface Ride {
   id: string;
@@ -165,6 +166,9 @@ export default function FindRides() {
 
     setLoading(true);
     try {
+      // Include rides within the grace period (still potentially joinable)
+      const gracePeriodCutoff = new Date(Date.now() - GRACE_PERIOD_MINUTES * 60 * 1000).toISOString();
+
       const { data, error } = await supabase
         .from('rides')
         .select(`
@@ -174,7 +178,7 @@ export default function FindRides() {
         .eq('status', 'active')
         .neq('driver_id', user.id)
         .gt('available_seats', 0)
-        .gte('departure_time', new Date().toISOString())
+        .gte('departure_time', gracePeriodCutoff)
         .order('departure_time', { ascending: true })
         .limit(50);
 

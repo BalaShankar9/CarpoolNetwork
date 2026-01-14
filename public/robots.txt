@@ -1,0 +1,49 @@
+# CarpoolNetwork Robots.txt
+# https://carpoolnetwork.co.uk
+
+User-agent: *
+Allow: /
+
+# Public marketing pages
+Allow: /how-it-works
+Allow: /safety-info
+Allow: /communities
+Allow: /cities/
+Allow: /terms
+Allow: /privacy
+
+# Block private app routes
+Disallow: /signin
+Disallow: /signup
+Disallow: /verify-*
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /profile
+Disallow: /onboarding/
+Disallow: /messages
+Disallow: /my-rides
+Disallow: /post-ride
+Disallow: /request-ride
+Disallow: /find-rides
+Disallow: /rides/
+Disallow: /bookings/
+Disallow: /user/
+Disallow: /community
+Disallow: /admin
+Disallow: /admin/
+Disallow: /settings
+Disallow: /preferences
+Disallow: /security
+Disallow: /notifications
+Disallow: /friends
+Disallow: /favorites
+Disallow: /pools
+Disallow: /help
+Disallow: /analytics
+Disallow: /leaderboards
+Disallow: /challenges
+Disallow: /unauthorized
+Disallow: /social/
+
+# Sitemap location
+Sitemap: https://carpoolnetwork.co.uk/sitemap.xml
