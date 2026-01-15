@@ -23,6 +23,8 @@ import {
   UserX,
   VolumeX,
   XCircle,
+  RefreshCw,
+  Settings,
 } from 'lucide-react';
 import { useVirtualizer, VirtualItem } from '@tanstack/react-virtual';
 import { useAuth } from '../../contexts/AuthContext';
@@ -36,11 +38,21 @@ import {
   extractUrls,
   formatMessagePreview,
   markConversationRead,
+  ChatMessageLite,
 } from '../../lib/chatUtils';
 import { NotificationsService } from '../../services/notificationsService';
 import ClickableUserProfile from '../shared/ClickableUserProfile';
 import ReportUserModal from '../shared/ReportUserModal';
 import { analytics } from '../../lib/analytics';
+import {
+  safeRpc,
+  safeRpcWithRetry,
+  updatePresenceBestEffort,
+  markReadDebounced,
+  runMessagingDiagnostics,
+  formatDiagnosticsReport,
+  type MessagingDiagnostics,
+} from '../../services/messagingUtils';
 
 interface Profile {
   id: string;
@@ -258,6 +270,9 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
   const [reportOpen, setReportOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [diagnosticsData, setDiagnosticsData] = useState<MessagingDiagnostics | null>(null);
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingIntervalRef = useRef<number | null>(null);
   const voiceInputRef = useRef<HTMLInputElement>(null);
@@ -375,6 +390,22 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
     rowVirtualizer.scrollToIndex(renderedItems.length - 1, { align: 'end', behavior: behavior as 'smooth' | 'auto' });
   };
 
+  // Run diagnostics helper
+  const runDiagnostics = async () => {
+    setDiagnosticsLoading(true);
+    try {
+      const diag = await runMessagingDiagnostics();
+      setDiagnosticsData(diag);
+      if (import.meta.env.DEV) {
+        console.log(formatDiagnosticsReport(diag));
+      }
+    } catch (err) {
+      console.error('Diagnostics failed:', err);
+    } finally {
+      setDiagnosticsLoading(false);
+    }
+  };
+
   const loadConversations = async (isRetry = false) => {
     if (!user) return;
     setConversationsError(null);
@@ -390,28 +421,40 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
       if (import.meta.env.DEV) {
         console.log('[DEV] loadConversations - Calling RPC: get_conversations_overview');
       }
-      const result = await supabase.rpc('get_conversations_overview');
-      if (!result) {
-        throw new Error('Conversation overview RPC unavailable');
-      }
-      const { data, error } = result;
-      if (error) {
+      
+      // Use safe RPC with retry for transient errors
+      const result = await safeRpcWithRetry<any[]>('get_conversations_overview', undefined, {
+        maxRetries: 2,
+        retryDelayMs: 1000,
+        timeout: 15000,
+      });
+      
+      if (!result.success) {
         if (import.meta.env.DEV) {
           console.error('[DEV] loadConversations - RPC Error:', {
             rpc: 'get_conversations_overview',
-            code: (error as any)?.code,
-            message: error.message,
-            details: (error as any)?.details,
-            hint: (error as any)?.hint,
-            fullError: error,
+            code: result.error?.code,
+            message: result.error?.message,
+            isSchemaError: result.error?.isSchemaError,
           });
         }
-        throw error;
+        
+        // FALLBACK: If RPC fails with schema errors, use direct queries
+        if (result.error?.isSchemaError) {
+          console.warn('[Messaging] RPC unavailable (schema error), attempting fallback query...');
+          setSchemaCacheError(true);
+          await loadConversationsFallback();
+          return;
+        }
+        
+        throw new Error(result.error?.message || 'Failed to load conversations');
       }
+      
       if (import.meta.env.DEV) {
-        console.log('[DEV] loadConversations - Success, conversations:', data?.length || 0);
+        console.log('[DEV] loadConversations - Success, conversations:', result.data?.length || 0);
       }
-      const normalized = (data || []).map((conv: any) => ({
+      
+      const normalized = (result.data || []).map((conv: any) => ({
         ...conv,
         pinned: Boolean(conv.pinned),
         muted: Boolean(conv.muted),
@@ -523,12 +566,16 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
         const lastSeenAt = userMember?.last_seen_at;
         const members = (allMembers || [])
           .filter(m => m.conversation_id === conv.id)
-          .map(m => ({
-            user_id: m.user_id,
-            role: m.role,
-            last_seen_at: m.last_seen_at,
-            profile: m.profile as Profile || { id: m.user_id, full_name: 'Unknown' },
-          }));
+          .map(m => {
+            // Handle Supabase join which returns array for single relations
+            const profileData = Array.isArray(m.profile) ? m.profile[0] : m.profile;
+            return {
+              user_id: m.user_id,
+              role: m.role,
+              last_seen_at: m.last_seen_at,
+              profile: (profileData || { id: m.user_id, full_name: 'Unknown' }) as Profile,
+            };
+          });
 
         const lastMsg = lastMessageMap.get(conv.id);
         
@@ -552,7 +599,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
           created_at: conv.created_at,
           updated_at: conv.updated_at,
           last_message_at: lastMsg?.created_at || null,
-          last_message_preview: lastMsg?.body ? formatMessagePreview(lastMsg.body, lastMsg.message_type as MessageType) : null,
+          last_message_preview: lastMsg ? formatMessagePreview(lastMsg as ChatMessageLite) : null,
           last_sender_id: lastMsg?.sender_id || null,
           pinned: false,
           muted: false,
@@ -693,31 +740,26 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
 
   const updateReadReceipt = async (conversationId: string, latestMessage: ChatMessage | undefined) => {
     if (!user || !latestMessage) return;
-    try {
-      await supabase.rpc('mark_conversation_read', {
-        p_conversation_id: conversationId,
-        p_last_read_message_id: latestMessage.id,
-        p_last_read_at: latestMessage.created_at,
-      });
-      setReadStates((prev) => ({ ...prev, [user.id]: latestMessage.created_at }));
-      setConversations((prev) => markConversationRead(prev, conversationId));
-      refreshUnreadMessages();
-    } catch (error) {
-      console.error('Failed to update read receipt:', error);
-    }
+    
+    // Use debounced read marking for efficiency
+    markReadDebounced(
+      conversationId,
+      latestMessage.id,
+      latestMessage.created_at,
+      (success) => {
+        if (success) {
+          setReadStates((prev) => ({ ...prev, [user.id]: latestMessage.created_at }));
+          setConversations((prev) => markConversationRead(prev, conversationId));
+          refreshUnreadMessages();
+        }
+      }
+    );
   };
 
   const updatePresence = async (conversationId: string) => {
     if (!user) return;
-    try {
-      await supabase
-        .from('conversation_members')
-        .update({ last_seen_at: new Date().toISOString() })
-        .eq('conversation_id', conversationId)
-        .eq('user_id', user.id);
-    } catch (error) {
-      console.error('Failed to update presence timestamp:', error);
-    }
+    // Use best-effort presence update (non-blocking, debounced)
+    updatePresenceBestEffort(conversationId, user.id);
   };
 
   const updateConversationPreview = (conversationId: string, message: ChatMessage, incrementUnread: boolean) => {
@@ -1911,8 +1953,79 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                 >
                   Browse Rides Instead
                 </button>
+                {/* Diagnostics button for troubleshooting */}
+                <button
+                  onClick={() => {
+                    setShowDiagnostics(true);
+                    runDiagnostics();
+                  }}
+                  className="w-full px-4 py-2 border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-sm"
+                >
+                  <Settings className="w-4 h-4" />
+                  Run Diagnostics
+                </button>
               </div>
-              {(import.meta.env.DEV || fallbackFailed) && (
+              {/* Diagnostics panel */}
+              {showDiagnostics && (
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg text-left w-full max-w-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-gray-700">Messaging Diagnostics</h4>
+                    <button
+                      onClick={() => setShowDiagnostics(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {diagnosticsLoading ? (
+                    <div className="flex items-center gap-2 text-gray-500 text-sm">
+                      <Loader className="w-4 h-4 animate-spin" />
+                      Running diagnostics...
+                    </div>
+                  ) : diagnosticsData ? (
+                    <div className="space-y-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className={diagnosticsData.schemaHealthy ? 'text-green-600' : 'text-red-600'}>
+                          {diagnosticsData.schemaHealthy ? '✅' : '❌'}
+                        </span>
+                        <span>Schema Health</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={diagnosticsData.rpcAvailable ? 'text-green-600' : 'text-red-600'}>
+                          {diagnosticsData.rpcAvailable ? '✅' : '❌'}
+                        </span>
+                        <span>RPC Available</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={diagnosticsData.realtimeConnected ? 'text-green-600' : 'text-amber-600'}>
+                          {diagnosticsData.realtimeConnected ? '✅' : '⚠️'}
+                        </span>
+                        <span>Realtime Connected</span>
+                      </div>
+                      {diagnosticsData.lastError && (
+                        <div className="mt-2 p-2 bg-red-50 rounded text-red-700 text-xs">
+                          {diagnosticsData.lastError}
+                        </div>
+                      )}
+                      {!diagnosticsData.schemaHealthy && (
+                        <div className="mt-2 p-2 bg-amber-50 rounded text-amber-700 text-xs">
+                          <strong>Admin action required:</strong> Apply migration 20260115200000_messaging_schema_hotfix.sql and reload schema cache.
+                        </div>
+                      )}
+                      <button
+                        onClick={runDiagnostics}
+                        className="mt-2 w-full px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 flex items-center justify-center gap-1"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        Re-run
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">Click to run diagnostics</p>
+                  )}
+                </div>
+              )}
+              {(import.meta.env.DEV || fallbackFailed) && !showDiagnostics && (
                 <details className="mt-4 text-xs text-gray-400">
                   <summary className="cursor-pointer hover:text-gray-600">Debug Info</summary>
                   <pre className="mt-2 p-2 bg-gray-100 rounded text-left overflow-auto max-w-xs">
