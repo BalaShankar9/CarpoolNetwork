@@ -1,0 +1,104 @@
+{
+  "$schema": "./sites.schema.json",
+  "sites": [
+    {
+      "name": "Production",
+      "baseUrl": "https://carpoolnetwork.co.uk",
+      "enabled": true,
+      "crawlProtected": false,
+      "crawlAdmin": false
+    },
+    {
+      "name": "Production WWW",
+      "baseUrl": "https://www.carpoolnetwork.co.uk",
+      "enabled": false,
+      "crawlProtected": false,
+      "crawlAdmin": false
+    },
+    {
+      "name": "Staging",
+      "baseUrl": "https://staging.carpoolnetwork.co.uk",
+      "enabled": false,
+      "crawlProtected": true,
+      "crawlAdmin": false
+    },
+    {
+      "name": "Local Development",
+      "baseUrl": "http://localhost:5173",
+      "enabled": false,
+      "crawlProtected": true,
+      "crawlAdmin": false
+    }
+  ],
+  "options": {
+    "concurrency": 3,
+    "delayBetweenRequests": 500,
+    "maxPages": 0,
+    "timeout": 30000,
+    "userAgent": "CarpoolNetwork-SEO-Audit/1.0 (internal)",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "followExternalLinks": false,
+    "respectRobotsTxt": true,
+    "screenshotOnError": true
+  },
+  "seedPaths": [
+    "/",
+    "/how-it-works",
+    "/safety-info",
+    "/communities",
+    "/cities/cardiff",
+    "/cities/sheffield",
+    "/cities/bristol",
+    "/cities/manchester",
+    "/terms",
+    "/privacy",
+    "/signin",
+    "/signup"
+  ],
+  "excludePatterns": [
+    "/api/",
+    "/static/",
+    "*.pdf",
+    "*.zip",
+    "*.png",
+    "*.jpg",
+    "*.jpeg",
+    "*.gif",
+    "*.svg",
+    "mailto:*",
+    "tel:*",
+    "javascript:*"
+  ],
+  "protectedSeedPaths": [
+    "/find-rides",
+    "/my-rides",
+    "/messages",
+    "/community",
+    "/profile",
+    "/settings",
+    "/preferences",
+    "/analytics",
+    "/leaderboards",
+    "/challenges",
+    "/friends",
+    "/notifications",
+    "/safety",
+    "/favorites",
+    "/pools",
+    "/help"
+  ],
+  "adminSeedPaths": [
+    "/admin",
+    "/admin/users",
+    "/admin/bugs",
+    "/admin/verifications",
+    "/admin/safety",
+    "/admin/analytics",
+    "/admin/activity",
+    "/admin/settings",
+    "/admin/health"
+  ]
+}

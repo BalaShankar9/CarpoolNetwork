@@ -17,7 +17,11 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run",
+    "audit:seo": "cd tools/seo-audit && npm install && npm run dev",
+    "audit:seo:local": "cd tools/seo-audit && npm install && npm run dev -- --local",
+    "audit:seo:auth": "cd tools/seo-audit && npm install && npm run dev -- --auth",
+    "audit:seo:build": "cd tools/seo-audit && npm install && npm run build"
   },
   "dependencies": {
     "@capacitor/cli": "^8.0.0",

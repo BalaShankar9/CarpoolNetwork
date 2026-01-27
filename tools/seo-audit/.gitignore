@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Generated reports (keep the directory structure)
+reports/*.csv
+reports/*.html
+reports/*.json
+!reports/.gitkeep
+
+# Environment
+.env
+.env.local
