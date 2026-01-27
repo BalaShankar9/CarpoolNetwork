@@ -98,7 +98,7 @@ export default function PlatformSettings() {
     };
 
     const saveSetting = async (key: string) => {
-        if (!editedValues[key] === undefined) return;
+        if (editedValues[key] === undefined) return;
 
         setSaving(true);
         try {

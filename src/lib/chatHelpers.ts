@@ -172,14 +172,15 @@ export async function getOrCreateTripConversation(
     }
 
     const conversationId = normalizeConversationId(data);
-  if (conversationId) {
-    return conversationId;
-  }
+    if (conversationId) {
+      return conversationId;
+    }
+
+    return null;
   } catch (error) {
     console.error('Error using get_or_create_trip_conversation:', error);
+    return null;
   }
-
-  return null;
 }
 
 /**

@@ -22,11 +22,6 @@ interface DiagnosticsState {
  * Renders nothing in production builds
  */
 export default function DevDiagnosticsPanel() {
-  // Only render in development mode
-  if (!import.meta.env.DEV) {
-    return null;
-  }
-
   const [expanded, setExpanded] = useState(false);
   const [state, setState] = useState<DiagnosticsState>({
     projectUrl: import.meta.env.VITE_SUPABASE_URL || 'Not configured',
@@ -145,6 +140,11 @@ export default function DevDiagnosticsPanel() {
   useEffect(() => {
     checkSchemaHealth();
   }, []);
+
+  // Only render in development mode
+  if (!import.meta.env.DEV) {
+    return null;
+  }
 
   const getStatusIcon = (exists: boolean) => {
     return exists 

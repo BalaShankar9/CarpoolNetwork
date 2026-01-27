@@ -98,7 +98,20 @@ export default function VehicleManager() {
       const { data, error } = await getUserVehicles(profile.id, { activeOnly: true });
 
       if (error) throw error;
-      setVehicles(data);
+      // Convert null values to undefined to match Vehicle interface
+      setVehicles(data.map(v => ({
+        ...v,
+        fuel_type: v.fuel_type ?? undefined,
+        vehicle_type: v.vehicle_type ?? undefined,
+        registration_year: v.registration_year ?? undefined,
+        engine_capacity: v.engine_capacity ?? undefined,
+        image_url: v.image_url ?? undefined,
+        vehicle_photo_url: v.vehicle_photo_url ?? undefined,
+        mot_status: v.mot_status ?? undefined,
+        mot_expiry_date: v.mot_expiry_date ?? undefined,
+        tax_status: v.tax_status ?? undefined,
+        tax_due_date: v.tax_due_date ?? undefined,
+      })));
     } catch (err: any) {
       console.error('Failed to load vehicles:', err);
     }

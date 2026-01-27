@@ -218,7 +218,7 @@ export interface ToolInteractionEvent extends BaseEventProperties {
   /** Tool name */
   tool_name: string;
   /** Interaction type */
-  interaction_type: 'start' | 'step' | 'complete' | 'abandon';
+  interaction_type: 'start' | 'step' | 'complete' | 'abandon' | 'tool_started' | 'step_changed' | 'result_calculated' | 'result_shared';
   /** Step name if applicable */
   step_name?: string;
   /** Result value (bucketed) */

@@ -6,7 +6,7 @@
  */
 
 import { Link } from 'react-router-dom';
-import { Car, Shield, UserCheck, MessageSquare, Star, AlertTriangle, Phone, Lock, Eye, Users } from 'lucide-react';
+import { Car, Shield, UserCheck, MessageSquare, Star, AlertTriangle, Phone, Lock, Eye } from 'lucide-react';
 import Seo from '../../components/shared/Seo';
 
 const safetyFeatures = [
@@ -224,7 +224,7 @@ export default function SafetyInfoPage() {
               Join Our Safe Community
             </h2>
             <p className="text-green-100 mb-8">
-              Thousands of verified members are already sharing rides safely. Join them today.
+              Verified members are already sharing rides safely across the UK. Join them today.
             </p>
             <Link
               to="/signup"

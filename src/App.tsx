@@ -19,6 +19,9 @@ const HowItWorks = lazy(() => import('./pages/public/HowItWorks'));
 const SafetyInfo = lazy(() => import('./pages/public/SafetyInfo'));
 const Communities = lazy(() => import('./pages/public/Communities'));
 const CityPage = lazy(() => import('./pages/public/CityPage'));
+const AboutPage = lazy(() => import('./pages/public/AboutPage'));
+const ContactPage = lazy(() => import('./pages/public/ContactPage'));
+const FAQPage = lazy(() => import('./pages/public/FAQPage'));
 
 // Auth pages
 const SignIn = lazy(() => import('./pages/auth/SignIn'));
@@ -229,6 +232,9 @@ function AppContent() {
         <Route path="/safety-info" element={<SafetyInfo />} />
         <Route path="/communities" element={<Communities />} />
         <Route path="/cities/:city" element={<CityPage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/faq" element={<FAQPage />} />
         
         {/* Auth routes */}
         <Route path="/signin" element={

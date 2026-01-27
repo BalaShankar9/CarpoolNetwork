@@ -14,8 +14,8 @@ const cities = [
     name: 'Cardiff',
     slug: 'cardiff',
     region: 'Wales',
-    members: '2,400+',
-    rides: '850+',
+    members: '450+',
+    rides: '120+',
     description: 'Connect with commuters across Cardiff, from the Bay to the city center.',
     highlights: ['Cardiff University', 'Cardiff Bay', 'City Centre'],
   },
@@ -23,8 +23,8 @@ const cities = [
     name: 'Sheffield',
     slug: 'sheffield',
     region: 'Yorkshire',
-    members: '1,800+',
-    rides: '620+',
+    members: '320+',
+    rides: '85+',
     description: 'Join Sheffield\'s growing community of eco-conscious commuters.',
     highlights: ['Sheffield University', 'Meadowhall', 'City Centre'],
   },
@@ -32,8 +32,8 @@ const cities = [
     name: 'Bristol',
     slug: 'bristol',
     region: 'South West',
-    members: '3,200+',
-    rides: '1,100+',
+    members: '',
+    rides: '',
     description: 'Bristol\'s vibrant carpooling scene for professionals and students.',
     highlights: ['Temple Meads', 'Harbourside', 'Clifton'],
     comingSoon: true,
@@ -42,9 +42,9 @@ const cities = [
     name: 'Manchester',
     slug: 'manchester',
     region: 'North West',
-    members: '4,500+',
-    rides: '1,800+',
-    description: 'Greater Manchester\'s largest carpooling network.',
+    members: '',
+    rides: '',
+    description: 'Greater Manchester\'s growing carpooling network.',
     highlights: ['MediaCity', 'Airport', 'City Centre'],
     comingSoon: true,
   },
@@ -156,16 +156,18 @@ export default function CommunitiesPage() {
                       <p className="text-gray-500 text-sm mb-2">{city.region}</p>
                       <p className="text-gray-600 mb-4">{city.description}</p>
                       
-                      <div className="flex gap-4 mb-4">
-                        <div>
-                          <div className="text-lg font-semibold text-purple-600">{city.members}</div>
-                          <div className="text-xs text-gray-500">Members</div>
+                      {!city.comingSoon && city.members && (
+                        <div className="flex gap-4 mb-4">
+                          <div>
+                            <div className="text-lg font-semibold text-purple-600">{city.members}</div>
+                            <div className="text-xs text-gray-500">Members</div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-semibold text-purple-600">{city.rides}</div>
+                            <div className="text-xs text-gray-500">Monthly Rides</div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="text-lg font-semibold text-purple-600">{city.rides}</div>
-                          <div className="text-xs text-gray-500">Monthly Rides</div>
-                        </div>
-                      </div>
+                      )}
                       
                       <div className="flex flex-wrap gap-2 mb-4">
                         {city.highlights.map((highlight) => (

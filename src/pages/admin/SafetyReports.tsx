@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   Shield,
@@ -40,6 +41,7 @@ interface SafetyReport {
 }
 
 export default function SafetyReports() {
+  const navigate = useNavigate();
   const [reports, setReports] = useState<SafetyReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');

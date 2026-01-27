@@ -8,10 +8,6 @@ import {
     AlertTriangle,
     Car,
     Star,
-    Trophy,
-    Navigation,
-    Leaf,
-    Filter,
     Trash2,
     CheckCheck,
     Settings,
@@ -33,7 +29,7 @@ const NOTIFICATION_CATEGORIES = [
     { id: 'FRIEND_REQUEST' as FilterType, label: 'Social', icon: UserPlus },
     { id: 'FORUM_REPLY' as FilterType, label: 'Community', icon: MessageSquare },
     { id: 'REVIEW' as FilterType, label: 'Reviews', icon: Star },
-    { id: 'ACHIEVEMENT_UNLOCKED' as FilterType, label: 'Achievements', icon: Trophy },
+    { id: 'SYSTEM' as FilterType, label: 'System', icon: Bell },
     { id: 'SAFETY_ALERT' as FilterType, label: 'Safety', icon: AlertTriangle },
 ];
 
@@ -55,16 +51,10 @@ const getNotificationIcon = (type: NotificationType) => {
             return <Calendar className="h-5 w-5 text-orange-500" />;
         case 'REVIEW':
             return <Star className="h-5 w-5 text-yellow-500" />;
-        case 'RIDE_STARTED':
-        case 'RIDE_LOCATION_UPDATE':
-        case 'RIDE_COMPLETED':
-            return <Navigation className="h-5 w-5 text-teal-500" />;
-        case 'ACHIEVEMENT_UNLOCKED':
-            return <Trophy className="h-5 w-5 text-amber-500" />;
-        case 'ECO_MILESTONE':
-            return <Leaf className="h-5 w-5 text-green-600" />;
         case 'SAFETY_ALERT':
             return <AlertTriangle className="h-5 w-5 text-red-500" />;
+        case 'SYSTEM':
+            return <Bell className="h-5 w-5 text-gray-600" />;
         default:
             return <Bell className="h-5 w-5 text-gray-500" />;
     }
@@ -87,9 +77,6 @@ const getNotificationTarget = (notification: Notification) => {
                 ? { path: `/community/thread/${data.thread_id}` }
                 : { path: '/community' };
         case 'RIDE_MATCH':
-        case 'RIDE_STARTED':
-        case 'RIDE_LOCATION_UPDATE':
-        case 'RIDE_COMPLETED':
             return data.ride_id
                 ? { path: `/ride/${data.ride_id}` }
                 : { path: '/my-rides' };
@@ -101,10 +88,20 @@ const getNotificationTarget = (notification: Notification) => {
                 : { path: '/my-rides' };
         case 'REVIEW':
             return { path: '/profile?tab=reviews' };
-        case 'ACHIEVEMENT_UNLOCKED':
-            return { path: '/profile?tab=achievements' };
-        case 'ECO_MILESTONE':
-            return { path: '/profile?tab=impact' };
+        case 'SYSTEM':
+            // Handle SYSTEM notifications based on data.original_type
+            if (data.original_type === 'ACHIEVEMENT_UNLOCKED') {
+                return { path: '/profile?tab=achievements' };
+            }
+            if (data.original_type === 'ECO_MILESTONE') {
+                return { path: '/profile?tab=impact' };
+            }
+            if (data.ride_id) {
+                return { path: `/ride/${data.ride_id}` };
+            }
+            return null;
+        case 'SAFETY_ALERT':
+            return { path: '/safety' };
         default:
             return null;
     }
