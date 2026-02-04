@@ -154,8 +154,8 @@ const steps: StepInfo[] = [
     title: 'Welcome to the Community',
     subtitle: 'Join thousands of carpoolers',
     icon: Heart,
-    color: 'text-rose-600',
-    bgColor: 'bg-rose-100',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
   },
   {
     key: 'basics',
@@ -170,40 +170,40 @@ const steps: StepInfo[] = [
     title: 'Add Your Photo',
     subtitle: 'Build trust with a real photo',
     icon: Camera,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-100',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
   },
   {
     key: 'phone',
     title: 'Verify Your Phone',
     subtitle: 'Secure your account',
     icon: Shield,
-    color: 'text-emerald-600',
-    bgColor: 'bg-emerald-100',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
   },
   {
     key: 'preferences',
     title: 'Ride Preferences',
     subtitle: 'Set your comfort settings',
     icon: Car,
-    color: 'text-indigo-600',
-    bgColor: 'bg-indigo-100',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
   },
   {
     key: 'details',
     title: 'Final Touches',
     subtitle: 'Customize your profile',
     icon: Sparkles,
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-100',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
   },
   {
     key: 'complete',
     title: "You're All Set!",
     subtitle: 'Welcome to the community',
     icon: Award,
-    color: 'text-green-600',
-    bgColor: 'bg-green-100',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
   },
 ];
 
@@ -598,7 +598,7 @@ export default function ProfileOnboarding() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gray-50">
       {showConfetti && (
         <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
           {[...Array(50)].map((_, i) => (
@@ -622,11 +622,11 @@ export default function ProfileOnboarding() {
 
       <div className="flex min-h-screen">
         {/* Left Panel - Branding & Stats */}
-        <div className="hidden lg:flex lg:w-2/5 xl:w-1/3 bg-gradient-to-br from-blue-600 via-blue-700 to-purple-700 p-8 flex-col justify-between relative overflow-hidden">
+        <div className="hidden lg:flex lg:w-2/5 xl:w-1/3 bg-gradient-to-br from-blue-700 via-blue-800 to-blue-900 p-8 flex-col justify-between relative overflow-hidden">
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-10">
             <div className="absolute top-20 left-10 w-64 h-64 bg-white rounded-full blur-3xl" />
-            <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-400 rounded-full blur-3xl" />
+            <div className="absolute bottom-20 right-10 w-96 h-96 bg-white rounded-full blur-3xl" />
           </div>
 
           <div className="relative z-10">
@@ -707,7 +707,7 @@ export default function ProfileOnboarding() {
                   <div
                     key={s.key}
                     className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${index < currentStep
-                      ? 'bg-green-500'
+                      ? 'bg-blue-600'
                       : index === currentStep
                         ? 'bg-blue-600'
                         : 'bg-gray-200'
@@ -733,8 +733,8 @@ export default function ProfileOnboarding() {
               {/* Welcome Step */}
               {step.key === 'welcome' && (
                 <div className="text-center py-8">
-                  <div className="w-24 h-24 bg-gradient-to-br from-rose-100 to-pink-100 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-rose-100">
-                    <Heart className="w-12 h-12 text-rose-500" />
+                  <div className="w-24 h-24 bg-blue-50 border border-blue-100 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-sm">
+                    <Heart className="w-12 h-12 text-blue-600" />
                   </div>
                   <h1 className="text-4xl font-bold text-gray-900 mb-4">
                     Welcome to Carpool Network!
@@ -743,7 +743,7 @@ export default function ProfileOnboarding() {
                     Let's set up your profile so you can start sharing rides with our amazing community.
                   </p>
 
-                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 mb-8">
+                  <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 mb-8">
                     <h3 className="font-semibold text-gray-900 mb-4">What you'll need:</h3>
                     <div className="grid md:grid-cols-3 gap-4 text-left">
                       <div className="bg-white rounded-xl p-4 shadow-sm">
@@ -752,12 +752,12 @@ export default function ProfileOnboarding() {
                         <div className="text-sm text-gray-500">So others can recognize you</div>
                       </div>
                       <div className="bg-white rounded-xl p-4 shadow-sm">
-                        <Camera className="w-6 h-6 text-purple-600 mb-2" />
+                        <Camera className="w-6 h-6 text-blue-600 mb-2" />
                         <div className="font-medium text-gray-900">A Photo</div>
                         <div className="text-sm text-gray-500">Build trust with a clear photo</div>
                       </div>
                       <div className="bg-white rounded-xl p-4 shadow-sm">
-                        <Phone className="w-6 h-6 text-emerald-600 mb-2" />
+                        <Phone className="w-6 h-6 text-blue-600 mb-2" />
                         <div className="font-medium text-gray-900">Phone Number</div>
                         <div className="text-sm text-gray-500">For verification & contact</div>
                       </div>
@@ -770,7 +770,7 @@ export default function ProfileOnboarding() {
 
                   <button
                     onClick={() => setCurrentStep(1)}
-                    className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg shadow-blue-200 flex items-center gap-3 mx-auto"
+                    className="px-8 py-4 bg-blue-600 text-white rounded-xl font-semibold text-lg hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-3 mx-auto"
                   >
                     Let's Get Started
                     <ArrowRight className="w-5 h-5" />

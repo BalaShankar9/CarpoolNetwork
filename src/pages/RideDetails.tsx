@@ -137,8 +137,8 @@ export default function RideDetails() {
     setSelectedRoute(route);
   };
 
-  // P0 ATOMICITY GUARANTEE: If RPC succeeds → booking + notification both exist
-  // If RPC fails → neither booking nor notification exist (transaction rollback)
+  // Booking is atomic (booking + seat decrement). Notification creation is best-effort
+  // because some environments have misconfigured notifications webhooks that can fail inserts.
   const requestRide = async (seats: number = 1) => {
     if (!user || !ride) return;
 

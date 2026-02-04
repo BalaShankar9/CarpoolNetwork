@@ -502,12 +502,36 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
       }
 
       // Step 1: Get conversations where user is a member
-      const { data: memberRows, error: memberError } = await supabase
-        .from('conversation_members')
-        .select('conversation_id, role, last_seen_at')
-        .eq('user_id', user.id);
+      let memberRows: Array<{ conversation_id: string; role: string; last_seen_at?: string | null }> | null = null;
+      {
+        const attempt = await supabase
+          .from('conversation_members')
+          .select('conversation_id, role, last_seen_at')
+          .eq('user_id', user.id);
 
-      if (memberError) throw memberError;
+        if (attempt.error) {
+          const code = (attempt.error as any)?.code;
+          const msg = attempt.error.message || '';
+          const missingLastSeenAt =
+            code === '42703' ||
+            msg.includes('last_seen_at') ||
+            msg.includes('column') ||
+            msg.includes('does not exist');
+
+          if (!missingLastSeenAt) throw attempt.error;
+
+          // Older production schema may not have conversation_members.last_seen_at yet.
+          const retry = await supabase
+            .from('conversation_members')
+            .select('conversation_id, role')
+            .eq('user_id', user.id);
+          if (retry.error) throw retry.error;
+          memberRows = (retry.data || []).map((row: any) => ({ ...row, last_seen_at: null }));
+        } else {
+          memberRows = (attempt.data || []) as any;
+        }
+      }
+
       if (!memberRows || memberRows.length === 0) {
         setConversations([]);
         setConversationsError(null);
@@ -526,18 +550,49 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
       if (convError) throw convError;
 
       // Step 3: Get all members for these conversations (for names/avatars)
-      const { data: allMembers, error: allMembersError } = await supabase
-        .from('conversation_members')
-        .select(`
+      let allMembers: any[] | null = null;
+      {
+        const attempt = await supabase
+          .from('conversation_members')
+          .select(
+            `
           conversation_id,
           user_id,
           role,
           last_seen_at,
           profile:profiles(id, full_name, avatar_url, profile_photo_url)
-        `)
-        .in('conversation_id', conversationIds);
+        `
+          )
+          .in('conversation_id', conversationIds);
 
-      if (allMembersError) throw allMembersError;
+        if (attempt.error) {
+          const code = (attempt.error as any)?.code;
+          const msg = attempt.error.message || '';
+          const missingLastSeenAt =
+            code === '42703' ||
+            msg.includes('last_seen_at') ||
+            msg.includes('column') ||
+            msg.includes('does not exist');
+
+          if (!missingLastSeenAt) throw attempt.error;
+
+          const retry = await supabase
+            .from('conversation_members')
+            .select(
+              `
+              conversation_id,
+              user_id,
+              role,
+              profile:profiles(id, full_name, avatar_url, profile_photo_url)
+            `
+            )
+            .in('conversation_id', conversationIds);
+          if (retry.error) throw retry.error;
+          allMembers = (retry.data || []).map((row: any) => ({ ...row, last_seen_at: null }));
+        } else {
+          allMembers = attempt.data || [];
+        }
+      }
 
       // Step 4: Get last message per conversation
       const { data: lastMessages, error: lastMsgError } = await supabase
@@ -563,7 +618,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
       // Build conversation summaries
       const summaries: ConversationSummary[] = (convData || []).map(conv => {
         const userMember = userMemberMap.get(conv.id);
-        const lastSeenAt = userMember?.last_seen_at;
+        const lastSeenAt = userMember?.last_seen_at ?? null;
         const members = (allMembers || [])
           .filter(m => m.conversation_id === conv.id)
           .map(m => {
@@ -572,7 +627,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
             return {
               user_id: m.user_id,
               role: m.role,
-              last_seen_at: m.last_seen_at,
+              last_seen_at: m.last_seen_at ?? null,
               profile: (profileData || { id: m.user_id, full_name: 'Unknown' }) as Profile,
             };
           });
