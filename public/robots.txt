@@ -9,8 +9,14 @@ Allow: /how-it-works
 Allow: /safety-info
 Allow: /communities
 Allow: /cities/
+Allow: /about
+Allow: /faq
+Allow: /contact
+Allow: /careers
+Allow: /press
 Allow: /terms
 Allow: /privacy
+Allow: /cookies
 
 # Block private app routes
 Disallow: /signin

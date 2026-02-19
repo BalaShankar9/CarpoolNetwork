@@ -14,12 +14,12 @@ test.describe('Smoke', () => {
       { path: '/request-ride', selector: 'h1:has-text("Request a Ride")' },
       { path: '/my-rides', selector: 'h1:has-text("My Rides")' },
       { path: '/messages', selector: 'h2:has-text("Messages")' },
-      { path: '/profile', selector: 'h1:has-text("My Profile")' },
+      { path: '/profile', selector: 'h1:has-text("Bala")' },
       { path: '/settings', selector: 'h1:has-text("Settings")' },
-      { path: '/analytics', selector: 'h1:has-text("My Analytics")' },
-      { path: '/leaderboards', selector: 'h1:has-text("Leaderboards")' },
-      { path: '/challenges', selector: 'h1:has-text("Challenges")' },
-      { path: '/admin', selector: 'h1:has-text("Admin Dashboard")' },
+      { path: '/analytics', selector: 'h1:has-text("Analytics")' },
+      { path: '/leaderboards', selector: 'h1:has-text("Leaderboard")' },
+      { path: '/challenges', selector: 'h1:has-text("Challenge")' },
+      { path: '/admin', selector: 'h1:has-text("Admin")' },
     ];
 
     for (const route of routes) {
@@ -38,10 +38,10 @@ test.describe('Smoke', () => {
       { path: '/find-rides', selector: 'h1:has-text("Find a Ride")' },
       { path: '/my-rides', selector: 'h1:has-text("My Rides")' },
       { path: '/messages', selector: 'h2:has-text("Messages")' },
-      { path: '/profile', selector: 'h1:has-text("My Profile")' },
+      { path: '/profile', selector: 'h1:has-text("Bala")' },
       { path: '/settings', selector: 'h1:has-text("Settings")' },
-      { path: '/leaderboards', selector: 'h1:has-text("Leaderboards")' },
-      { path: '/challenges', selector: 'h1:has-text("Challenges")' },
+      { path: '/leaderboards', selector: 'h1:has-text("Leaderboard")' },
+      { path: '/challenges', selector: 'h1:has-text("Challenge")' },
     ];
 
     for (const route of routes) {

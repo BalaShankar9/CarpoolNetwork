@@ -8,6 +8,7 @@
 import { Link } from 'react-router-dom';
 import { Car, MapPin, Users, ArrowRight, Building2, GraduationCap, Briefcase } from 'lucide-react';
 import Seo from '../../components/shared/Seo';
+import Logo from '../../components/shared/Logo';
 
 const cities = [
   {
@@ -75,7 +76,7 @@ export default function CommunitiesPage() {
   return (
     <>
       <Seo
-        title="Carpooling Communities"
+        title="Carpooling Communities | Carpool Network"
         description="Join local carpooling communities in Cardiff, Sheffield, and across the UK. Connect with commuters, share rides, and reduce your travel costs."
         canonical="/communities"
         jsonLd={{
@@ -100,22 +101,24 @@ export default function CommunitiesPage() {
       />
       
       <div className="min-h-screen bg-white">
-        {/* Hero Section */}
-        <header className="bg-gradient-to-br from-purple-600 to-purple-800 text-white">
-          <nav className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2 text-xl font-bold">
-              <Car className="w-8 h-8" />
-              CarpoolNetwork
+        {/* Navigation */}
+        <nav className="bg-white border-b border-gray-100 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <Link to="/">
+              <Logo size="sm" clickable={false} />
             </Link>
-            <div className="flex items-center gap-4">
-              <Link to="/how-it-works" className="hover:underline hidden sm:inline">How It Works</Link>
-              <Link to="/safety-info" className="hover:underline hidden sm:inline">Safety</Link>
-              <Link to="/signin" className="px-4 py-2 bg-white text-purple-600 rounded-lg font-medium hover:bg-purple-50">
-                Sign In
-              </Link>
+            <div className="flex items-center gap-6">
+              <Link to="/how-it-works" className="text-gray-600 hover:text-gray-900 hidden sm:inline text-sm font-medium">How It Works</Link>
+              <Link to="/safety-info" className="text-gray-600 hover:text-gray-900 hidden sm:inline text-sm font-medium">Safety</Link>
+              <Link to="/about" className="text-gray-600 hover:text-gray-900 hidden md:inline text-sm font-medium">About</Link>
+              <Link to="/signin" className="px-4 py-2 text-red-600 hover:text-red-700 font-medium text-sm">Sign In</Link>
+              <Link to="/signup" className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg font-medium text-sm hover:from-red-600 hover:to-orange-600 transition-all">Get Started</Link>
             </div>
-          </nav>
-          
+          </div>
+        </nav>
+
+        {/* Hero Section */}
+        <header className="bg-gradient-to-br from-red-500 via-red-600 to-orange-500 text-white">
           <div className="max-w-7xl mx-auto px-4 py-16 text-center">
             <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
               <Users className="w-8 h-8" />
@@ -123,7 +126,7 @@ export default function CommunitiesPage() {
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
               Carpooling Communities
             </h1>
-            <p className="text-xl text-purple-100 max-w-2xl mx-auto">
+            <p className="text-xl text-red-100 max-w-2xl mx-auto">
               Find your local community and start sharing rides with trusted neighbors and colleagues.
             </p>
           </div>
@@ -148,8 +151,8 @@ export default function CommunitiesPage() {
                     </div>
                   )}
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <MapPin className="w-6 h-6 text-purple-600" />
+                    <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <MapPin className="w-6 h-6 text-red-600" />
                     </div>
                     <div className="flex-1">
                       <h3 className="text-xl font-semibold">{city.name}</h3>
@@ -159,11 +162,11 @@ export default function CommunitiesPage() {
                       {!city.comingSoon && city.members && (
                         <div className="flex gap-4 mb-4">
                           <div>
-                            <div className="text-lg font-semibold text-purple-600">{city.members}</div>
+                            <div className="text-lg font-semibold text-red-600">{city.members}</div>
                             <div className="text-xs text-gray-500">Members</div>
                           </div>
                           <div>
-                            <div className="text-lg font-semibold text-purple-600">{city.rides}</div>
+                            <div className="text-lg font-semibold text-red-600">{city.rides}</div>
                             <div className="text-xs text-gray-500">Monthly Rides</div>
                           </div>
                         </div>
@@ -180,7 +183,7 @@ export default function CommunitiesPage() {
                       {!city.comingSoon ? (
                         <Link
                           to={`/cities/${city.slug}`}
-                          className="inline-flex items-center gap-2 text-purple-600 font-medium hover:text-purple-700"
+                          className="inline-flex items-center gap-2 text-red-600 font-medium hover:text-red-700"
                         >
                           Explore {city.name}
                           <ArrowRight className="w-4 h-4" />
@@ -209,8 +212,8 @@ export default function CommunitiesPage() {
             <div className="grid md:grid-cols-3 gap-8">
               {communityTypes.map((type) => (
                 <div key={type.title} className="bg-white rounded-2xl p-6 shadow-sm">
-                  <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4">
-                    <type.icon className="w-6 h-6 text-purple-600" />
+                  <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mb-4">
+                    <type.icon className="w-6 h-6 text-red-600" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2">{type.title}</h3>
                   <p className="text-gray-600 mb-4">{type.description}</p>
@@ -224,17 +227,17 @@ export default function CommunitiesPage() {
         </section>
 
         {/* CTA */}
-        <section className="py-20 px-4 bg-purple-600 text-white">
+        <section className="py-20 px-4 bg-gradient-to-r from-red-600 to-orange-500 text-white">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl font-bold mb-4">
               Don't See Your City?
             </h2>
-            <p className="text-purple-100 mb-8">
+            <p className="text-red-100 mb-8">
               We're expanding across the UK. Sign up to be notified when we launch in your area.
             </p>
             <Link
               to="/signup"
-              className="inline-block px-8 py-4 bg-white text-purple-600 rounded-xl font-semibold hover:bg-purple-50 transition-colors"
+              className="inline-block px-8 py-4 bg-white text-red-600 rounded-xl font-semibold hover:bg-red-50 transition-colors"
             >
               Join the Waitlist
             </Link>
@@ -247,7 +250,7 @@ export default function CommunitiesPage() {
             <div>
               <div className="flex items-center gap-2 text-white font-bold text-lg mb-4">
                 <Car className="w-6 h-6" />
-                CarpoolNetwork
+                Carpool Network
               </div>
               <p className="text-sm">
                 The UK's trusted platform for sharing rides and reducing travel costs.
@@ -277,7 +280,7 @@ export default function CommunitiesPage() {
             </div>
           </div>
           <div className="max-w-7xl mx-auto mt-8 pt-8 border-t border-gray-800 text-center text-sm">
-            © {new Date().getFullYear()} CarpoolNetwork. All rights reserved.
+            © {new Date().getFullYear()} Carpool Network Ltd. All rights reserved.
           </div>
         </footer>
       </div>

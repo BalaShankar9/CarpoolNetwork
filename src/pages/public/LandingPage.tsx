@@ -5,8 +5,9 @@
  * Professional company landing page with all necessary information.
  */
 
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Car, Users, Shield, Leaf, MapPin, ArrowRight, Star, Check, Phone, Mail, Clock, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
+import { Car, Users, Shield, Leaf, MapPin, ArrowRight, Star, Check, Mail, Clock, Facebook, Twitter, Instagram, Linkedin, Menu, X } from 'lucide-react';
 import Seo from '../../components/shared/Seo';
 import Logo from '../../components/shared/Logo';
 
@@ -48,6 +49,12 @@ const testimonials = [
     location: 'Sheffield',
     rating: 5,
   },
+  {
+    quote: "I was nervous about carpooling at first, but the verified profiles and ratings gave me real confidence. Best commuting decision I've made.",
+    author: 'Emma',
+    location: 'Cardiff',
+    rating: 5,
+  },
 ];
 
 const whyChooseUs = [
@@ -60,35 +67,13 @@ const whyChooseUs = [
 ];
 
 export default function LandingPage() {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <>
       <Seo
-        title="Share Rides, Save Money | Carpool Network UK"
+        title="Share Rides, Save Money | Carpool Network"
         description="Join the UK's trusted carpooling community. Share rides with verified members, save money on your commute, and reduce your carbon footprint. Sign up free today."
         canonical="/"
-        jsonLd={{
-          '@context': 'https://schema.org',
-          '@type': 'Organization',
-          name: 'Carpool Network',
-          url: 'https://carpoolnetwork.co.uk',
-          logo: 'https://carpoolnetwork.co.uk/logo.png',
-          description: 'UK carpooling platform connecting drivers and passengers for shared journeys.',
-          address: {
-            '@type': 'PostalAddress',
-            addressCountry: 'UK',
-          },
-          contactPoint: {
-            '@type': 'ContactPoint',
-            contactType: 'customer service',
-            email: 'support@carpoolnetwork.co.uk',
-          },
-          sameAs: [
-            'https://facebook.com/carpoolnetworkuk',
-            'https://twitter.com/carpoolnetuk',
-            'https://instagram.com/carpoolnetworkuk',
-            'https://linkedin.com/company/carpoolnetwork',
-          ],
-        }}
       />
 
       <div className="min-h-screen bg-white">
@@ -96,20 +81,43 @@ export default function LandingPage() {
         <nav className="bg-white border-b border-gray-100 sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
             <Logo size="sm" clickable={false} />
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
               <Link to="/how-it-works" className="text-gray-600 hover:text-gray-900 hidden sm:inline text-sm font-medium">How It Works</Link>
               <Link to="/communities" className="text-gray-600 hover:text-gray-900 hidden sm:inline text-sm font-medium">Communities</Link>
               <Link to="/safety-info" className="text-gray-600 hover:text-gray-900 hidden sm:inline text-sm font-medium">Safety</Link>
               <Link to="/about" className="text-gray-600 hover:text-gray-900 hidden md:inline text-sm font-medium">About Us</Link>
               <Link to="/contact" className="text-gray-600 hover:text-gray-900 hidden md:inline text-sm font-medium">Contact</Link>
-              <Link to="/signin" className="px-4 py-2 text-red-600 hover:text-red-700 font-medium text-sm">
-                Sign In
-              </Link>
-              <Link to="/signup" className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg font-medium text-sm hover:from-red-600 hover:to-orange-600 transition-all">
+              <Link to="/signin" className="px-4 py-2 text-red-600 hover:text-red-700 font-medium text-sm">Sign In</Link>
+              <Link to="/signup" className="hidden sm:inline-flex px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg font-medium text-sm hover:from-red-600 hover:to-orange-600 transition-all">
                 Get Started
               </Link>
+              {/* Hamburger — mobile only */}
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="sm:hidden p-2 text-gray-600 hover:text-gray-900 transition-colors"
+                aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={menuOpen}
+              >
+                {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
             </div>
           </div>
+          {/* Mobile dropdown */}
+          {menuOpen && (
+            <div className="sm:hidden border-t border-gray-100 bg-white px-4 py-2">
+              <Link to="/how-it-works" onClick={() => setMenuOpen(false)} className="block py-3 text-sm font-medium text-gray-700 border-b border-gray-50 hover:text-red-600 transition-colors">How It Works</Link>
+              <Link to="/communities" onClick={() => setMenuOpen(false)} className="block py-3 text-sm font-medium text-gray-700 border-b border-gray-50 hover:text-red-600 transition-colors">Communities</Link>
+              <Link to="/safety-info" onClick={() => setMenuOpen(false)} className="block py-3 text-sm font-medium text-gray-700 border-b border-gray-50 hover:text-red-600 transition-colors">Safety</Link>
+              <Link to="/about" onClick={() => setMenuOpen(false)} className="block py-3 text-sm font-medium text-gray-700 border-b border-gray-50 hover:text-red-600 transition-colors">About Us</Link>
+              <Link to="/contact" onClick={() => setMenuOpen(false)} className="block py-3 text-sm font-medium text-gray-700 border-b border-gray-50 hover:text-red-600 transition-colors">Contact</Link>
+              <Link to="/faq" onClick={() => setMenuOpen(false)} className="block py-3 text-sm font-medium text-gray-700 border-b border-gray-50 hover:text-red-600 transition-colors">FAQ</Link>
+              <div className="py-3">
+                <Link to="/signup" onClick={() => setMenuOpen(false)} className="block w-full text-center px-4 py-2.5 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg font-semibold text-sm">
+                  Get Started Free
+                </Link>
+              </div>
+            </div>
+          )}
         </nav>
 
         {/* Hero Section */}
@@ -383,16 +391,16 @@ export default function LandingPage() {
                   The UK's trusted platform for sharing rides, saving money, and reducing your environmental impact.
                 </p>
                 <div className="flex gap-4">
-                  <a href="https://facebook.com/carpoolnetworkuk" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-700 transition-colors">
+                  <a href="https://facebook.com/carpoolnetworkuk" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Facebook" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-700 transition-colors">
                     <Facebook className="w-5 h-5" />
                   </a>
-                  <a href="https://twitter.com/carpoolnetuk" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-700 transition-colors">
+                  <a href="https://twitter.com/carpoolnetuk" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Twitter / X" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-700 transition-colors">
                     <Twitter className="w-5 h-5" />
                   </a>
-                  <a href="https://instagram.com/carpoolnetworkuk" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-700 transition-colors">
+                  <a href="https://instagram.com/carpoolnetworkuk" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Instagram" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-700 transition-colors">
                     <Instagram className="w-5 h-5" />
                   </a>
-                  <a href="https://linkedin.com/company/carpoolnetwork" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-700 transition-colors">
+                  <a href="https://linkedin.com/company/carpoolnetwork" target="_blank" rel="noopener noreferrer" aria-label="Connect with us on LinkedIn" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-700 transition-colors">
                     <Linkedin className="w-5 h-5" />
                   </a>
                 </div>

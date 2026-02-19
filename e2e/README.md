@@ -70,6 +70,9 @@ e2e/
   booking.spec.ts   # Booking flow tests
   messaging.spec.ts # Messaging tests
   notifications.spec.ts # Notification tests
+  public-pages.spec.ts # Public marketing/policy page smoke
+  atlas-assistant.spec.ts # AI assistant widget (mocked) tests
+  role-route-crawl.spec.ts # Role-based route crawl + coverage cross-check
 ```
 
 ## Test Users

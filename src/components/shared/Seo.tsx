@@ -15,11 +15,11 @@
 
 import { Helmet } from 'react-helmet-async';
 
-const SITE_NAME = 'CarpoolNetwork';
+const SITE_NAME = 'Carpool Network';
 const SITE_URL = 'https://carpoolnetwork.co.uk';
 const DEFAULT_DESCRIPTION = 'Share rides, save money, and reduce your carbon footprint. Join the UK\'s trusted carpooling community for commuters and travelers.';
 const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`;
-const TWITTER_HANDLE = '@carpoolnetwork';
+const TWITTER_HANDLE = '@carpoolnetuk';
 
 interface SeoProps {
   /** Page title - will be appended with site name */
@@ -42,7 +42,7 @@ interface SeoProps {
 const organizationSchema = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
-  name: 'CarpoolNetwork',
+  name: 'Carpool Network',
   url: SITE_URL,
   logo: `${SITE_URL}/favicon.svg`,
   description: DEFAULT_DESCRIPTION,
@@ -62,7 +62,7 @@ const organizationSchema = {
 const websiteSchema = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
-  name: 'CarpoolNetwork',
+  name: 'Carpool Network',
   url: SITE_URL,
   description: DEFAULT_DESCRIPTION,
   potentialAction: {
@@ -84,7 +84,7 @@ export default function Seo({
   type = 'website',
   jsonLd,
 }: SeoProps) {
-  const fullTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} - Share Rides, Save Money`;
+  const fullTitle = title ?? `${SITE_NAME} - Share Rides, Save Money`;
   const canonicalUrl = canonical ? `${SITE_URL}${canonical}` : undefined;
   const robotsContent = noIndex ? 'noindex, nofollow' : 'index, follow';
 

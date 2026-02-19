@@ -1,17 +1,47 @@
-import { Shield } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Shield, ArrowLeft } from 'lucide-react';
+import Seo from '../components/shared/Seo';
+import Logo from '../components/shared/Logo';
 
 export default function PrivacyPolicy() {
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-lg shadow-sm p-8">
-          <div className="flex items-center gap-3 mb-8">
-            <Shield className="w-8 h-8 text-red-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Privacy Policy</h1>
-          </div>
+    <>
+      <Seo
+        title="Privacy Policy | Carpool Network"
+        description="Read the Privacy Policy for Carpool Network. Learn how we collect, use and protect your personal data in accordance with UK GDPR and the Data Protection Act 2018."
+        canonical="/privacy"
+      />
 
-          <div className="prose prose-blue max-w-none space-y-6 text-gray-700">
-            <p className="text-sm text-gray-500">Last Updated: {new Date().toLocaleDateString()}</p>
+      <div className="min-h-screen bg-gray-50">
+        {/* Navigation */}
+        <nav className="bg-white border-b border-gray-100 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <Link to="/">
+              <Logo size="sm" clickable={false} />
+            </Link>
+            <div className="flex items-center gap-4">
+              <Link to="/terms" className="text-sm text-gray-600 hover:text-gray-900 hidden sm:inline">Terms of Service</Link>
+              <Link to="/cookies" className="text-sm text-gray-600 hover:text-gray-900 hidden sm:inline">Cookies</Link>
+              <Link to="/signin" className="px-4 py-2 text-red-600 hover:text-red-700 font-medium text-sm">Sign In</Link>
+              <Link to="/signup" className="hidden sm:inline-flex px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg font-medium text-sm hover:from-red-600 hover:to-orange-600 transition-all">Get Started</Link>
+            </div>
+          </div>
+        </nav>
+
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <Link to="/" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6 group">
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            Back to Home
+          </Link>
+
+          <div className="bg-white rounded-lg shadow-sm p-8">
+            <div className="flex items-center gap-3 mb-8">
+              <Shield className="w-8 h-8 text-red-600" />
+              <h1 className="text-3xl font-bold text-gray-900">Privacy Policy</h1>
+            </div>
+
+            <div className="prose prose-red max-w-none space-y-6 text-gray-700">
+              <p className="text-sm text-gray-500">Last Updated: 14 January 2026</p>
 
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">1. Introduction</h2>
@@ -172,9 +202,22 @@ export default function PrivacyPolicy() {
                 <li>Regular automated checks for ongoing verification</li>
               </ul>
             </section>
+            </div>
           </div>
         </div>
+
+        {/* Footer */}
+        <footer className="bg-gray-900 text-gray-400 py-8 mt-12">
+          <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
+            <p>© {new Date().getFullYear()} Carpool Network Ltd. All rights reserved.</p>
+            <div className="flex gap-6">
+              <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+              <Link to="/cookies" className="hover:text-white transition-colors">Cookie Policy</Link>
+              <Link to="/contact" className="hover:text-white transition-colors">Contact</Link>
+            </div>
+          </div>
+        </footer>
       </div>
-    </div>
+    </>
   );
 }

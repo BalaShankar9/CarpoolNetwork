@@ -8,6 +8,7 @@ import { PremiumProvider } from './contexts/PremiumContext';
 import Layout from './components/layout/Layout';
 import { AppErrorBoundary } from './components/shared/ProductionErrorBoundary';
 import { LoadingProvider } from './components/shared/LoadingStateManager';
+import CookieConsent from './components/shared/CookieConsent';
 import { InstallPrompt, UpdatePrompt, OfflineIndicator } from './components/pwa';
 import { AnalyticsProvider } from './lib/analytics/AnalyticsProvider';
 
@@ -22,6 +23,9 @@ const CityPage = lazy(() => import('./pages/public/CityPage'));
 const AboutPage = lazy(() => import('./pages/public/AboutPage'));
 const ContactPage = lazy(() => import('./pages/public/ContactPage'));
 const FAQPage = lazy(() => import('./pages/public/FAQPage'));
+const CookiesPolicy = lazy(() => import('./pages/public/CookiesPolicy'));
+const CareersPage = lazy(() => import('./pages/public/CareersPage'));
+const PressPage = lazy(() => import('./pages/public/PressPage'));
 
 // Auth pages
 const SignIn = lazy(() => import('./pages/auth/SignIn'));
@@ -100,7 +104,7 @@ const SystemHealth = lazy(() => import('./pages/admin/SystemHealth'));
 const LoadingScreen = () => (
   <div className="min-h-screen bg-white flex items-center justify-center">
     <div className="text-center">
-      <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <div className="w-16 h-16 border-4 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
       <p className="text-gray-600">Loading...</p>
     </div>
   </div>
@@ -235,6 +239,9 @@ function AppContent() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/faq" element={<FAQPage />} />
+        <Route path="/cookies" element={<CookiesPolicy />} />
+        <Route path="/careers" element={<CareersPage />} />
+        <Route path="/press" element={<PressPage />} />
         
         {/* Auth routes */}
         <Route path="/signin" element={
@@ -644,6 +651,8 @@ function App() {
                   <InstallPrompt />
                   <UpdatePrompt />
                   <OfflineIndicator />
+                  {/* Cookie consent — must be inside Router for Link to work */}
+                  <CookieConsent />
                 </AppErrorBoundary>
               </Router>
             </RealtimeProvider>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MessageCircle, ThumbsUp, ThumbsDown, Plus, RefreshCw, Search, Tag, Users } from 'lucide-react';
+import { AlertCircle, MessageCircle, ThumbsUp, ThumbsDown, Plus, RefreshCw, Search, Tag, Users, XCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import UserAvatar from '../components/shared/UserAvatar';
@@ -77,8 +77,11 @@ export default function Community() {
   const [body, setBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
   const [voteMap, setVoteMap] = useState<Record<string, number>>({});
   const loadRequestId = useRef(0);
+  const loadingTimeoutRef = useRef<number | null>(null);
 
   const filteredPosts = useMemo(() => {
     if (!search.trim()) return posts;
@@ -178,11 +181,27 @@ export default function Community() {
     return true;
   };
 
-  const loadPosts = async (options?: { silent?: boolean; ensurePost?: CommunityPost }) => {
+  const loadPosts = async (options?: { silent?: boolean; ensurePost?: CommunityPost; isRetry?: boolean }) => {
     const requestId = ++loadRequestId.current;
     if (!options?.silent) {
       setLoading(true);
+      setLoadingTimedOut(false);
+
+      // Set loading timeout (15 seconds)
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+      loadingTimeoutRef.current = window.setTimeout(() => {
+        if (loadRequestId.current === requestId) {
+          setLoadingTimedOut(true);
+        }
+      }, 15000);
     }
+
+    if (options?.isRetry) {
+      setRetryCount(prev => prev + 1);
+    }
+
     setError(null);
 
     let query = supabase
@@ -206,8 +225,13 @@ export default function Community() {
 
     if (loadError) {
       console.error('Failed to load community posts', loadError);
-      setError('Unable to load community posts.');
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+      const errorCode = (loadError as any)?.code || 'UNKNOWN';
+      setError(`Unable to load community posts. (${errorCode})`);
       setLoading(false);
+      setLoadingTimedOut(false);
       return;
     }
 
@@ -249,7 +273,13 @@ export default function Community() {
       setVoteMap({});
     }
 
+    // Clear timeout and reset states on success
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+    }
     setLoading(false);
+    setLoadingTimedOut(false);
+    setRetryCount(0);
   };
 
   const handleVote = async (postId: string, vote: number) => {
@@ -397,8 +427,36 @@ export default function Community() {
       </div>
 
       {view === 'forum' && error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6">
+          <div className="flex flex-col items-center text-center">
+            <XCircle className="w-12 h-12 text-red-400 mb-3" />
+            <h3 className="text-lg font-semibold text-red-800 mb-2">Unable to Load Posts</h3>
+            <p className="text-sm text-red-600 mb-4 max-w-md">{error}</p>
+            <div className="flex flex-wrap gap-3 justify-center">
+              {retryCount < 3 ? (
+                <button
+                  onClick={() => loadPosts({ isRetry: true })}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retry {retryCount > 0 ? `(${3 - retryCount} left)` : ''}
+                </button>
+              ) : (
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Refresh Page
+                </button>
+              )}
+              <button
+                onClick={() => setView('chat')}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Try Live Chat Instead
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -488,8 +546,37 @@ export default function Community() {
 
             {loading ? (
               <div className="bg-white border border-gray-200 rounded-xl p-6 text-center">
-                <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-3"></div>
-                <p className="text-gray-600">Loading posts...</p>
+                {loadingTimedOut ? (
+                  <>
+                    <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
+                    <p className="text-gray-700 font-medium mb-2">Taking longer than expected...</p>
+                    <p className="text-sm text-gray-500 mb-4">The server might be busy. You can wait or try again.</p>
+                    <div className="flex flex-wrap gap-3 justify-center">
+                      <button
+                        onClick={() => {
+                          setLoading(false);
+                          setLoadingTimedOut(false);
+                          loadPosts({ isRetry: true });
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        Retry
+                      </button>
+                      <button
+                        onClick={() => setView('chat')}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        Try Live Chat
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-3"></div>
+                    <p className="text-gray-600">Loading posts...</p>
+                  </>
+                )}
               </div>
             ) : filteredPosts.length === 0 ? (
               <div className="bg-white border border-gray-200 rounded-xl p-6 text-center">

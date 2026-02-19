@@ -8,6 +8,7 @@
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { Car, MapPin, Users, ArrowRight, Building2, Train, TreePine, Clock, Leaf } from 'lucide-react';
 import Seo from '../../components/shared/Seo';
+import Logo from '../../components/shared/Logo';
 
 interface CityData {
   name: string;
@@ -32,10 +33,10 @@ const cityData: Record<string, CityData> = {
     description: 'Join Cardiff\'s thriving carpooling community and share rides across Wales\' capital city.',
     longDescription: 'Cardiff is a vibrant city with a growing community of eco-conscious commuters. From university students traveling between campuses to professionals commuting to Cardiff Bay, CarpoolNetwork connects thousands of people looking to share their journeys.',
     population: '362,000',
-    members: '2,400+',
-    monthlyRides: '850+',
+    members: '450+',
+    monthlyRides: '120+',
     avgSavings: '£140',
-    co2Saved: '12 tonnes',
+    co2Saved: '5 tonnes',
     popularRoutes: [
       { from: 'Cardiff Bay', to: 'City Centre', rides: '120+ weekly' },
       { from: 'Canton', to: 'Cardiff University', rides: '85+ weekly' },
@@ -52,10 +53,10 @@ const cityData: Record<string, CityData> = {
     description: 'Connect with Sheffield\'s community of smart commuters and share your journey.',
     longDescription: 'Sheffield, known as the Steel City, has embraced sustainable transport. With two major universities and a thriving business community, there\'s always someone heading your way. Join our growing network of Sheffield carpoolers.',
     population: '584,000',
-    members: '1,800+',
-    monthlyRides: '620+',
+    members: '320+',
+    monthlyRides: '85+',
     avgSavings: '£130',
-    co2Saved: '9 tonnes',
+    co2Saved: '3 tonnes',
     popularRoutes: [
       { from: 'Meadowhall', to: 'City Centre', rides: '90+ weekly' },
       { from: 'Sheffield University', to: 'Hallam', rides: '70+ weekly' },
@@ -103,23 +104,26 @@ export default function CityPage() {
       
       <div className="min-h-screen bg-white">
         {/* Hero Section */}
-        <header className="bg-gradient-to-br from-blue-600 to-blue-800 text-white">
-          <nav className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2 text-xl font-bold">
-              <Car className="w-8 h-8" />
-              CarpoolNetwork
+        {/* Navigation */}
+        <nav className="bg-white border-b border-gray-100 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <Link to="/">
+              <Logo size="sm" clickable={false} />
             </Link>
-            <div className="flex items-center gap-4">
-              <Link to="/communities" className="hover:underline hidden sm:inline">Communities</Link>
-              <Link to="/how-it-works" className="hover:underline hidden sm:inline">How It Works</Link>
-              <Link to="/signin" className="px-4 py-2 bg-white text-blue-600 rounded-lg font-medium hover:bg-blue-50">
-                Sign In
-              </Link>
+            <div className="flex items-center gap-6">
+              <Link to="/communities" className="text-gray-600 hover:text-gray-900 hidden sm:inline text-sm font-medium">Communities</Link>
+              <Link to="/how-it-works" className="text-gray-600 hover:text-gray-900 hidden sm:inline text-sm font-medium">How It Works</Link>
+              <Link to="/about" className="text-gray-600 hover:text-gray-900 hidden md:inline text-sm font-medium">About</Link>
+              <Link to="/signin" className="px-4 py-2 text-red-600 hover:text-red-700 font-medium text-sm">Sign In</Link>
+              <Link to="/signup" className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg font-medium text-sm hover:from-red-600 hover:to-orange-600 transition-all">Get Started</Link>
             </div>
-          </nav>
-          
+          </div>
+        </nav>
+
+        {/* Hero Section */}
+        <header className="bg-gradient-to-br from-red-500 via-red-600 to-orange-500 text-white">
           <div className="max-w-7xl mx-auto px-4 py-16">
-            <div className="flex items-center gap-2 text-blue-200 mb-4">
+            <div className="flex items-center gap-2 text-red-200 mb-4">
               <Link to="/communities" className="hover:text-white">Communities</Link>
               <span>/</span>
               <span>{data.name}</span>
@@ -132,10 +136,10 @@ export default function CityPage() {
                 <h1 className="text-4xl md:text-5xl font-bold">
                   Carpooling in {data.name}
                 </h1>
-                <p className="text-blue-200">{data.region}, UK</p>
+                <p className="text-red-200">{data.region}, UK</p>
               </div>
             </div>
-            <p className="text-xl text-blue-100 max-w-2xl">
+            <p className="text-xl text-red-100 max-w-2xl">
               {data.description}
             </p>
           </div>
@@ -146,11 +150,11 @@ export default function CityPage() {
           <div className="max-w-7xl mx-auto px-4 py-8">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
               <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600">{data.members}</div>
+                <div className="text-3xl font-bold text-red-600">{data.members}</div>
                 <div className="text-gray-500 text-sm">Members</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600">{data.monthlyRides}</div>
+                <div className="text-3xl font-bold text-red-600">{data.monthlyRides}</div>
                 <div className="text-gray-500 text-sm">Monthly Rides</div>
               </div>
               <div className="text-center">
@@ -245,7 +249,7 @@ export default function CityPage() {
               {data.popularRoutes.map((route) => (
                 <div key={`${route.from}-${route.to}`} className="bg-white rounded-xl p-6 shadow-sm">
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
                     <ArrowRight className="w-4 h-4 text-gray-400" />
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                   </div>
@@ -253,7 +257,7 @@ export default function CityPage() {
                   <div className="font-semibold mb-2">{route.from}</div>
                   <div className="text-sm text-gray-500 mb-1">To</div>
                   <div className="font-semibold mb-4">{route.to}</div>
-                  <div className="text-sm text-blue-600 font-medium">{route.rides}</div>
+                  <div className="text-sm text-red-600 font-medium">{route.rides}</div>
                 </div>
               ))}
             </div>
@@ -261,24 +265,24 @@ export default function CityPage() {
         </section>
 
         {/* CTA */}
-        <section className="py-20 px-4 bg-blue-600 text-white">
+        <section className="py-20 px-4 bg-gradient-to-r from-red-600 to-orange-500 text-white">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl font-bold mb-4">
               Start Carpooling in {data.name} Today
             </h2>
-            <p className="text-blue-100 mb-8">
+            <p className="text-red-100 mb-8">
               Join {data.members} local members and start saving money on your commute.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 to="/signup"
-                className="px-8 py-4 bg-white text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-colors"
+                className="px-8 py-4 bg-white text-red-600 rounded-xl font-semibold hover:bg-red-50 transition-colors"
               >
                 Create Free Account
               </Link>
               <Link
                 to="/how-it-works"
-                className="px-8 py-4 border-2 border-white text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                className="px-8 py-4 border-2 border-white text-white rounded-xl font-semibold hover:bg-white/10 transition-colors"
               >
                 Learn How It Works
               </Link>
@@ -292,7 +296,7 @@ export default function CityPage() {
             <div>
               <div className="flex items-center gap-2 text-white font-bold text-lg mb-4">
                 <Car className="w-6 h-6" />
-                CarpoolNetwork
+                Carpool Network
               </div>
               <p className="text-sm">
                 The UK's trusted platform for sharing rides and reducing travel costs.
@@ -322,7 +326,7 @@ export default function CityPage() {
             </div>
           </div>
           <div className="max-w-7xl mx-auto mt-8 pt-8 border-t border-gray-800 text-center text-sm">
-            © {new Date().getFullYear()} CarpoolNetwork. All rights reserved.
+            © {new Date().getFullYear()} Carpool Network Ltd. All rights reserved.
           </div>
         </footer>
       </div>

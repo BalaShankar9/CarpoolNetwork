@@ -8,6 +8,7 @@
 import { Link } from 'react-router-dom';
 import { Car, Shield, UserCheck, MessageSquare, Star, AlertTriangle, Phone, Lock, Eye } from 'lucide-react';
 import Seo from '../../components/shared/Seo';
+import Logo from '../../components/shared/Logo';
 
 const safetyFeatures = [
   {
@@ -76,7 +77,7 @@ export default function SafetyInfoPage() {
   return (
     <>
       <Seo
-        title="Safety Information"
+        title="Safety Information | Carpool Network"
         description="Your safety is our priority. Learn about CarpoolNetwork's verification process, rating system, and safety features that protect our community."
         canonical="/safety-info"
         jsonLd={{
@@ -104,22 +105,24 @@ export default function SafetyInfoPage() {
       />
       
       <div className="min-h-screen bg-white">
-        {/* Hero Section */}
-        <header className="bg-gradient-to-br from-green-600 to-green-800 text-white">
-          <nav className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2 text-xl font-bold">
-              <Car className="w-8 h-8" />
-              CarpoolNetwork
+        {/* Navigation */}
+        <nav className="bg-white border-b border-gray-100 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <Link to="/">
+              <Logo size="sm" clickable={false} />
             </Link>
-            <div className="flex items-center gap-4">
-              <Link to="/how-it-works" className="hover:underline hidden sm:inline">How It Works</Link>
-              <Link to="/communities" className="hover:underline hidden sm:inline">Communities</Link>
-              <Link to="/signin" className="px-4 py-2 bg-white text-green-600 rounded-lg font-medium hover:bg-green-50">
-                Sign In
-              </Link>
+            <div className="flex items-center gap-6">
+              <Link to="/how-it-works" className="text-gray-600 hover:text-gray-900 hidden sm:inline text-sm font-medium">How It Works</Link>
+              <Link to="/communities" className="text-gray-600 hover:text-gray-900 hidden sm:inline text-sm font-medium">Communities</Link>
+              <Link to="/about" className="text-gray-600 hover:text-gray-900 hidden md:inline text-sm font-medium">About</Link>
+              <Link to="/signin" className="px-4 py-2 text-red-600 hover:text-red-700 font-medium text-sm">Sign In</Link>
+              <Link to="/signup" className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg font-medium text-sm hover:from-red-600 hover:to-orange-600 transition-all">Get Started</Link>
             </div>
-          </nav>
-          
+          </div>
+        </nav>
+
+        {/* Hero Section */}
+        <header className="bg-gradient-to-br from-red-500 via-red-600 to-orange-500 text-white">
           <div className="max-w-7xl mx-auto px-4 py-16 text-center">
             <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
               <Shield className="w-8 h-8" />
@@ -127,7 +130,7 @@ export default function SafetyInfoPage() {
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
               Your Safety Comes First
             </h1>
-            <p className="text-xl text-green-100 max-w-2xl mx-auto">
+            <p className="text-xl text-red-100 max-w-2xl mx-auto">
               We've built multiple layers of protection to ensure every ride is safe, secure, and trustworthy.
             </p>
           </div>
@@ -146,8 +149,8 @@ export default function SafetyInfoPage() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {safetyFeatures.map((feature) => (
                 <div key={feature.title} className="bg-gray-50 rounded-2xl p-6">
-                  <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-4">
-                    <feature.icon className="w-6 h-6 text-green-600" />
+                <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mb-4">
+                  <feature.icon className="w-6 h-6 text-red-600" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
                   <p className="text-gray-600">{feature.description}</p>
@@ -170,12 +173,12 @@ export default function SafetyInfoPage() {
             <div className="grid md:grid-cols-3 gap-8">
               {tips.map((section) => (
                 <div key={section.title} className="bg-white rounded-2xl p-6 shadow-sm">
-                  <h3 className="text-xl font-semibold mb-4 text-green-700">{section.title}</h3>
+                  <h3 className="text-xl font-semibold mb-4 text-red-600">{section.title}</h3>
                   <ul className="space-y-3">
                     {section.items.map((item, index) => (
                       <li key={index} className="flex items-start gap-3">
-                        <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <span className="text-green-600 text-sm font-medium">{index + 1}</span>
+                        <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-red-600 text-sm font-medium">{index + 1}</span>
                         </div>
                         <span className="text-gray-600">{item}</span>
                       </li>
@@ -208,7 +211,7 @@ export default function SafetyInfoPage() {
                 Contact Safety Team
               </a>
               <Link
-                to="/help"
+                to="/faq"
                 className="px-8 py-4 border-2 border-red-600 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors"
               >
                 Help Center
@@ -218,12 +221,12 @@ export default function SafetyInfoPage() {
         </section>
 
         {/* CTA */}
-        <section className="py-20 px-4 bg-green-600 text-white">
+        <section className="py-20 px-4 bg-gradient-to-r from-red-600 to-orange-500 text-white">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl font-bold mb-4">
               Join Our Safe Community
             </h2>
-            <p className="text-green-100 mb-8">
+            <p className="text-red-100 mb-8">
               Verified members are already sharing rides safely across the UK. Join them today.
             </p>
             <Link
@@ -241,7 +244,7 @@ export default function SafetyInfoPage() {
             <div>
               <div className="flex items-center gap-2 text-white font-bold text-lg mb-4">
                 <Car className="w-6 h-6" />
-                CarpoolNetwork
+                Carpool Network
               </div>
               <p className="text-sm">
                 The UK's trusted platform for sharing rides and reducing travel costs.
@@ -271,7 +274,7 @@ export default function SafetyInfoPage() {
             </div>
           </div>
           <div className="max-w-7xl mx-auto mt-8 pt-8 border-t border-gray-800 text-center text-sm">
-            © {new Date().getFullYear()} CarpoolNetwork. All rights reserved.
+            © {new Date().getFullYear()} Carpool Network Ltd. All rights reserved.
           </div>
         </footer>
       </div>

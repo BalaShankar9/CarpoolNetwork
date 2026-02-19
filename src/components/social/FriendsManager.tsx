@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, UserCheck, Users, X, Search, MessageCircle, Loader2 } from 'lucide-react';
+import { UserPlus, UserCheck, Users, X, Search, MessageCircle, Loader2, ShieldOff, Ban } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
@@ -48,6 +48,14 @@ interface UserSearchResult {
   profile_verified?: boolean;
 }
 
+interface BlockedUser {
+  block_id: string;
+  blocked_id: string;
+  full_name: string;
+  avatar_url?: string | null;
+  blocked_at: string;
+}
+
 export default function FriendsManager() {
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -59,11 +67,14 @@ export default function FriendsManager() {
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [processingRequest, setProcessingRequest] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'add'>('friends');
+  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'add' | 'blocked'>('friends');
+  const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
+  const [messagingFriend, setMessagingFriend] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile?.id) {
       loadFriends();
+      loadBlockedUsers();
       return setupRealtimeSubscription(profile.id);
     }
     return undefined;
@@ -246,6 +257,56 @@ export default function FriendsManager() {
     }
   };
 
+  const loadBlockedUsers = async () => {
+    if (!profile?.id) return;
+
+    try {
+      // Try to use the RPC function first
+      const { data, error } = await supabase.rpc('get_blocked_users');
+
+      if (error) {
+        // Fallback to direct query if RPC not available
+        console.warn('get_blocked_users RPC failed, using fallback:', error);
+        const { data: blocksData, error: blocksError } = await supabase
+          .from('blocks')
+          .select('id, blocked_id, created_at')
+          .eq('blocker_id', profile.id);
+
+        if (blocksError) throw blocksError;
+
+        if (blocksData && blocksData.length > 0) {
+          const blockedIds = blocksData.map(b => b.blocked_id);
+          const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .in('id', blockedIds);
+
+          if (profilesError) throw profilesError;
+
+          const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+          const blocked: BlockedUser[] = blocksData.map(b => {
+            const p = profileMap.get(b.blocked_id);
+            return {
+              block_id: b.id,
+              blocked_id: b.blocked_id,
+              full_name: p?.full_name || 'Unknown User',
+              avatar_url: p?.avatar_url || null,
+              blocked_at: b.created_at
+            };
+          });
+          setBlockedUsers(blocked);
+        } else {
+          setBlockedUsers([]);
+        }
+        return;
+      }
+
+      setBlockedUsers((data || []) as BlockedUser[]);
+    } catch (err) {
+      console.error('Error loading blocked users:', err);
+    }
+  };
+
   const searchUsers = async (query: string) => {
     if (!query.trim()) {
       setSearchResults([]);
@@ -392,6 +453,67 @@ export default function FriendsManager() {
     }
   };
 
+  const messageFriend = async (friendId: string) => {
+    try {
+      setMessagingFriend(friendId);
+
+      // Try to use the get_or_create_dm RPC function
+      const { data: conversationId, error } = await supabase.rpc('get_or_create_dm', {
+        p_friend_id: friendId
+      });
+
+      if (error) {
+        console.warn('get_or_create_dm RPC failed, navigating to messages:', error);
+        // Fallback: navigate to messages page, the system will handle finding the DM
+        navigate('/messages');
+        return;
+      }
+
+      // Navigate to the specific conversation
+      navigate(`/messages?conversation=${conversationId}`);
+    } catch (err) {
+      console.error('Error starting message:', err);
+      // Fallback to general messages page
+      navigate('/messages');
+    } finally {
+      setMessagingFriend(null);
+    }
+  };
+
+  const unblockUser = async (blockId: string, userName: string) => {
+    try {
+      setProcessingRequest(blockId);
+
+      // Try to use the RPC function first
+      const blockedUser = blockedUsers.find(b => b.block_id === blockId);
+      if (blockedUser) {
+        const { error } = await supabase.rpc('unblock_user', {
+          p_blocked_id: blockedUser.blocked_id
+        });
+
+        if (error) {
+          // Fallback to direct delete if RPC not available
+          console.warn('unblock_user RPC failed, using fallback:', error);
+          const { error: deleteError } = await supabase
+            .from('blocks')
+            .delete()
+            .eq('id', blockId);
+
+          if (deleteError) throw deleteError;
+        }
+      }
+
+      await loadBlockedUsers();
+      toast.success(`Unblocked ${userName}`);
+    } catch (err) {
+      console.error('Error unblocking user:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Failed to unblock user';
+      toast.error(errorMsg);
+    } finally {
+      setProcessingRequest(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
@@ -443,6 +565,18 @@ export default function FriendsManager() {
           >
             Add Friends
           </button>
+          <button
+            onClick={() => {
+              setActiveTab('blocked');
+              loadBlockedUsers();
+            }}
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'blocked'
+              ? 'bg-red-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+          >
+            Blocked ({blockedUsers.length})
+          </button>
         </div>
       </div>
 
@@ -480,11 +614,16 @@ export default function FriendsManager() {
 
                   <div className="flex gap-2">
                     <button
-                      onClick={() => navigate('/messages')}
-                      className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                      onClick={() => messageFriend(friendship.friend_id)}
+                      disabled={messagingFriend === friendship.friend_id}
+                      className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50"
                       title="Message"
                     >
-                      <MessageCircle className="w-5 h-5" />
+                      {messagingFriend === friendship.friend_id ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <MessageCircle className="w-5 h-5" />
+                      )}
                     </button>
                     <button
                       onClick={() => removeFriend(friendship.id, friendship.friend.full_name)}
@@ -676,6 +815,56 @@ export default function FriendsManager() {
                 <p className="font-medium">Search for users</p>
                 <p className="text-sm">Enter a name to find friends</p>
               </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'blocked' && (
+          <div className="space-y-3">
+            {blockedUsers.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <ShieldOff className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                <p className="font-medium">No blocked users</p>
+                <p className="text-sm">Users you block will appear here</p>
+              </div>
+            ) : (
+              blockedUsers.map((blocked) => (
+                <div key={blocked.block_id} className="flex items-center gap-4 p-4 bg-red-50 rounded-lg border border-red-100">
+                  <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                    {blocked.avatar_url ? (
+                      <img
+                        src={blocked.avatar_url}
+                        alt={blocked.full_name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-lg font-medium text-gray-500">
+                        {blocked.full_name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{blocked.full_name}</p>
+                    <p className="text-sm text-gray-500">
+                      Blocked {new Date(blocked.blocked_at).toLocaleDateString()}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => unblockUser(blocked.block_id, blocked.full_name)}
+                    disabled={processingRequest === blocked.block_id}
+                    className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {processingRequest === blocked.block_id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Ban className="w-4 h-4" />
+                    )}
+                    Unblock
+                  </button>
+                </div>
+              ))
             )}
           </div>
         )}
