@@ -1,53 +1,82 @@
-const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN;
+/**
+ * Sentry Error Tracking
+ *
+ * Uses the official @sentry/react SDK.
+ * DSN must be set via VITE_SENTRY_DSN environment variable.
+ * Enabled in staging and production environments only.
+ */
 
-let sentryInitialized = false;
+import * as Sentry from '@sentry/react';
 
-interface SentryContext {
-  componentStack?: string | null;
-  [key: string]: unknown;
-}
+const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
+const ENV = (import.meta.env.MODE as string) ?? 'development';
+const IS_PROD_LIKE = ENV === 'production' || ENV === 'staging';
 
 export function initSentry() {
-  if (!SENTRY_DSN || sentryInitialized) return;
+  if (!SENTRY_DSN || !IS_PROD_LIKE) return;
 
-  try {
-    const script = document.createElement('script');
-    script.src = 'https://browser.sentry-cdn.com/7.120.0/bundle.min.js';
-    script.crossOrigin = 'anonymous';
-    script.onload = () => {
-      if (window.Sentry) {
-        window.Sentry.init({
-          dsn: SENTRY_DSN,
-          environment: import.meta.env.MODE,
-          tracesSampleRate: 0.1,
-        });
-        sentryInitialized = true;
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    environment: ENV,
+
+    // Capture 10% of transactions for performance monitoring
+    tracesSampleRate: 0.1,
+
+    // Session Replay — record 1% of sessions, 100% on error
+    replaysSessionSampleRate: 0.01,
+    replaysOnErrorSampleRate: 1.0,
+
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration({
+        maskAllText: true,   // Mask PII in replays
+        blockAllMedia: true,
+      }),
+    ],
+
+    // Don't send errors from browser extensions or local dev
+    denyUrls: [
+      /extensions\//i,
+      /^chrome:\/\//i,
+      /^chrome-extension:\/\//i,
+      /localhost/,
+      /127\.0\.0\.1/,
+    ],
+
+    beforeSend(event) {
+      // Strip personal data from breadcrumbs
+      if (event.request?.headers) {
+        delete event.request.headers['Authorization'];
+        delete event.request.headers['Cookie'];
       }
-    };
-    document.head.appendChild(script);
-  } catch (e) {
-    console.warn('Failed to initialize Sentry:', e);
-  }
+      return event;
+    },
+  });
 }
 
-export function captureException(error: Error, context?: SentryContext) {
-  if (window.Sentry && sentryInitialized) {
-    window.Sentry.captureException(error, { extra: context });
+export function captureException(error: Error, context?: Record<string, unknown>) {
+  if (!SENTRY_DSN || !IS_PROD_LIKE) {
+    console.error('[Error]', error, context);
+    return;
   }
+  Sentry.captureException(error, { extra: context });
 }
 
 export function captureMessage(message: string) {
-  if (window.Sentry && sentryInitialized) {
-    window.Sentry.captureMessage(message);
+  if (!SENTRY_DSN || !IS_PROD_LIKE) {
+    console.warn('[Message]', message);
+    return;
   }
+  Sentry.captureMessage(message);
 }
 
-declare global {
-  interface Window {
-    Sentry?: {
-      init: (config: { dsn: string; environment: string; tracesSampleRate: number }) => void;
-      captureException: (error: Error, context?: { extra?: SentryContext }) => void;
-      captureMessage: (message: string) => void;
-    };
-  }
+export function setUserContext(userId: string, email?: string) {
+  Sentry.setUser({ id: userId, email });
 }
+
+export function clearUserContext() {
+  Sentry.setUser(null);
+}
+
+export { Sentry };
+

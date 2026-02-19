@@ -1,9 +1,23 @@
 ﻿import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Sentry source maps — only runs when SENTRY_AUTH_TOKEN is set (CI/production)
+    ...(process.env.SENTRY_AUTH_TOKEN
+      ? [
+          sentryVitePlugin({
+            org: process.env.SENTRY_ORG,
+            project: process.env.SENTRY_PROJECT,
+            authToken: process.env.SENTRY_AUTH_TOKEN,
+            telemetry: false,
+          }),
+        ]
+      : []),
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -15,6 +29,7 @@ export default defineConfig({
     force: true,
   },
   build: {
+    sourcemap: true, // Required for Sentry source map uploads
     rollupOptions: {
       output: {
         manualChunks: {
