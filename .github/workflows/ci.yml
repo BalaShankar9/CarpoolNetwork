@@ -44,7 +44,12 @@ jobs:
           # Provide stub values so build doesn't fail on missing env vars
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_APP_ENV: production
+          # Sentry source map upload (only runs when secret is set)
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: carpool-network-nd
+          SENTRY_PROJECT: carpool-network
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
