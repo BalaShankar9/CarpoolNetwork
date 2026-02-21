@@ -12,8 +12,18 @@ import {
     X,
     AlertCircle,
 } from 'lucide-react';
+import { loadStripe } from '@stripe/stripe-js';
+import {
+    Elements,
+    CardElement,
+    useStripe,
+    useElements,
+} from '@stripe/react-stripe-js';
 import { paymentService, PaymentMethod } from '../../services/paymentService';
 import { useAuth } from '../../contexts/AuthContext';
+
+// Initialise Stripe once (null key is safe – Stripe just won't load)
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 interface PaymentMethodsProps {
     onMethodSelected?: (method: PaymentMethod) => void;
@@ -228,68 +238,138 @@ interface AddCardModalProps {
     onAdded: (method: PaymentMethod) => void;
 }
 
-function AddCardModal({ onClose, onAdded }: AddCardModalProps) {
+/** Inner form – must be rendered inside an <Elements> provider */
+function CardForm({ onClose, onAdded }: AddCardModalProps) {
     const { user } = useAuth();
-    const [cardNumber, setCardNumber] = useState('');
-    const [expiry, setExpiry] = useState('');
-    const [cvc, setCvc] = useState('');
+    const stripe = useStripe();
+    const elements = useElements();
     const [name, setName] = useState('');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
 
-    const formatCardNumber = (value: string) => {
-        const cleaned = value.replace(/\D/g, '');
-        const groups = cleaned.match(/.{1,4}/g) || [];
-        return groups.join(' ').slice(0, 19);
-    };
-
-    const formatExpiry = (value: string) => {
-        const cleaned = value.replace(/\D/g, '');
-        if (cleaned.length >= 2) {
-            return `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}`;
-        }
-        return cleaned;
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user) return;
+        if (!user || !stripe || !elements) return;
 
         setError('');
         setSaving(true);
 
         try {
-            // In production, this would use Stripe Elements
-            // For demo, create a mock payment method
-            const mockMethod: PaymentMethod = {
-                id: crypto.randomUUID(),
-                userId: user.id,
-                type: 'card',
-                brand: detectCardBrand(cardNumber),
-                last4: cardNumber.replace(/\s/g, '').slice(-4),
-                expiryMonth: parseInt(expiry.split('/')[0]),
-                expiryYear: 2000 + parseInt(expiry.split('/')[1]),
-                isDefault: false,
-                stripePaymentMethodId: `pm_demo_${Date.now()}`,
-                createdAt: new Date(),
-            };
+            const cardElement = elements.getElement(CardElement);
+            if (!cardElement) throw new Error('Card element not found');
 
-            onAdded(mockMethod);
-        } catch (err) {
-            setError('Failed to add card. Please try again.');
+            // Create PaymentMethod via Stripe.js (card details never hit our servers)
+            const { error: stripeError, paymentMethod } = await stripe.createPaymentMethod({
+                type: 'card',
+                card: cardElement,
+                billing_details: { name },
+            });
+
+            if (stripeError) {
+                setError(stripeError.message || 'Card error');
+                setSaving(false);
+                return;
+            }
+
+            // Send pm_xxx to our Netlify function → attaches to Stripe Customer + stores metadata
+            const added = await paymentService.addPaymentMethod(user.id, paymentMethod!.id);
+
+            if (!added) {
+                setError('Failed to save card. Please try again.');
+                setSaving(false);
+                return;
+            }
+
+            onAdded(added);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to add card. Please try again.');
         } finally {
             setSaving(false);
         }
     };
 
-    const detectCardBrand = (number: string): string => {
-        const cleaned = number.replace(/\s/g, '');
-        if (cleaned.startsWith('4')) return 'Visa';
-        if (/^5[1-5]/.test(cleaned)) return 'Mastercard';
-        if (/^3[47]/.test(cleaned)) return 'Amex';
-        return 'Card';
-    };
+    return (
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+            {error && (
+                <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-400" />
+                    <p className="text-sm text-red-400">{error}</p>
+                </div>
+            )}
 
+            <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                    Cardholder Name
+                </label>
+                <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="John Smith"
+                    className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                    required
+                />
+            </div>
+
+            {/* Stripe-hosted card input – PCI-compliant, never touches our backend */}
+            <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                    Card Details
+                </label>
+                <div className="px-3 py-3 bg-slate-700 border border-slate-600 rounded-lg focus-within:border-purple-500 transition-colors">
+                    <CardElement
+                        options={{
+                            style: {
+                                base: {
+                                    color: '#f8fafc',
+                                    fontFamily: 'inherit',
+                                    fontSize: '15px',
+                                    '::placeholder': { color: '#94a3b8' },
+                                },
+                                invalid: { color: '#f87171' },
+                            },
+                            hidePostalCode: false,
+                        }}
+                    />
+                </div>
+            </div>
+
+            <div className="flex items-start gap-2 p-3 bg-slate-700/50 rounded-lg">
+                <Shield className="w-4 h-4 text-emerald-400 mt-0.5" />
+                <p className="text-xs text-slate-400">
+                    Your card details are encrypted and processed securely via Stripe.
+                    We never store your full card number.
+                </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex-1 py-3 bg-slate-700 text-white font-medium rounded-lg hover:bg-slate-600 transition-colors"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="submit"
+                    disabled={saving || !name || !stripe}
+                    className="flex-1 py-3 bg-purple-500 text-white font-medium rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                    {saving ? (
+                        <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Saving...
+                        </>
+                    ) : (
+                        'Add Card'
+                    )}
+                </button>
+            </div>
+        </form>
+    );
+}
+
+function AddCardModal({ onClose, onAdded }: AddCardModalProps) {
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -315,106 +395,10 @@ function AddCardModal({ onClose, onAdded }: AddCardModalProps) {
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-4 space-y-4">
-                    {error && (
-                        <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 text-red-400" />
-                            <p className="text-sm text-red-400">{error}</p>
-                        </div>
-                    )}
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                            Card Number
-                        </label>
-                        <input
-                            type="text"
-                            value={cardNumber}
-                            onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                            placeholder="1234 5678 9012 3456"
-                            maxLength={19}
-                            className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
-                            required
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                Expiry Date
-                            </label>
-                            <input
-                                type="text"
-                                value={expiry}
-                                onChange={(e) => setExpiry(formatExpiry(e.target.value))}
-                                placeholder="MM/YY"
-                                maxLength={5}
-                                className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                CVC
-                            </label>
-                            <input
-                                type="text"
-                                value={cvc}
-                                onChange={(e) => setCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                                placeholder="123"
-                                maxLength={4}
-                                className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                            Cardholder Name
-                        </label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            placeholder="John Smith"
-                            className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
-                            required
-                        />
-                    </div>
-
-                    <div className="flex items-start gap-2 p-3 bg-slate-700/50 rounded-lg">
-                        <Shield className="w-4 h-4 text-emerald-400 mt-0.5" />
-                        <p className="text-xs text-slate-400">
-                            Your card details are encrypted and processed securely via Stripe.
-                            We never store your full card number.
-                        </p>
-                    </div>
-
-                    <div className="flex gap-3 pt-2">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex-1 py-3 bg-slate-700 text-white font-medium rounded-lg hover:bg-slate-600 transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={saving || !cardNumber || !expiry || !cvc || !name}
-                            className="flex-1 py-3 bg-purple-500 text-white font-medium rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                            {saving ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Saving...
-                                </>
-                            ) : (
-                                'Add Card'
-                            )}
-                        </button>
-                    </div>
-                </form>
+                {/* Elements provider scoped to this modal */}
+                <Elements stripe={stripePromise}>
+                    <CardForm onClose={onClose} onAdded={onAdded} />
+                </Elements>
             </motion.div>
         </motion.div>
     );

@@ -250,21 +250,45 @@ export async function reactivateSubscription(userId: string): Promise<boolean> {
 }
 
 /**
- * Create Stripe checkout session (placeholder - implement with your backend)
+ * Create Stripe Checkout Session and redirect the user to Stripe-hosted payment.
+ * Returns the checkout URL on success, or null if the backend isn't configured.
  */
 export async function createCheckoutSession(userId: string): Promise<string | null> {
-  // This would call your backend to create a Stripe checkout session
-  // For now, return null to indicate subscriptions aren't active
-  console.log('Stripe checkout not implemented yet for user:', userId);
-  return null;
+  try {
+    const response = await fetch('/.netlify/functions/create-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        // Use the first paid plan price by default (Monthly Access)
+        priceId: import.meta.env.VITE_STRIPE_PLUS_MONTHLY_PRICE_ID || '',
+        planId: 'plus',
+        billingCycle: 'monthly',
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('create-subscription returned', response.status);
+      return null;
+    }
+
+    const { checkoutUrl } = await response.json();
+    return checkoutUrl || null;
+  } catch (err) {
+    console.error('createCheckoutSession error:', err);
+    return null;
+  }
 }
 
 /**
- * Handle Stripe webhook events (placeholder)
+ * Handle Stripe webhook events.
+ * NOTE: In production this is called from the stripe-webhook Netlify function,
+ * NOT from the browser. This client-side helper just validates the shape.
  */
 export async function handleStripeWebhook(event: unknown): Promise<boolean> {
-  // This would be called from your backend when Stripe sends webhook events
-  console.log('Stripe webhook handler not implemented:', event);
+  // Webhook handling is done server-side in netlify/functions/stripe-webhook.ts
+  // This function exists only to satisfy existing import contracts.
+  console.warn('handleStripeWebhook called client-side — delegate to Netlify function instead', event);
   return false;
 }
 

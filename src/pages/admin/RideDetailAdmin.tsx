@@ -96,12 +96,14 @@ export default function RideDetailAdmin() {
     const { rideId } = useParams<{ rideId: string }>();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const { hasRole } = useAuth();
+    const { hasRole, user } = useAuth();
 
     const [ride, setRide] = useState<RideDetail | null>(null);
     const [bookings, setBookings] = useState<RideBooking[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [sendingReminder, setSendingReminder] = useState(false);
+    const [flagging, setFlagging] = useState(false);
 
     // Modals
     const [showEditModal, setShowEditModal] = useState(searchParams.get('edit') === 'true');
@@ -117,6 +119,56 @@ export default function RideDetailAdmin() {
             fetchRideDetails();
         }
     }, [rideId]);
+
+    /** Send an in-app notification reminder to the driver */
+    const handleSendReminder = async () => {
+        if (!ride || !rideId) return;
+        setSendingReminder(true);
+        try {
+            const { error } = await supabase.from('notifications').insert({
+                user_id: ride.driver_id,
+                type: 'ride_reminder',
+                title: 'Ride Reminder from Admin',
+                body: `Reminder: you have a ride from ${ride.origin} to ${ride.destination} on ${new Date(ride.departure_time).toLocaleString()}.`,
+                data: { ride_id: rideId, sent_by: user?.id || 'admin' },
+                read: false,
+            });
+            if (error) throw error;
+            toast.success('Reminder sent to driver');
+        } catch (err) {
+            console.error('Send reminder failed:', err);
+            toast.error('Failed to send reminder');
+        } finally {
+            setSendingReminder(false);
+        }
+    };
+
+    /** Insert a ride_flag record so moderators can review */
+    const handleFlagForReview = async () => {
+        if (!ride || !rideId) return;
+        setFlagging(true);
+        try {
+            const { error } = await supabase.from('ride_flags').insert({
+                ride_id: rideId,
+                flagged_by: user?.id,
+                reason: 'Flagged for review by admin',
+                status: 'open',
+            });
+            if (error) throw error;
+            toast.success('Ride flagged for review');
+        } catch (err) {
+            console.error('Flag for review failed:', err);
+            toast.error('Failed to flag ride');
+        } finally {
+            setFlagging(false);
+        }
+    };
+
+    /** Navigate admin to the conversation with the driver */
+    const handleMessageDriver = async () => {
+        if (!ride) return;
+        navigate(`/admin/messages?userId=${ride.driver_id}`);
+    };
 
     const fetchRideDetails = async () => {
         if (!rideId) return;
@@ -704,7 +756,7 @@ export default function RideDetailAdmin() {
                             }}
                             role="driver"
                             onViewProfile={() => navigate(`/admin/users?userId=${ride.driver_id}`)}
-                            onMessage={() => toast.info('Messaging not implemented yet')}
+                            onMessage={handleMessageDriver}
                         />
                     </div>
 
@@ -746,18 +798,20 @@ export default function RideDetailAdmin() {
                                 View Public Page
                             </button>
                             <button
-                                onClick={() => toast.info('Send reminder not implemented yet')}
-                                className="w-full flex items-center gap-2 px-4 py-2 text-blue-700 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors"
+                                onClick={handleSendReminder}
+                                disabled={sendingReminder}
+                                className="w-full flex items-center gap-2 px-4 py-2 text-blue-700 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50"
                             >
                                 <Send className="w-4 h-4" />
-                                Send Reminder to Driver
+                                {sendingReminder ? 'Sending...' : 'Send Reminder to Driver'}
                             </button>
                             <button
-                                onClick={() => toast.info('Flag for review not implemented yet')}
-                                className="w-full flex items-center gap-2 px-4 py-2 text-orange-700 bg-orange-100 rounded-lg hover:bg-orange-200 transition-colors"
+                                onClick={handleFlagForReview}
+                                disabled={flagging}
+                                className="w-full flex items-center gap-2 px-4 py-2 text-orange-700 bg-orange-100 rounded-lg hover:bg-orange-200 transition-colors disabled:opacity-50"
                             >
                                 <AlertTriangle className="w-4 h-4" />
-                                Flag for Review
+                                {flagging ? 'Flagging...' : 'Flag for Review'}
                             </button>
                         </div>
                     </div>

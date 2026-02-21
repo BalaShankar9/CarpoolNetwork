@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Users, Car, AlertCircle, CheckCircle, Repeat, MapPin, Clock, Calendar as CalendarIcon, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getUserVehicles, VehicleRow } from '../services/vehicleService';
@@ -16,6 +16,9 @@ import { analytics } from '../lib/analytics';
 export default function PostRide() {
   const { user, isEmailVerified, profile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editRideId = searchParams.get('edit');
+  const isEditMode = Boolean(editRideId);
   const { checkAccess, ServiceGatingModal } = useServiceGating();
   const [hasVehicle, setHasVehicle] = useState(false);
   const [checkingVehicle, setCheckingVehicle] = useState(true);
@@ -52,6 +55,44 @@ export default function PostRide() {
   useEffect(() => {
     checkForVehicle();
   }, [user]);
+
+  // Load existing ride data when in edit mode
+  useEffect(() => {
+    if (!editRideId || !user) return;
+    (async () => {
+      const { data, error: fetchErr } = await supabase
+        .from('rides')
+        .select('*')
+        .eq('id', editRideId)
+        .eq('driver_id', user.id)
+        .single();
+
+      if (fetchErr || !data) {
+        setError('Ride not found or you do not have permission to edit it.');
+        return;
+      }
+
+      const depTime = new Date(data.departure_time);
+      setFormData({
+        origin: data.origin || '',
+        destination: data.destination || '',
+        availableSeats: data.available_seats ?? 1,
+        notes: data.notes || '',
+        isRecurring: data.is_recurring ?? false,
+        availableUntil: data.available_until ? data.available_until.slice(0, 16) : '',
+        pickupRadius: data.pickup_radius_km ?? 10,
+      });
+      setDateTime({
+        date: depTime.toISOString().split('T')[0],
+        time: depTime.toTimeString().slice(0, 5),
+        timeType: (data.time_type as 'depart' | 'arrive') ?? 'depart',
+      });
+      if (data.origin_lat) setOriginCoords({ lat: data.origin_lat, lng: data.origin_lng });
+      if (data.destination_lat) setDestCoords({ lat: data.destination_lat, lng: data.destination_lng });
+      if (data.ride_type) setRideType(data.ride_type as RideType);
+      if (data.vehicle_id) setSelectedVehicleId(data.vehicle_id);
+    })();
+  }, [editRideId, user]);
 
   // Update recurring based on ride type
   useEffect(() => {
@@ -224,8 +265,7 @@ export default function PostRide() {
       }
       
       // Single ride (or fallback from failed recurring ride creation)
-      const { error } = await supabase.from('rides').insert([{
-        driver_id: user.id,
+      const ridePayload = {
         vehicle_id: vehicleToUse.id,
         origin: formData.origin,
         origin_lat: originCoords.lat,
@@ -244,9 +284,28 @@ export default function PostRide() {
           ? new Date(formData.availableUntil).toISOString()
           : null,
         pickup_radius_km: formData.pickupRadius,
-      }]);
+      };
 
-      if (error) throw error;
+      let rideError: unknown;
+
+      if (isEditMode && editRideId) {
+        // UPDATE existing ride
+        const { error } = await supabase
+          .from('rides')
+          .update(ridePayload)
+          .eq('id', editRideId)
+          .eq('driver_id', user.id);
+        rideError = error;
+      } else {
+        // INSERT new ride
+        const { error } = await supabase.from('rides').insert([{
+          driver_id: user.id,
+          ...ridePayload,
+        }]);
+        rideError = error;
+      }
+
+      if (rideError) throw rideError;
 
       setSuccess(true);
       
@@ -356,8 +415,12 @@ export default function PostRide() {
       <ServiceGatingModal />
       <div className="max-w-3xl mx-auto space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Post a Ride</h1>
-          <p className="text-gray-600 mt-1">Share your journey with the community</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {isEditMode ? 'Edit Ride' : 'Post a Ride'}
+          </h1>
+          <p className="text-gray-600 mt-1">
+            {isEditMode ? 'Update your ride details' : 'Share your journey with the community'}
+          </p>
         </div>
 
         <EmailVerificationBanner action="post rides" />
@@ -636,10 +699,15 @@ export default function PostRide() {
               className="w-full bg-blue-600 text-white py-4 rounded-xl font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Car className="w-5 h-5" />
-              {loading ? 'Posting Ride...' :
-                rideType === 'flexible' ? 'Post Flexible Ride' :
-                  formData.isRecurring ? 'Create Recurring Ride' :
-                    `Post ${getRideTypeInfo(rideType).label}`}
+              {loading
+                ? (isEditMode ? 'Saving Changes...' : 'Posting Ride...')
+                : isEditMode
+                  ? 'Save Changes'
+                  : rideType === 'flexible'
+                    ? 'Post Flexible Ride'
+                    : formData.isRecurring
+                      ? 'Create Recurring Ride'
+                      : `Post ${getRideTypeInfo(rideType).label}`}
             </button>
           </form>
         </div>

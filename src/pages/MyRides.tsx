@@ -1073,7 +1073,7 @@ export default function MyRides() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                toast.info('Edit functionality coming soon!');
+                                navigate(`/post-ride?edit=${ride.id}`);
                               }}
                               className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                               title="Edit Ride"

@@ -202,25 +202,28 @@ export const membershipService = {
         return 0;
     },
 
-    // Subscribe to a plan
+    // Subscribe to a plan — redirects to Stripe Checkout for payment
     async subscribe(
         userId: string,
         planId: string,
         billingCycle: 'monthly' | 'yearly'
-    ): Promise<{ success: boolean; clientSecret?: string; subscriptionId?: string }> {
+    ): Promise<{ success: boolean; checkoutUrl?: string; subscriptionId?: string }> {
         const plan = MEMBERSHIP_PLANS.find((p) => p.id === planId);
         if (!plan || plan.tier === 'free') {
             return { success: false };
         }
 
         try {
-            // In production, this would create a Stripe subscription
+            const priceId = billingCycle === 'monthly'
+                ? plan.stripePriceIdMonthly
+                : plan.stripePriceIdYearly;
+
             const response = await fetch('/.netlify/functions/create-subscription', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId,
-                    priceId: billingCycle === 'monthly' ? plan.stripePriceIdMonthly : plan.stripePriceIdYearly,
+                    priceId,
                     planId,
                     billingCycle,
                 }),
@@ -230,34 +233,17 @@ export const membershipService = {
                 throw new Error('Subscription creation failed');
             }
 
-            return await response.json();
+            const data = await response.json();
+
+            // Redirect to Stripe Checkout / Customer Portal
+            if (data.checkoutUrl) {
+                window.location.href = data.checkoutUrl;
+            }
+
+            return { success: true, checkoutUrl: data.checkoutUrl };
         } catch (error) {
             console.error('Subscription failed:', error);
-
-            // Demo mode - create local subscription
-            const now = new Date();
-            const periodEnd = new Date(now);
-            periodEnd.setMonth(periodEnd.getMonth() + (billingCycle === 'yearly' ? 12 : 1));
-
-            const membership: UserMembership = {
-                id: crypto.randomUUID(),
-                userId,
-                tier: plan.tier,
-                status: 'active',
-                billingCycle,
-                currentPeriodStart: now,
-                currentPeriodEnd: periodEnd,
-                cancelAtPeriodEnd: false,
-                createdAt: now,
-                updatedAt: now,
-            };
-
-            await this.saveMembership(membership);
-
-            return {
-                success: true,
-                subscriptionId: `demo_sub_${Date.now()}`,
-            };
+            return { success: false };
         }
     },
 

@@ -93,4 +93,18 @@
     Permissions-Policy = "geolocation=(self), camera=(), microphone=(), payment=(), usb=(), bluetooth=()"
 
     # Content Security Policy
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com https://browser.sentry-cdn.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://maps.googleapis.com https://maps.gstatic.com https://*.googleusercontent.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://sentry.io https://*.sentry.io https://maps.googleapis.com https://o*.ingest.sentry.io; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com https://browser.sentry-cdn.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://maps.googleapis.com https://maps.gstatic.com https://*.googleusercontent.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://sentry.io https://*.sentry.io https://maps.googleapis.com https://o*.ingest.sentry.io https://api.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+
+# ==========================================================
+# NETLIFY FUNCTIONS: Configuration
+# ==========================================================
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Stripe webhook — raw body required for signature verification
+[[redirects]]
+  from = "/webhook/stripe"
+  to = "/.netlify/functions/stripe-webhook"
+  status = 200
+  force = true
