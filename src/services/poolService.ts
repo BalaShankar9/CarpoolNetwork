@@ -56,7 +56,7 @@ export interface PoolRide {
     scheduled_for: string;
     driver_id: string;
     // CANONICAL ride states: active, in-progress, completed, cancelled
-    status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
+    status: 'active' | 'in-progress' | 'completed' | 'cancelled';
     created_at: string;
 }
 
@@ -523,7 +523,7 @@ export async function createPoolRide(
             destination: rideDetails.destination,
             departure_time: rideDetails.departure_time,
             available_seats: rideDetails.available_seats,
-            status: 'scheduled',
+            status: 'active',
             is_pool_ride: true,
         })
         .select()
@@ -539,7 +539,7 @@ export async function createPoolRide(
             ride_id: ride.id,
             driver_id: driverId,
             scheduled_for: rideDetails.departure_time,
-            status: 'scheduled',
+            status: 'active',
         })
         .select()
         .single();

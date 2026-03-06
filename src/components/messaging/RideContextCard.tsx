@@ -7,7 +7,7 @@ interface RideInfo {
     destination: string;
     departure_time: string;
     // CANONICAL ride states: active, in-progress, completed, cancelled
-    status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
+    status: 'active' | 'in-progress' | 'completed' | 'cancelled';
     available_seats?: number;
     driver?: {
         id: string;

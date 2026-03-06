@@ -416,7 +416,7 @@ export default function MyRides() {
       .from('ride_bookings')
       .select('id')
       .eq('ride_id', rideId)
-      .in('status', ['confirmed', 'active']);
+      .in('status', ['confirmed', 'pending']);
 
     if (bookings && bookings.length > 0) {
       toast.error('Cannot delete a ride with confirmed passengers. Cancel the ride instead.');
@@ -465,28 +465,29 @@ export default function MyRides() {
       const { error } = await supabase
         .from('rides')
         .update({ status: 'cancelled' })
-        .eq('id', rideId);
+        .eq('id', rideId)
+        .eq('driver_id', user!.id);
 
       if (error) throw error;
 
-      // Update all active/confirmed bookings to cancelled and notify passengers
+      // Update all confirmed/pending bookings to cancelled and notify passengers
       const { data: affectedBookings } = await supabase
         .from('ride_bookings')
         .select('id, passenger_id')
         .eq('ride_id', rideId)
-        .in('status', ['confirmed', 'active', 'pending']);
+        .in('status', ['confirmed', 'pending']);
 
       if (affectedBookings && affectedBookings.length > 0) {
         await supabase
           .from('ride_bookings')
           .update({ status: 'cancelled' })
           .eq('ride_id', rideId)
-          .in('status', ['confirmed', 'active', 'pending']);
+          .in('status', ['confirmed', 'pending']);
 
         // Create a notification for each affected passenger
         const notifications = affectedBookings.map((booking) => ({
           user_id: booking.passenger_id,
-          type: 'ride_cancelled',
+          type: 'BOOKING_CANCELLED' as const,
           title: 'Ride Cancelled',
           message: 'A ride you booked has been cancelled by the driver.',
           data: { ride_id: rideId, booking_id: booking.id },
@@ -514,7 +515,8 @@ export default function MyRides() {
       const { error } = await supabase
         .from('rides')
         .update({ status: 'completed' })
-        .eq('id', rideId);
+        .eq('id', rideId)
+        .eq('driver_id', user!.id);
 
       if (error) throw error;
 

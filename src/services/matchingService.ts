@@ -466,7 +466,7 @@ class MatchingService {
         if (first.notifyOnAvailable) {
             await supabase.from('notifications').insert({
                 user_id: first.userId,
-                type: 'system',
+                type: 'SYSTEM',
                 title: 'Seat Available!',
                 message: 'A seat is now available for a ride you were waiting for. Book now before it fills up!',
                 data: { ride_id: rideId },

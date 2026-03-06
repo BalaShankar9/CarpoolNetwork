@@ -391,7 +391,7 @@ export async function findRidesForRoute(
         average_rating
       )
     `)
-        .eq('status', 'scheduled')
+        .eq('status', 'active')
         .gte('available_seats', options?.seatsNeeded || 1);
 
     // Filter by date range

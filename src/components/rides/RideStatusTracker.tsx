@@ -108,6 +108,7 @@ export default function RideStatusTracker({ rideId, isDriver }: RideStatusTracke
   };
 
   const updateRideStatus = async (newStatus: string) => {
+    if (!isDriver) return;
     try {
       const { error } = await supabase
         .from('rides')

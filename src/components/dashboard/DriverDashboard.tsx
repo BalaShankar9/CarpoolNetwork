@@ -136,7 +136,7 @@ export default function DriverDashboard() {
           ride_bookings(id, status)
         `)
                 .eq('driver_id', user.id)
-                .in('status', ['active', 'scheduled'])
+                .in('status', ['active'])
                 .gte('departure_time', new Date().toISOString())
                 .order('departure_time', { ascending: true })
                 .limit(5);
