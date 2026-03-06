@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Trophy, TrendingUp, Globe, MapPin, Users, Medal, Award, Crown } from 'lucide-react';
-import Layout from '../components/layout/Layout';
+
 import GlobalLeaderboard from '../components/leaderboards/GlobalLeaderboard';
 import RegionalLeaderboard from '../components/leaderboards/RegionalLeaderboard';
 import FriendLeaderboard from '../components/leaderboards/FriendLeaderboard';
@@ -34,8 +34,7 @@ export default function Leaderboards() {
   ];
 
   return (
-    <Layout>
-      <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-3 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg">
@@ -154,6 +153,5 @@ export default function Leaderboards() {
           </div>
         </div>
       </div>
-    </Layout>
   );
 }

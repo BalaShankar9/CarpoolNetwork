@@ -55,8 +55,9 @@ export default function AppearanceSettings() {
       if (fetchError) throw fetchError;
 
       if (data) {
+        const theme = (data.theme as any) || 'light';
         setPrefs({
-          theme: (data.theme as any) || 'light',
+          theme,
           font_size: (data.font_size as any) || 'medium',
           distance_unit: (data.distance_unit as any) || 'km',
           temperature_unit: (data.temperature_unit as any) || 'celsius',
@@ -66,6 +67,14 @@ export default function AppearanceSettings() {
           reduce_motion: data.reduce_motion ?? false,
           high_contrast: data.high_contrast ?? false
         });
+
+        // Apply saved theme to DOM on load
+        if (theme === 'auto') {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.classList.toggle('dark', prefersDark);
+        } else {
+          document.documentElement.classList.toggle('dark', theme === 'dark');
+        }
       }
     } catch (err) {
       console.error('Error loading appearance preferences:', err);
@@ -91,6 +100,17 @@ export default function AppearanceSettings() {
       if (updateError) throw updateError;
 
       setPrefs({ ...prefs, [key]: value });
+
+      // Apply theme to DOM
+      if (key === 'theme') {
+        if (value === 'auto') {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.classList.toggle('dark', prefersDark);
+        } else {
+          document.documentElement.classList.toggle('dark', value === 'dark');
+        }
+      }
+
       setSuccess('Appearance settings updated');
     } catch (err: any) {
       setError(err.message || 'Failed to update preferences');

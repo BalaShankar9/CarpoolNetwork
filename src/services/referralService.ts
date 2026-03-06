@@ -227,10 +227,10 @@ class ReferralService {
 
         // Check if user has completed a ride
         const { count } = await supabase
-            .from('bookings')
+            .from('ride_bookings')
             .select('id', { count: 'exact', head: true })
             .eq('passenger_id', referredUserId)
-            .eq('status', 'confirmed');
+            .eq('status', 'completed');
 
         if (!count || count === 0) return;
 

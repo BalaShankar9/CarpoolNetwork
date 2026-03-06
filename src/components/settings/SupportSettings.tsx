@@ -28,8 +28,8 @@ export default function SupportSettings() {
             <ExternalLink className="w-5 h-5 text-gray-400" />
           </button>
 
-          <button
-            className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+          <div
+            className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-lg opacity-60"
           >
             <div className="flex items-center gap-3">
               <MessageCircle className="w-5 h-5 text-gray-600" />
@@ -38,10 +38,10 @@ export default function SupportSettings() {
                 <p className="text-sm text-gray-500">Chat with our support team</p>
               </div>
             </div>
-            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-              Online
+            <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs font-medium rounded-full">
+              Coming Soon
             </span>
-          </button>
+          </div>
 
           <button
             onClick={() => window.location.href = 'mailto:support@carpoolnetwork.co.uk'}
@@ -77,7 +77,10 @@ export default function SupportSettings() {
             <FeedbackButton />
           </div>
 
-          <button className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
+          <button
+            onClick={() => window.location.href = 'mailto:feedback@carpoolnetwork.co.uk?subject=Feature%20Request'}
+            className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+          >
             <div className="flex items-center gap-3">
               <Star className="w-5 h-5 text-gray-600" />
               <div className="text-left">
@@ -85,7 +88,7 @@ export default function SupportSettings() {
                 <p className="text-sm text-gray-500">Suggest new features or improvements</p>
               </div>
             </div>
-            <span className="text-blue-600">→</span>
+            <ExternalLink className="w-5 h-5 text-gray-400" />
           </button>
         </div>
       </div>
@@ -127,15 +130,11 @@ export default function SupportSettings() {
         <div className="space-y-3 text-sm">
           <div className="flex justify-between py-2 border-b border-gray-100">
             <span className="text-gray-600">App Version</span>
-            <span className="text-gray-900 font-medium">1.0.0</span>
-          </div>
-          <div className="flex justify-between py-2 border-b border-gray-100">
-            <span className="text-gray-600">Build Number</span>
-            <span className="text-gray-900 font-medium">2024.12.22</span>
+            <span className="text-gray-900 font-medium">{import.meta.env.VITE_APP_VERSION || '1.0.0'}</span>
           </div>
           <div className="flex justify-between py-2">
-            <span className="text-gray-600">Last Updated</span>
-            <span className="text-gray-900 font-medium">December 2024</span>
+            <span className="text-gray-600">Environment</span>
+            <span className="text-gray-900 font-medium">{import.meta.env.MODE}</span>
           </div>
         </div>
       </div>
@@ -146,10 +145,17 @@ export default function SupportSettings() {
           Help us grow by rating the app and sharing it with friends!
         </p>
         <div className="flex gap-3">
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
-            Rate on App Store
-          </button>
-          <button className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium">
+          <button
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({ title: 'Carpool Network', text: 'Check out Carpool Network!', url: window.location.origin });
+              } else {
+                navigator.clipboard.writeText(window.location.origin);
+                window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Link copied to clipboard!', kind: 'success' } }));
+              }
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+          >
             Share App
           </button>
         </div>

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+
+const sanitizeSearch = (input: string) => input.replace(/[%_*()]/g, '');
 import AdminLayout from '../../components/admin/AdminLayout';
 import {
   Layers,
@@ -124,9 +126,9 @@ export default function BulkOperations() {
 
       if (searchQuery) {
         if (operationType === 'users') {
-          query = query.or(`full_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
+          query = query.or(`full_name.ilike.%${sanitizeSearch(searchQuery)}%,email.ilike.%${sanitizeSearch(searchQuery)}%`);
         } else if (operationType === 'rides') {
-          query = query.or(`origin.ilike.%${searchQuery}%,destination.ilike.%${searchQuery}%`);
+          query = query.or(`origin.ilike.%${sanitizeSearch(searchQuery)}%,destination.ilike.%${sanitizeSearch(searchQuery)}%`);
         }
       }
 

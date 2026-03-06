@@ -8,17 +8,10 @@ const PUBLIC_PROFILE_FIELDS = `
   id,
   full_name,
   avatar_url,
-  profile_photo_url,
-  created_at,
-  country,
-  city,
   bio,
-  trust_score,
   average_rating,
-  reliability_score,
-  total_rides_offered,
-  total_rides_taken,
-  profile_verified
+  total_rides,
+  created_at
 `;
 
 export async function fetchPublicProfilesByIds(ids: string[]): Promise<Record<string, PublicProfile>> {

@@ -206,7 +206,7 @@ export async function getUserStats(userId: string): Promise<UserStats> {
       .eq('driver_id', userId)
       .eq('status', 'completed'),
     supabase
-      .from('bookings')
+      .from('ride_bookings')
       .select('*', { count: 'exact', head: true })
       .eq('passenger_id', userId)
       .eq('status', 'completed'),
@@ -225,7 +225,7 @@ export async function getUserStats(userId: string): Promise<UserStats> {
       .eq('id', userId)
       .single(),
     supabase
-      .from('friends')
+      .from('friendships')
       .select('*', { count: 'exact', head: true })
       .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
       .eq('status', 'accepted'),

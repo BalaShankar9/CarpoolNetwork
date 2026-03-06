@@ -193,16 +193,25 @@ export async function incrementFavoriteRideCount(
         p_driver_id: driverId,
     });
 
-    // Fallback if RPC doesn't exist
+    // Fallback if RPC doesn't exist: manual read-then-write
     if (error) {
-        await supabase
+        const { data: current } = await supabase
             .from('favorite_drivers')
-            .update({
-                ride_count: supabase.rpc('increment_ride_count'),
-                last_ride_at: new Date().toISOString(),
-            })
+            .select('ride_count')
             .eq('user_id', userId)
-            .eq('driver_id', driverId);
+            .eq('driver_id', driverId)
+            .maybeSingle();
+
+        if (current) {
+            await supabase
+                .from('favorite_drivers')
+                .update({
+                    ride_count: (current.ride_count || 0) + 1,
+                    last_ride_at: new Date().toISOString(),
+                })
+                .eq('user_id', userId)
+                .eq('driver_id', driverId);
+        }
     }
 }
 
@@ -300,31 +309,21 @@ export async function deleteSavedRoute(routeId: string): Promise<void> {
  * Increment route usage count
  */
 export async function incrementRouteUsage(routeId: string): Promise<void> {
-    const { error } = await supabase
+    // Manual read-then-write to increment use_count
+    const { data } = await supabase
         .from('saved_routes')
-        .update({
-            use_count: supabase.rpc('increment'),
-            last_used_at: new Date().toISOString(),
-        })
-        .eq('id', routeId);
+        .select('use_count')
+        .eq('id', routeId)
+        .single();
 
-    if (error) {
-        // Fallback - manual increment
-        const { data } = await supabase
+    if (data) {
+        await supabase
             .from('saved_routes')
-            .select('use_count')
-            .eq('id', routeId)
-            .single();
-
-        if (data) {
-            await supabase
-                .from('saved_routes')
-                .update({
-                    use_count: (data.use_count || 0) + 1,
-                    last_used_at: new Date().toISOString(),
-                })
-                .eq('id', routeId);
-        }
+            .update({
+                use_count: (data.use_count || 0) + 1,
+                last_used_at: new Date().toISOString(),
+            })
+            .eq('id', routeId);
     }
 }
 

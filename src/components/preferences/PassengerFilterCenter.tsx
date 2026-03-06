@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Filter, Star, DollarSign, Clock, Shield, Wind, Music,
+  Filter, Star, PoundSterling, Clock, Shield, Wind, Music,
   Users, Heart, Save, X, ChevronDown, ChevronUp, Sparkles, TrendingUp
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -37,8 +37,8 @@ export default function PassengerFilterCenter({
 
   const loadSavedFilters = async () => {
     if (!user) return;
-    const filters = await PreferenceMatchingService.getSavedFilters(user.id);
-    setSavedFilters(filters);
+    const savedData = await PreferenceMatchingService.getSavedFilters(user.id);
+    setSavedFilters(savedData);
   };
 
   const loadRecommendations = async () => {
@@ -154,7 +154,7 @@ export default function PassengerFilterCenter({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <PresetButton
               label="Cheapest"
-              icon={DollarSign}
+              icon={PoundSterling}
               onClick={() => applyPreset('cheapest')}
               active={filters.priorityAlgorithm === 'cheapest'}
             />

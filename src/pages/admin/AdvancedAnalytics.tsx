@@ -218,7 +218,6 @@ export default function AdvancedAnalytics() {
     {
       label: 'Ride Completion Rate',
       value: `${rideStats?.completion_rate || 0}%`,
-      change: 5.2,
       icon: <CheckCircle className="w-6 h-6" />,
       color: 'bg-green-100 text-green-600',
       targetId: 'analytics-ride-stats',
@@ -226,7 +225,6 @@ export default function AdvancedAnalytics() {
     {
       label: 'Booking Confirmation Rate',
       value: `${bookingStats?.confirmation_rate || 0}%`,
-      change: 3.1,
       icon: <Activity className="w-6 h-6" />,
       color: 'bg-blue-100 text-blue-600',
       targetId: 'analytics-booking-funnel',
@@ -234,7 +232,6 @@ export default function AdvancedAnalytics() {
     {
       label: 'Total Rides',
       value: rideStats?.total_rides || 0,
-      change: -2.4,
       icon: <Car className="w-6 h-6" />,
       color: 'bg-orange-100 text-orange-600',
       targetId: 'analytics-popular-routes',
@@ -242,7 +239,6 @@ export default function AdvancedAnalytics() {
     {
       label: 'User Growth',
       value: userGrowth.length > 0 ? userGrowth[userGrowth.length - 1].value : 0,
-      change: 8.7,
       icon: <Users className="w-6 h-6" />,
       color: 'bg-purple-100 text-purple-600',
       targetId: 'analytics-user-growth',

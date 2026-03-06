@@ -26,9 +26,9 @@ export default function VerifyOtp() {
   const handleVerify = async (code: string) => {
     setError('');
     try {
-      const { error } = await verifyOTP(identifier, code, isPhone);
-      if (error) {
-        setError(mapAuthError(error.message));
+      const { error: verifyError } = await verifyOTP(identifier, code, isPhone);
+      if (verifyError) {
+        setError(mapAuthError(verifyError.message));
       } else {
         navigate('/');
       }
@@ -40,10 +40,10 @@ export default function VerifyOtp() {
   const handleResend = async () => {
     setError('');
     try {
-      const { error } = await signInWithOTP(identifier, isPhone);
-      if (error) {
-        const friendlyMessage = getOtpErrorMessage(error, allowOtpSignups);
-        setError(friendlyMessage || error.message);
+      const { error: resendError } = await signInWithOTP(identifier, isPhone);
+      if (resendError) {
+        const friendlyMessage = getOtpErrorMessage(resendError, allowOtpSignups);
+        setError(friendlyMessage || resendError.message);
       }
     } catch {
       setError('Failed to resend code');

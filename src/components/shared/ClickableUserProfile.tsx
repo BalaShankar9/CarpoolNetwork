@@ -70,6 +70,10 @@ export default function ClickableUserProfile({
       <div
         className={`flex items-center gap-3 ${disabled ? '' : 'cursor-pointer hover:opacity-80 transition-opacity'} ${className}`}
         onClick={handleClick}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(); } }}
+        role="link"
+        tabIndex={disabled ? -1 : 0}
+        aria-label={`View ${user.full_name}'s profile`}
       >
         <UserAvatar
           user={userWithAvatar}
@@ -96,6 +100,10 @@ export default function ClickableUserProfile({
     <div
       className={`flex flex-col items-center gap-2 ${disabled ? '' : 'cursor-pointer hover:opacity-80 transition-opacity'} ${className}`}
       onClick={handleClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(); } }}
+      role="link"
+      tabIndex={disabled ? -1 : 0}
+      aria-label={`View ${user.full_name}'s profile`}
     >
       <UserAvatar
         user={userWithAvatar}

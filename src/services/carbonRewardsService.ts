@@ -370,13 +370,29 @@ export const carbonRewardsService = {
             });
 
             if (updateError) {
-                // Fallback: upsert if RPC doesn't exist
-                await supabase.from('user_rewards').upsert({
-                    user_id: userId,
-                    current_points: amount,
-                    lifetime_points: amount,
-                    updated_at: new Date().toISOString(),
-                });
+                // Fallback: read-then-write if RPC doesn't exist
+                const { data: existing } = await supabase
+                    .from('user_rewards')
+                    .select('current_points, lifetime_points')
+                    .eq('user_id', userId)
+                    .maybeSingle();
+
+                if (existing) {
+                    await supabase.from('user_rewards')
+                        .update({
+                            current_points: (existing.current_points || 0) + amount,
+                            lifetime_points: (existing.lifetime_points || 0) + amount,
+                            updated_at: new Date().toISOString(),
+                        })
+                        .eq('user_id', userId);
+                } else {
+                    await supabase.from('user_rewards').insert({
+                        user_id: userId,
+                        current_points: amount,
+                        lifetime_points: amount,
+                        updated_at: new Date().toISOString(),
+                    });
+                }
             }
 
             return true;

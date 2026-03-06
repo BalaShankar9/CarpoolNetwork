@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Car, Search, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import DriverPreferenceDashboard from '../components/preferences/DriverPreferenceDashboard';
@@ -7,6 +7,10 @@ import PassengerFilterCenter from '../components/preferences/PassengerFilterCent
 export default function Preferences() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<'driver' | 'passenger'>('passenger');
+
+  const handleSearch = useCallback(() => {
+    navigate('/search');
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -58,8 +62,7 @@ export default function Preferences() {
           <div className="max-w-4xl mx-auto px-4">
             <PassengerFilterCenter
               onFiltersChange={() => {}}
-              onSearch={() => {}}
-              matchCount={0}
+              onSearch={handleSearch}
             />
           </div>
         )}

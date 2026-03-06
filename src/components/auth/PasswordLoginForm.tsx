@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Mail, Lock, Loader2, Eye, EyeOff, Shield } from 'lucide-react';
 
 interface PasswordLoginFormProps {
-  onSubmit: (identifier: string, password: string, rememberMe: boolean) => Promise<void>;
+  onSubmit: (identifier: string, password: string) => Promise<void>;
   disabled?: boolean;
 }
 
@@ -10,7 +10,6 @@ export default function PasswordLoginForm({ onSubmit, disabled = false }: Passwo
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
 
@@ -20,7 +19,7 @@ export default function PasswordLoginForm({ onSubmit, disabled = false }: Passwo
 
     setLoading(true);
     try {
-      await onSubmit(identifier, password, rememberMe);
+      await onSubmit(identifier, password);
       setFailedAttempts(0);
     } catch {
       setFailedAttempts(prev => prev + 1);
@@ -88,24 +87,11 @@ export default function PasswordLoginForm({ onSubmit, disabled = false }: Passwo
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
             disabled={disabled || loading}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
           >
             {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
           </button>
         </div>
-      </div>
-
-      {/* Remember Me */}
-      <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={rememberMe}
-            onChange={(e) => setRememberMe(e.target.checked)}
-            disabled={disabled || loading || isLocked}
-            className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 cursor-pointer"
-          />
-          <span className="text-sm text-gray-600">Remember me for 30 days</span>
-        </label>
       </div>
 
       <button

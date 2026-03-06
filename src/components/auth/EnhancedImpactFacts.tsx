@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Lightbulb, RefreshCw, ExternalLink } from 'lucide-react';
 import { getFactsForRoute } from '../../data/impactFacts';
 
@@ -13,43 +13,46 @@ export default function EnhancedImpactFacts({
   autoRotate = true,
   rotationInterval = 10000
 }: EnhancedImpactFactsProps) {
-  const facts = getFactsForRoute(route);
+  const facts = useMemo(() => getFactsForRoute(route), [route]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fade, setFade] = useState(true);
-  const [usedIndices, setUsedIndices] = useState<number[]>([]);
-
-  const getNextIndex = () => {
-    const availableIndices = facts
-      .map((_, i) => i)
-      .filter(i => !usedIndices.includes(i));
-
-    if (availableIndices.length === 0) {
-      setUsedIndices([]);
-      return Math.floor(Math.random() * facts.length);
-    }
-
-    return availableIndices[Math.floor(Math.random() * availableIndices.length)];
-  };
+  const usedIndicesRef = useRef<number[]>([]);
+  const transitionTimerRef = useRef<NodeJS.Timeout>();
 
   const rotateFact = () => {
     setFade(false);
-    setTimeout(() => {
-      const nextIndex = getNextIndex();
+    if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+    transitionTimerRef.current = setTimeout(() => {
+      const availableIndices = facts
+        .map((_, i) => i)
+        .filter(i => !usedIndicesRef.current.includes(i));
+
+      let nextIndex: number;
+      if (availableIndices.length === 0) {
+        usedIndicesRef.current = [];
+        nextIndex = Math.floor(Math.random() * facts.length);
+      } else {
+        nextIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+      }
+
+      usedIndicesRef.current = [...usedIndicesRef.current, nextIndex];
       setCurrentIndex(nextIndex);
-      setUsedIndices(prev => [...prev, nextIndex]);
       setFade(true);
     }, 200);
   };
 
   useEffect(() => {
-    if (!autoRotate) return;
+    if (!autoRotate || facts.length <= 1) return;
 
-    const interval = setInterval(() => {
-      rotateFact();
-    }, rotationInterval);
+    const interval = setInterval(rotateFact, rotationInterval);
 
-    return () => clearInterval(interval);
-  }, [autoRotate, rotationInterval, usedIndices]);
+    return () => {
+      clearInterval(interval);
+      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+    };
+  }, [autoRotate, rotationInterval, facts.length]);
+
+  if (facts.length === 0) return null;
 
   const currentFact = facts[currentIndex];
 

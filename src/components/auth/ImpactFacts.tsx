@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Lightbulb, RefreshCw } from 'lucide-react';
 import { getFactsForRoute } from '../../data/impactFacts';
 
@@ -11,27 +11,35 @@ export default function ImpactFacts({ route }: ImpactFactsProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  const currentFact = facts[currentIndex];
+  const transitionTimerRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
+    if (facts.length <= 1) return;
     const interval = setInterval(() => {
       setIsTransitioning(true);
-      setTimeout(() => {
+      transitionTimerRef.current = setTimeout(() => {
         setCurrentIndex((prev) => (prev + 1) % facts.length);
         setIsTransitioning(false);
       }, 300);
     }, 10000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+    };
   }, [facts.length]);
 
   const handleNext = () => {
     setIsTransitioning(true);
-    setTimeout(() => {
+    if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+    transitionTimerRef.current = setTimeout(() => {
       setCurrentIndex((prev) => (prev + 1) % facts.length);
       setIsTransitioning(false);
     }, 300);
   };
+
+  if (facts.length === 0) return null;
+  const currentFact = facts[currentIndex];
 
   return (
     <div className="mt-6 pt-6 border-t border-gray-200">

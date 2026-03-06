@@ -1,4 +1,4 @@
-import { Car, Users, Star, TrendingUp, Calendar, Award } from 'lucide-react';
+import { Car, Users, Star, TrendingUp, Award } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function StatisticsDashboard() {
@@ -11,9 +11,7 @@ export default function StatisticsDashboard() {
     (new Date().getTime() - memberSince.getTime()) / (1000 * 60 * 60 * 24 * 30)
   );
 
-  const totalRides = profile.total_rides_offered + profile.total_rides_taken;
-  const responseRate = 95;
-  const completionRate = 98;
+  const totalRides = (profile.total_rides_offered ?? 0) + (profile.total_rides_taken ?? 0);
 
   const stats = [
     {
@@ -32,7 +30,7 @@ export default function StatisticsDashboard() {
     },
     {
       label: 'Average Rating',
-      value: profile.average_rating.toFixed(1),
+      value: (profile.average_rating ?? 0).toFixed(1),
       icon: Star,
       color: 'yellow',
       description: 'Out of 5.0'
@@ -51,16 +49,6 @@ export default function StatisticsDashboard() {
       label: 'Member Since',
       value: memberSince.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
       sublabel: `${monthsActive} months active`
-    },
-    {
-      label: 'Response Rate',
-      value: `${responseRate}%`,
-      sublabel: 'Replies to messages'
-    },
-    {
-      label: 'Completion Rate',
-      value: `${completionRate}%`,
-      sublabel: 'Completed bookings'
     }
   ];
 

@@ -51,8 +51,16 @@ export default function PublicProfile() {
   const [friendActionLoading, setFriendActionLoading] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
 
+  const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
   useEffect(() => {
     if (!userId) return;
+
+    if (!isValidUUID(userId)) {
+      setError('Invalid user ID');
+      setLoading(false);
+      return;
+    }
 
     if (userId === user?.id) {
       navigate('/profile');
@@ -121,7 +129,7 @@ export default function PublicProfile() {
         ridesTaken: passengerBookingCount ?? 0,
         averageRating: avgRating,
         totalReviews: reviewsData?.length || 0,
-        responseRate: 95,
+        responseRate: 0,
         reliabilityScore: profileData.reliability_score || 0
       });
 
@@ -307,7 +315,7 @@ export default function PublicProfile() {
         notify('Unable to start this conversation. The user may have blocked messages.', 'error');
         return;
       }
-      await recordRateLimitAction(user.id, user.id, 'conversation');
+      await recordRateLimitAction(user.id, userId, 'conversation');
       navigate(`/messages?c=${conversationId}`, { state: { conversationId } });
     } catch (error) {
       console.error('Unable to start conversation:', error);
@@ -592,10 +600,10 @@ export default function PublicProfile() {
               {filteredReviews.map((review) => (
                 <div key={review.id} className="border-b border-gray-200 pb-4 last:border-0">
                   <div className="flex items-start gap-3">
-                    <UserAvatar user={review.reviewer} size="sm" />
+                    {review.reviewer && <UserAvatar user={review.reviewer} size="sm" />}
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <p className="font-semibold text-gray-900">{review.reviewer.full_name}</p>
+                        <p className="font-semibold text-gray-900">{review.reviewer?.full_name || 'Deleted User'}</p>
                         <span className="text-sm text-gray-500">
                           {new Date(review.created_at).toLocaleDateString()}
                         </span>

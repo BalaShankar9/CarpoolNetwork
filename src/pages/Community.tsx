@@ -37,12 +37,12 @@ const sortPostsForView = (items: CommunityPost[], sort: SortOption) => {
 
     if (sort === 'top') {
       const scoreDiff = (b.score || 0) - (a.score || 0);
-      if (scoreDiff != 0) return scoreDiff;
+      if (scoreDiff !== 0) return scoreDiff;
     }
 
     if (sort === 'active') {
       const commentDiff = (b.comment_count || 0) - (a.comment_count || 0);
-      if (commentDiff != 0) return commentDiff;
+      if (commentDiff !== 0) return commentDiff;
     }
 
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -97,6 +97,11 @@ export default function Community() {
     if (view === 'forum') {
       loadPosts();
     }
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
   }, [sort, view]);
 
   useEffect(() => {
@@ -124,7 +129,7 @@ export default function Community() {
       `)
       .order('created_at', { ascending: false });
 
-    if (requestId != loadRequestId.current) {
+    if (requestId !== loadRequestId.current) {
       return true;
     }
 
@@ -219,7 +224,7 @@ export default function Community() {
 
     const { data, error: loadError } = await query;
 
-    if (requestId != loadRequestId.current) {
+    if (requestId !== loadRequestId.current) {
       return;
     }
 
@@ -241,7 +246,7 @@ export default function Community() {
       results = [options.ensurePost, ...results];
     }
 
-    if (results.length == 0) {
+    if (results.length === 0) {
       const handled = await loadPostsFromBase(requestId, options?.ensurePost);
       if (handled) {
         return;
@@ -258,7 +263,7 @@ export default function Community() {
         .eq('user_id', user.id)
         .in('post_id', ids);
 
-      if (requestId != loadRequestId.current) {
+      if (requestId !== loadRequestId.current) {
         return;
       }
 

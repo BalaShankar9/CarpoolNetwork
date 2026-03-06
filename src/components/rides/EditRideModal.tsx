@@ -146,7 +146,13 @@ export default function EditRideModal({ ride, isOpen, onClose, onSaved }: EditRi
     setLoading(true);
     setError(null);
 
-    const departureDateTime = new Date(`${dateTime.date}T${dateTime.time}`).toISOString();
+    const departure = new Date(`${dateTime.date}T${dateTime.time}`);
+    if (departure <= new Date()) {
+      setError('Departure time must be in the future');
+      setLoading(false);
+      return;
+    }
+    const departureDateTime = departure.toISOString();
     const updatedSeats = Math.max(seatCount, bookedSeats);
     const availableSeats = Math.max(updatedSeats - bookedSeats, 0);
 
@@ -169,7 +175,8 @@ export default function EditRideModal({ ride, isOpen, onClose, onSaved }: EditRi
       const { error: updateError } = await supabase
         .from('rides')
         .update(updates)
-        .eq('id', ride.id);
+        .eq('id', ride.id)
+        .eq('driver_id', user.id);
 
       if (updateError) throw updateError;
 

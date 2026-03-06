@@ -266,7 +266,7 @@ export default function AchievementsBadges() {
           </div>
 
           <div className="text-right">
-            <div className="text-2xl font-bold text-blue-600">{Math.round((unlockedCount / totalCount) * 100)}%</div>
+            <div className="text-2xl font-bold text-blue-600">{totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0}%</div>
             <div className="text-xs text-gray-600">Completed</div>
           </div>
         </div>
@@ -309,7 +309,7 @@ export default function AchievementsBadges() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredAchievements.map((achievement) => {
             const Icon = getIcon(achievement.icon);
-            const progress = Math.min((achievement.progress / achievement.requirement) * 100, 100);
+            const progress = achievement.requirement > 0 ? Math.min((achievement.progress / achievement.requirement) * 100, 100) : 0;
 
             return (
               <div

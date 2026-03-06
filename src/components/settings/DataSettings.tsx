@@ -20,6 +20,11 @@ export default function DataSettings() {
   }, [success]);
 
   const handleExportData = async () => {
+    if (!profile?.id) {
+      setError('Unable to verify your account. Please sign in again.');
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
@@ -27,28 +32,28 @@ export default function DataSettings() {
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', profile?.id)
+        .eq('id', profile.id)
         .single();
 
       const { data: ridesData } = await supabase
         .from('rides')
         .select('*')
-        .eq('driver_id', profile?.id);
+        .eq('driver_id', profile.id);
 
       const { data: bookingsData } = await supabase
         .from('bookings')
         .select('*')
-        .eq('user_id', profile?.id);
+        .eq('user_id', profile.id);
 
       const { data: vehiclesData } = await supabase
         .from('vehicles')
         .select('*')
-        .eq('owner_id', profile?.id);
+        .eq('owner_id', profile.id);
 
       const { data: preferencesData } = await supabase
         .from('user_preferences')
         .select('*')
-        .eq('user_id', profile?.id)
+        .eq('user_id', profile.id)
         .maybeSingle();
 
       const exportData = {
@@ -84,17 +89,18 @@ export default function DataSettings() {
       return;
     }
 
+    if (!profile?.id) {
+      setError('Unable to verify your account. Please sign in again.');
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
 
-      const { error: deleteError } = await supabase
-        .from('profiles')
-        .update({
-          deleted_at: new Date().toISOString(),
-          email: `deleted_${profile?.id}@deleted.com`
-        })
-        .eq('id', profile?.id);
+      const { error: deleteError } = await supabase.rpc('delete_user_account', {
+        user_id: profile.id
+      });
 
       if (deleteError) throw deleteError;
 
@@ -151,29 +157,23 @@ export default function DataSettings() {
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
           <Database className="w-6 h-6" />
-          Data Usage
+          Local Storage
         </h2>
 
-        <div className="space-y-3">
-          <div className="flex justify-between items-center py-3 border-b border-gray-100">
-            <span className="text-gray-600">Profile Data</span>
-            <span className="text-gray-900 font-medium">~50 KB</span>
-          </div>
-          <div className="flex justify-between items-center py-3 border-b border-gray-100">
-            <span className="text-gray-600">Ride History</span>
-            <span className="text-gray-900 font-medium">~200 KB</span>
-          </div>
-          <div className="flex justify-between items-center py-3 border-b border-gray-100">
-            <span className="text-gray-600">Cached Images</span>
-            <span className="text-gray-900 font-medium">~5 MB</span>
-          </div>
-          <div className="flex justify-between items-center py-3">
-            <span className="text-gray-600 font-medium">Total Storage</span>
-            <span className="text-gray-900 font-bold">~5.25 MB</span>
-          </div>
-        </div>
+        <p className="text-gray-500 text-sm">
+          Clear locally cached data from your browser. This will not affect your account data stored on our servers.
+        </p>
 
         <button
+          onClick={() => {
+            try {
+              localStorage.clear();
+              sessionStorage.clear();
+              setSuccess('Local cache cleared successfully');
+            } catch {
+              setError('Failed to clear cache');
+            }
+          }}
           className="w-full mt-4 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
         >
           <HardDrive className="w-5 h-5" />

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { mapAuthError } from '../../utils/authErrors';
@@ -20,6 +20,13 @@ export default function ResetPassword() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const redirectTimerRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+    };
+  }, []);
 
   const passwordRequirements = useMemo((): PasswordRequirement[] => {
     return [
@@ -63,15 +70,15 @@ export default function ResetPassword() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      const { error: updateError } = await supabase.auth.updateUser({
         password: password,
       });
 
-      if (error) {
-        setError(mapAuthError(error.message));
+      if (updateError) {
+        setError(mapAuthError(updateError.message));
       } else {
         setSuccess(true);
-        setTimeout(() => {
+        redirectTimerRef.current = setTimeout(() => {
           navigate('/signin');
         }, 2500);
       }

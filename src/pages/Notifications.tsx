@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
     Bell,
     CheckCircle2,
@@ -127,6 +127,48 @@ export default function Notifications() {
     const navigate = useNavigate();
     const [filter, setFilter] = useState<FilterType>('all');
     const [showSettings, setShowSettings] = useState(false);
+
+    // Notification preferences state
+    const [prefs, setPrefs] = useState({
+        email_enabled: true,
+        push_enabled: true,
+        ride_notifications: true,
+        social_notifications: true,
+        challenge_notifications: true,
+    });
+
+    // Load preferences from Supabase on mount
+    useEffect(() => {
+        const loadPrefs = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const { data } = await supabase
+                .from('notification_preferences')
+                .select('email_enabled, push_enabled, ride_notifications, social_notifications, challenge_notifications')
+                .eq('user_id', user.id)
+                .single();
+            if (data) {
+                setPrefs({
+                    email_enabled: data.email_enabled ?? true,
+                    push_enabled: data.push_enabled ?? true,
+                    ride_notifications: data.ride_notifications ?? true,
+                    social_notifications: data.social_notifications ?? true,
+                    challenge_notifications: data.challenge_notifications ?? true,
+                });
+            }
+        };
+        loadPrefs();
+    }, []);
+
+    // Persist a single preference toggle to Supabase
+    const updatePref = useCallback(async (key: keyof typeof prefs, value: boolean) => {
+        setPrefs(prev => ({ ...prev, [key]: value }));
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        await supabase
+            .from('notification_preferences')
+            .upsert({ user_id: user.id, [key]: value, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    }, []);
 
     const filteredNotifications = useMemo(() => {
         if (filter === 'all') return notifications;
@@ -329,23 +371,23 @@ export default function Notifications() {
                     <div className="space-y-3">
                         <label className="flex items-center justify-between">
                             <span className="text-sm text-gray-700">Email notifications</span>
-                            <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" defaultChecked />
+                            <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" checked={prefs.email_enabled} onChange={e => updatePref('email_enabled', e.target.checked)} />
                         </label>
                         <label className="flex items-center justify-between">
                             <span className="text-sm text-gray-700">Push notifications</span>
-                            <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" defaultChecked />
+                            <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" checked={prefs.push_enabled} onChange={e => updatePref('push_enabled', e.target.checked)} />
                         </label>
                         <label className="flex items-center justify-between">
                             <span className="text-sm text-gray-700">Ride updates</span>
-                            <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" defaultChecked />
+                            <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" checked={prefs.ride_notifications} onChange={e => updatePref('ride_notifications', e.target.checked)} />
                         </label>
                         <label className="flex items-center justify-between">
                             <span className="text-sm text-gray-700">Social activity</span>
-                            <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" defaultChecked />
+                            <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" checked={prefs.social_notifications} onChange={e => updatePref('social_notifications', e.target.checked)} />
                         </label>
                         <label className="flex items-center justify-between">
                             <span className="text-sm text-gray-700">Community updates</span>
-                            <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" defaultChecked />
+                            <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" checked={prefs.challenge_notifications} onChange={e => updatePref('challenge_notifications', e.target.checked)} />
                         </label>
                     </div>
                     <p className="text-xs text-gray-500 mt-3">

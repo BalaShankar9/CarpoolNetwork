@@ -106,7 +106,15 @@ export default function DocumentUploadCenter() {
   };
 
   const uploadDocument = async (file: File, type: 'license' | 'insurance'): Promise<string> => {
-    const fileExt = file.name.split('.').pop();
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error('File size must be under 10MB');
+    }
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      throw new Error('Only JPEG, PNG, WebP, and PDF files are allowed');
+    }
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'bin';
     const fileName = `${profile?.id}/${type}_${Date.now()}.${fileExt}`;
     const filePath = `documents/${fileName}`;
 
@@ -210,6 +218,12 @@ export default function DocumentUploadCenter() {
     }
   };
 
+  const statusColorMap: Record<string, string> = {
+    green: 'bg-green-100 text-green-800',
+    yellow: 'bg-yellow-100 text-yellow-800',
+    red: 'bg-red-100 text-red-800',
+  };
+
   const getStatusBadge = (status: string) => {
     const badges = {
       verified: { icon: CheckCircle, color: 'green', label: 'Verified' },
@@ -221,9 +235,10 @@ export default function DocumentUploadCenter() {
 
     const badge = badges[status as keyof typeof badges] || badges.pending;
     const Icon = badge.icon;
+    const colorClasses = statusColorMap[badge.color] || statusColorMap.yellow;
 
     return (
-      <span className={`px-2 py-1 bg-${badge.color}-100 text-${badge.color}-800 rounded text-xs font-medium flex items-center gap-1`}>
+      <span className={`px-2 py-1 ${colorClasses} rounded text-xs font-medium flex items-center gap-1`}>
         <Icon className="w-3 h-3" />
         {badge.label}
       </span>

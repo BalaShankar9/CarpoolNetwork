@@ -100,22 +100,33 @@ export default function SafetyDashboard() {
       setSeverityBreakdown(severity);
       setCategoryBreakdown(category);
 
+      // Single query for the entire 7-day range, then group client-side
       const last7Days = Array.from({ length: 7 }, (_, i) => {
         const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
         return date.toISOString().split('T')[0];
       }).reverse();
 
-      const trendPromises = last7Days.map(async (date) => {
-        const nextDay = new Date(new Date(date).getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        const { count } = await supabase
-          .from('safety_reports')
-          .select('id', { count: 'exact', head: true })
-          .gte('created_at', date)
-          .lt('created_at', nextDay);
-        return { date, count: count || 0 };
+      const weekStart = last7Days[0];
+      const dayAfterEnd = new Date(new Date(last7Days[last7Days.length - 1]).getTime() + 24 * 60 * 60 * 1000)
+        .toISOString().split('T')[0];
+
+      const { data: weeklyReports } = await supabase
+        .from('safety_reports')
+        .select('created_at')
+        .gte('created_at', weekStart)
+        .lt('created_at', dayAfterEnd);
+
+      // Group reports by date on the client
+      const countsByDate: Record<string, number> = {};
+      last7Days.forEach(d => { countsByDate[d] = 0; });
+      weeklyReports?.forEach((r: any) => {
+        const dateStr = new Date(r.created_at).toISOString().split('T')[0];
+        if (countsByDate[dateStr] !== undefined) {
+          countsByDate[dateStr]++;
+        }
       });
 
-      const trendData = await Promise.all(trendPromises);
+      const trendData = last7Days.map(date => ({ date, count: countsByDate[date] || 0 }));
       setWeeklyTrend(trendData);
 
     } catch (error) {

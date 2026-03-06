@@ -18,13 +18,13 @@ export default function SignUp() {
   const handleGoogleSignIn = async () => {
     setError('');
     try {
-      const { error } = await signInWithGoogle();
-      if (error) {
-        setError(mapAuthError(error.message));
+      const { error: googleError } = await signInWithGoogle();
+      if (googleError) {
+        setError(mapAuthError(googleError.message));
         analytics.track.errorStateShown({
           error_type: 'auth',
           error_source: 'signup_google',
-          error_code: error.message,
+          error_code: googleError.message,
         });
       } else {
         // Track successful signup
@@ -42,13 +42,13 @@ export default function SignUp() {
   const handleGitHubSignIn = async () => {
     setError('');
     try {
-      const { error } = await signInWithGitHub();
-      if (error) {
-        setError(mapAuthError(error.message));
+      const { error: ghError } = await signInWithGitHub();
+      if (ghError) {
+        setError(mapAuthError(ghError.message));
         analytics.track.errorStateShown({
           error_type: 'auth',
           error_source: 'signup_github',
-          error_code: error.message,
+          error_code: ghError.message,
         });
       } else {
         analytics.track.signUpComplete({ signup_method: 'github' });
@@ -66,13 +66,13 @@ export default function SignUp() {
     setError('');
     setSuccessMessage('');
     try {
-      const { error, requiresEmailConfirmation } = await signUp(email, password, fullName, phone);
-      if (error) {
-        setError(mapAuthError(error.message));
+      const { error: signUpError, requiresEmailConfirmation } = await signUp(email, password, fullName, phone);
+      if (signUpError) {
+        setError(mapAuthError(signUpError.message));
         analytics.track.errorStateShown({
           error_type: 'auth',
           error_source: 'signup_email',
-          error_code: error.message,
+          error_code: signUpError.message,
         });
       } else if (requiresEmailConfirmation) {
         setSuccessMessage('Check your email to confirm your account before signing in.');

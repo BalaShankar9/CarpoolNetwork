@@ -40,17 +40,17 @@ export default function ForgotPassword() {
 
     try {
       if (recoveryMethod === 'email') {
-        const { error } = await resetPassword(email.trim());
+        const { error: resetError } = await resetPassword(email.trim());
         // Always show success to prevent user enumeration —
         // do not reveal whether the email exists in our system.
-        if (error) {
+        if (resetError) {
           // Log for debugging but only surface rate-limit / network errors
-          const friendly = mapAuthError(error.message);
+          const friendly = mapAuthError(resetError.message);
           const isRateOrNetwork =
-            error.message.toLowerCase().includes('rate limit') ||
-            error.message.toLowerCase().includes('too many') ||
-            error.message.toLowerCase().includes('fetch') ||
-            error.message.toLowerCase().includes('network');
+            resetError.message.toLowerCase().includes('rate limit') ||
+            resetError.message.toLowerCase().includes('too many') ||
+            resetError.message.toLowerCase().includes('fetch') ||
+            resetError.message.toLowerCase().includes('network');
           if (isRateOrNetwork) {
             setError(friendly);
           } else {

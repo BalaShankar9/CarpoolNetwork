@@ -146,8 +146,17 @@ async function flush() {
   }
 }
 
+let flushIntervalId: ReturnType<typeof setInterval> | null = null;
+
+export function stopErrorTrackingFlush() {
+  if (flushIntervalId !== null) {
+    clearInterval(flushIntervalId);
+    flushIntervalId = null;
+  }
+}
+
 if (typeof window !== 'undefined') {
-  setInterval(() => {
+  flushIntervalId = setInterval(() => {
     flush();
   }, FLUSH_INTERVAL);
 

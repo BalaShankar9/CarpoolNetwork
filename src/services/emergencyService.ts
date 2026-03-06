@@ -15,7 +15,7 @@ export interface EmergencyContact {
 
 export interface SOSAlert {
     id: string;
-    rideId: string;
+    rideId?: string;
     userId: string;
     latitude: number;
     longitude: number;
@@ -128,7 +128,7 @@ class EmergencyService {
     // ==================== SOS ALERTS ====================
 
     async triggerSOS(
-        rideId: string,
+        rideId: string | undefined,
         userId: string,
         location: { lat: number; lng: number },
         message?: string
@@ -136,7 +136,7 @@ class EmergencyService {
         const { data, error } = await supabase
             .from('sos_alerts')
             .insert({
-                ride_id: rideId,
+                ride_id: rideId ?? null,
                 user_id: userId,
                 latitude: location.lat,
                 longitude: location.lng,
@@ -223,9 +223,36 @@ class EmergencyService {
         const locationUrl = `https://www.google.com/maps?q=${location.lat},${location.lng}`;
         const message = `🚨 EMERGENCY ALERT: ${user?.full_name || 'A user'} has triggered an SOS alert. Location: ${locationUrl}`;
 
-        // In production, this would send SMS/email via a service like Twilio
         for (const contact of sosContacts) {
-            console.log(`[Emergency] Notifying ${contact.name} at ${contact.phone}: ${message}`);
+            // Insert into notifications table for in-app delivery
+            await supabase.from('notifications').insert({
+                user_id: userId,
+                type: 'emergency_sos',
+                title: '🚨 Emergency SOS Alert',
+                message,
+                data: {
+                    alert_id: alertId,
+                    contact_name: contact.name,
+                    contact_phone: contact.phone,
+                    contact_email: contact.email,
+                    location_url: locationUrl,
+                },
+                priority: 'critical',
+            });
+
+            // Queue for external delivery (SMS/email)
+            await supabase.from('notification_queue').insert({
+                user_id: userId,
+                notification_type: 'sos_alert',
+                title: '🚨 Emergency SOS Alert',
+                message,
+                data: {
+                    contact_phone: contact.phone,
+                    contact_email: contact.email,
+                    location_url: locationUrl,
+                },
+                priority: 'urgent',
+            });
 
             // Log notification attempt
             await supabase.from('emergency_notifications').insert({
@@ -375,12 +402,9 @@ class EmergencyService {
     }
 
     private generateShareCode(): string {
-        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-        let code = '';
-        for (let i = 0; i < 8; i++) {
-            code += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return code;
+        const array = new Uint8Array(32);
+        crypto.getRandomValues(array);
+        return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
     }
 
     // ==================== SAFETY CHECK-INS ====================

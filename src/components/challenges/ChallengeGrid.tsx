@@ -121,7 +121,7 @@ export default function ChallengeGrid({ onChallengeUpdate }: ChallengeGridProps)
       {challenges.map(challenge => {
         const progress = userProgress.get(challenge.id);
         const isJoined = !!progress;
-        const progressPercent = progress ? Math.min((progress.progress / challenge.target_value) * 100, 100) : 0;
+        const progressPercent = progress && challenge.target_value > 0 ? Math.min((progress.progress / challenge.target_value) * 100, 100) : 0;
 
         return (
           <ChallengeCard

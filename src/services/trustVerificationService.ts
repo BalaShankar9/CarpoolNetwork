@@ -294,7 +294,7 @@ class TrustVerificationService {
             .from('user_verifications')
             .select('*')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
 
         if (!data) {
             return {
@@ -372,7 +372,9 @@ class TrustVerificationService {
     }
 
     async sendPhoneVerificationCode(userId: string, phone: string): Promise<void> {
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const array = new Uint32Array(1);
+        crypto.getRandomValues(array);
+        const code = (100000 + (array[0] % 900000)).toString();
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
 
         await supabase.from('verification_codes').upsert({
@@ -382,8 +384,8 @@ class TrustVerificationService {
             expires_at: expiresAt,
         });
 
-        // In production, send SMS via Twilio
-        console.log(`[Verification] SMS code ${code} sent to ${phone}`);
+        // In production, send SMS via Twilio/Supabase Edge Function
+        // Code is stored in verification_codes table for server-side validation
     }
 
     async submitIdVerification(
@@ -429,7 +431,7 @@ class TrustVerificationService {
             .select('id')
             .eq('user_id', userId)
             .eq('badge_type', badgeType)
-            .single();
+            .maybeSingle();
 
         if (existing) return null;
 
@@ -573,7 +575,7 @@ class TrustVerificationService {
             .select('id')
             .or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`)
             .or(`blocker_id.eq.${otherUserId},blocked_id.eq.${otherUserId}`)
-            .single();
+            .maybeSingle();
 
         return !!data;
     }

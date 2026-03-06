@@ -13,10 +13,18 @@ class PerformanceMonitor {
   private metricsBuffer: PerformanceMetric[] = [];
   private flushInterval = 30000;
   private maxBufferSize = 50;
+  private autoFlushIntervalId: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     this.startAutoFlush();
     this.setupPerformanceObserver();
+  }
+
+  destroy() {
+    if (this.autoFlushIntervalId !== null) {
+      clearInterval(this.autoFlushIntervalId);
+      this.autoFlushIntervalId = null;
+    }
   }
 
   track(metric: PerformanceMetric) {
@@ -34,15 +42,22 @@ class PerformanceMonitor {
     this.metricsBuffer = [];
 
     try {
-      for (const metric of metrics) {
-        await supabase.rpc('track_performance_metric', {
-          p_metric_type: metric.metricType,
-          p_metric_name: metric.metricName,
-          p_value: metric.value,
-          p_unit: metric.unit || 'ms',
-          p_endpoint: metric.endpoint || null,
-          p_metadata: metric.metadata || {}
-        });
+      // Batch insert all metrics in a single DB call instead of one RPC per metric
+      const rows = metrics.map(metric => ({
+        metric_type: metric.metricType,
+        metric_name: metric.metricName,
+        value: metric.value,
+        unit: metric.unit || 'ms',
+        endpoint: metric.endpoint || null,
+        metadata: metric.metadata || {},
+      }));
+
+      const { error } = await supabase
+        .from('performance_metrics')
+        .insert(rows);
+
+      if (error) {
+        console.error('Failed to flush performance metrics:', error);
       }
     } catch (error) {
       console.error('Failed to flush performance metrics:', error);
@@ -50,7 +65,7 @@ class PerformanceMonitor {
   }
 
   private startAutoFlush() {
-    setInterval(() => this.flush(), this.flushInterval);
+    this.autoFlushIntervalId = setInterval(() => this.flush(), this.flushInterval);
   }
 
   private setupPerformanceObserver() {

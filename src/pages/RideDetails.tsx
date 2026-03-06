@@ -115,10 +115,6 @@ export default function RideDetails() {
         return;
       }
 
-      if (data.available_seats === 0 && data.status === 'active' && data.driver_id !== user?.id) {
-        setError('This ride is fully booked');
-      }
-
       const driverProfile = await fetchPublicProfileById(data.driver_id);
       setRide({ ...data, driver: driverProfile });
     } catch (error: any) {
@@ -204,16 +200,11 @@ export default function RideDetails() {
   const cancelBooking = async () => {
     if (!userBooking) return;
 
-    const reason = prompt('Please provide a reason for cancellation (optional):');
-    if (reason === null) return;
-
-    if (!confirm('Are you sure you want to cancel this booking?')) return;
-
     setCancelling(true);
     try {
       const { error } = await supabase.rpc('cancel_booking', {
         p_booking_id: userBooking.id,
-        p_reason: reason || 'No reason provided'
+        p_reason: 'Cancelled by passenger'
       });
 
       if (error) throw error;
@@ -241,7 +232,7 @@ export default function RideDetails() {
       toast.error('Unable to start this conversation.');
       return;
     }
-    await recordRateLimitAction(user.id, user.id, 'conversation');
+    await recordRateLimitAction(user.id, driverId, 'conversation');
     navigate(`/messages?c=${conversationId}`, {
       state: {
         conversationId,
@@ -569,7 +560,7 @@ export default function RideDetails() {
                       <span className="text-green-600 text-xl">✓</span>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">Booking Confirmed</h3>
+                      <h3 className="font-semibold text-gray-900">{userBooking.status === 'confirmed' ? 'Booking Confirmed' : 'Booking Pending'}</h3>
                       <p className="text-sm text-gray-600">
                         Status: <span className={`font-medium ${userBooking.status === 'confirmed' ? 'text-green-600' :
                             userBooking.status === 'pending' ? 'text-yellow-600' :

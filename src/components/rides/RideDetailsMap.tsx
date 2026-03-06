@@ -52,23 +52,33 @@ export default function RideDetailsMap({
       }
 
       if (typeof google === 'undefined' || !google.maps) {
-        const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&libraries=places,geometry`;
-        script.async = true;
-        script.defer = true;
-        document.head.appendChild(script);
+        const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+        if (existingScript) {
+          let retries = 0;
+          while ((!window.google?.maps) && retries < 50) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            retries++;
+          }
+          if (!window.google?.maps) throw new Error('Google Maps failed to load');
+        } else {
+          const script = document.createElement('script');
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&libraries=places,geometry`;
+          script.async = true;
+          script.defer = true;
+          document.head.appendChild(script);
 
-        await new Promise((resolve, reject) => {
-          script.onload = resolve;
-          script.onerror = () => reject(new Error('Failed to load Google Maps'));
-          setTimeout(() => reject(new Error('Google Maps loading timeout')), 15000);
-        });
+          await new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('Failed to load Google Maps'));
+            setTimeout(() => reject(new Error('Google Maps loading timeout')), 15000);
+          });
 
-        // Wait for geometry library to be fully initialized
-        let retries = 0;
-        while ((!google?.maps?.geometry?.encoding) && retries < 30) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          retries++;
+          // Wait for geometry library to be fully initialized
+          let retries = 0;
+          while ((!google?.maps?.geometry?.encoding) && retries < 30) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            retries++;
+          }
         }
       }
 
@@ -96,7 +106,7 @@ export default function RideDetailsMap({
         title: origin.name,
         label: 'A',
         icon: {
-          url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
+          url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
         },
       });
 
@@ -106,7 +116,7 @@ export default function RideDetailsMap({
         title: destination.name,
         label: 'B',
         icon: {
-          url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+          url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
         },
       });
 
@@ -133,8 +143,17 @@ export default function RideDetailsMap({
         duration: route.duration,
       });
 
+      let routePath: google.maps.LatLng[] | google.maps.LatLngLiteral[] = [origin, destination];
+      if (route.polyline && google.maps.geometry?.encoding) {
+        try {
+          routePath = google.maps.geometry.encoding.decodePath(route.polyline);
+        } catch {
+          // Fall back to straight line if decode fails
+        }
+      }
+
       new google.maps.Polyline({
-        path: [origin, destination],
+        path: routePath,
         geodesic: true,
         strokeColor: '#3B82F6',
         strokeOpacity: 0.8,

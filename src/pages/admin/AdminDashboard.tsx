@@ -18,7 +18,6 @@ import {
   UserCheck,
   AlertCircle,
   BarChart3,
-  DollarSign,
   Mail,
   Brain,
   Target,

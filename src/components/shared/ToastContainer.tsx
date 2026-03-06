@@ -67,7 +67,7 @@ export default function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-3 max-w-sm">
+    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-3 max-w-sm" role="status" aria-live="polite">
       {toasts.map((toast) => {
         const Icon = iconMap[toast.kind];
         return (
@@ -79,7 +79,7 @@ export default function ToastContainer() {
             <div className="flex-1 text-sm whitespace-pre-line">{toast.message}</div>
             <button
               onClick={() => setToasts((prev) => prev.filter((item) => item.id !== toast.id))}
-              className="text-current/70 hover:text-current"
+              className="opacity-70 hover:opacity-100"
               aria-label="Dismiss notification"
               type="button"
             >

@@ -41,7 +41,7 @@ export default function ChallengeCard({ challenge, isJoined, progress, progressP
     return `${challenge.target_value}`;
   };
 
-  const daysLeft = Math.ceil((new Date(challenge.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+  const daysLeft = Math.max(0, Math.ceil((new Date(challenge.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)));
 
   return (
     <div className={`bg-white rounded-xl border-2 overflow-hidden transition-all hover:shadow-lg ${
@@ -102,7 +102,7 @@ export default function ChallengeCard({ challenge, isJoined, progress, progressP
             ) : (
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Clock className="w-4 h-4" />
-                <span>{daysLeft} days left</span>
+                <span>{daysLeft === 0 ? 'Expires today' : `${daysLeft} days left`}</span>
               </div>
             )}
           </div>

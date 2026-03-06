@@ -66,10 +66,14 @@ export default function LocationAutocomplete({
       }
 
       if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+        let attempts = 0;
         const checkGoogle = setInterval(() => {
+          attempts++;
           if (typeof window.google !== 'undefined' && window.google.maps) {
             clearInterval(checkGoogle);
             initAutocomplete();
+          } else if (attempts > 50) {
+            clearInterval(checkGoogle);
           }
         }, 100);
         return;
@@ -111,7 +115,6 @@ export default function LocationAutocomplete({
               lat: place.geometry.location.lat(),
               lng: place.geometry.location.lng(),
             };
-            console.log('Location selected:', locationDetails);
             onLocationSelect(locationDetails);
           }
 

@@ -121,10 +121,10 @@ function generateAutoBio(name: string, city: string, occupation: string, prefere
     prefParts.push('prefer quiet rides');
   }
 
-  if (preferences.music_preference === 'radio') {
-    prefParts.push('enjoy music on drives');
-  } else if (preferences.music_preference === 'podcasts') {
-    prefParts.push('love podcasts');
+  if (preferences.music_preference === 'background') {
+    prefParts.push('enjoy background music');
+  } else if (preferences.music_preference === 'any') {
+    prefParts.push('open to any music');
   }
 
   if (prefParts.length > 0) {
@@ -246,10 +246,10 @@ export default function ProfileOnboarding() {
     occupation: '',
   });
   const [preferencesForm, setPreferencesForm] = useState({
-    smoking_policy: 'no-smoking' as 'no-smoking' | 'smoking-allowed' | 'ask-first',
+    smoking_policy: 'no-smoking' as 'no-smoking' | 'smoking-allowed' | 'e-cigarettes-only',
     pets_allowed: false,
-    music_preference: 'any' as 'any' | 'quiet' | 'radio' | 'podcasts',
-    conversation_level: 'chatty' as 'quiet' | 'some-chat' | 'chatty',
+    music_preference: 'any' as 'any' | 'quiet' | 'background' | 'no-preference',
+    conversation_level: 'chatty' as 'quiet' | 'small-talk' | 'chatty' | 'no-preference',
     luggage_size: 'medium' as 'small' | 'medium' | 'large',
   });
   const [detailsForm, setDetailsForm] = useState({
@@ -339,6 +339,7 @@ export default function ProfileOnboarding() {
   }, [initialStep, initialized]);
 
   if (!user) {
+    navigate('/login');
     return null;
   }
 
@@ -552,7 +553,11 @@ export default function ProfileOnboarding() {
 
     // Validate emergency contact if name is provided
     let emergencyPhone: string | null = null;
-    if (detailsForm.emergency_contact_name.trim() && detailsForm.emergency_contact_phone.trim()) {
+    if (detailsForm.emergency_contact_name.trim()) {
+      if (!detailsForm.emergency_contact_phone.trim()) {
+        setError('Please enter a phone number for your emergency contact.');
+        return;
+      }
       const normalized = normalizePhoneNumber(detailsForm.emergency_contact_phone.trim());
       if (!normalized.isValid || !normalized.e164) {
         setError('Please enter a valid emergency contact phone number.');
@@ -592,8 +597,8 @@ export default function ProfileOnboarding() {
     navigate(returnTo);
   };
 
-  const progress = (currentStep / (steps.length - 1)) * 100;
-  const step = steps[currentStep];
+  const clampedStep = Math.max(0, Math.min(currentStep, steps.length - 1));
+  const step = steps[clampedStep];
 
   // Redirect to completion step if profile is already complete
   // (wrapped in useEffect to avoid setState during render)
@@ -684,7 +689,10 @@ export default function ProfileOnboarding() {
 
           {/* Footer */}
           <div className="relative z-10 text-blue-200 text-sm">
-            By continuing, you agree to our Terms of Service and Privacy Policy.
+            By continuing, you agree to our{' '}
+            <a href="/terms" className="underline hover:text-white transition-colors">Terms of Service</a>
+            {' '}and{' '}
+            <a href="/privacy" className="underline hover:text-white transition-colors">Privacy Policy</a>.
           </div>
         </div>
 
@@ -1114,7 +1122,7 @@ export default function ProfileOnboarding() {
                       <div className="grid grid-cols-3 gap-3">
                         {[
                           { value: 'no-smoking', label: 'No smoking', emoji: '🚭' },
-                          { value: 'ask-first', label: 'Ask first', emoji: '❓' },
+                          { value: 'e-cigarettes-only', label: 'E-cigs only', emoji: '❓' },
                           { value: 'smoking-allowed', label: 'Allowed', emoji: '🚬' },
                         ].map((option) => (
                           <button
@@ -1171,8 +1179,7 @@ export default function ProfileOnboarding() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {[
                           { value: 'quiet', label: 'Quiet', emoji: '🔇' },
-                          { value: 'radio', label: 'Radio', emoji: '📻' },
-                          { value: 'podcasts', label: 'Podcasts', emoji: '🎙️' },
+                          { value: 'background', label: 'Background', emoji: '📻' },
                           { value: 'any', label: 'Anything', emoji: '🎵' },
                         ].map((option) => (
                           <button
@@ -1204,7 +1211,7 @@ export default function ProfileOnboarding() {
                       <div className="grid grid-cols-3 gap-3">
                         {[
                           { value: 'quiet', label: 'Quiet ride', emoji: '🤫', desc: 'Prefer silence' },
-                          { value: 'some-chat', label: 'Some chat', emoji: '💬', desc: 'Occasional talk' },
+                          { value: 'small-talk', label: 'Small talk', emoji: '💬', desc: 'Occasional talk' },
                           { value: 'chatty', label: 'Chatty', emoji: '🗣️', desc: 'Love to talk!' },
                         ].map((option) => (
                           <button

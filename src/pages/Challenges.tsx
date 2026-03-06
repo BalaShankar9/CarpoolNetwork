@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Target, Trophy, Calendar, Award, Sparkles, CheckCircle } from 'lucide-react';
-import Layout from '../components/layout/Layout';
+import { Target, Trophy, Calendar, Sparkles, CheckCircle } from 'lucide-react';
+
 import ChallengeGrid from '../components/challenges/ChallengeGrid';
 import CompletedChallenges from '../components/challenges/CompletedChallenges';
 import { supabase } from '../lib/supabase';
@@ -57,8 +57,7 @@ export default function Challenges() {
   };
 
   return (
-    <Layout>
-      <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg">
@@ -155,6 +154,5 @@ export default function Challenges() {
           </div>
         </div>
       </div>
-    </Layout>
   );
 }

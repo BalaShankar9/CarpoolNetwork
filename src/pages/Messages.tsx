@@ -73,7 +73,7 @@ export default function Messages() {
         const convId = await getOrCreateFriendsDM(user.id, userId);
         if (convId) {
           setActiveConversationId(convId);
-          await recordRateLimitAction(user.id, user.id, 'conversation');
+          await recordRateLimitAction(user.id, userId, 'conversation');
         } else {
           setInitError('Unable to start this conversation. Please try again.');
         }
@@ -103,7 +103,7 @@ export default function Messages() {
         const convId = await getOrCreateRideConversation(rideId, resolvedDriverId, user.id);
         if (convId) {
           setActiveConversationId(convId);
-          await recordRateLimitAction(user.id, user.id, 'conversation');
+          await recordRateLimitAction(user.id, resolvedDriverId, 'conversation');
         } else {
           setInitError('Unable to start this ride chat. Please try again.');
         }

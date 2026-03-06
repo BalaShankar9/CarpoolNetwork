@@ -25,7 +25,6 @@ import {
     AlertTriangle,
     ArrowRight,
     Car,
-    DollarSign,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';

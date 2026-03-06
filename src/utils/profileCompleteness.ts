@@ -5,11 +5,15 @@ export type ProfileCompletenessInput = {
   phone_e164?: string | null;
   phone_verified?: boolean | null;
   country?: string | null;
+  city?: string | null;
+  nationality?: string | null;
+  date_of_birth?: string | null;
+  gender?: string | null;
 };
 
 export function getProfileMissingFields(profile: ProfileCompletenessInput | null): string[] {
   if (!profile) {
-    return ['full_name', 'avatar', 'phone', 'phone_verified', 'country'];
+    return ['full_name', 'avatar', 'phone', 'phone_verified', 'country', 'city', 'nationality', 'date_of_birth', 'gender'];
   }
 
   const missing: string[] = [];
@@ -23,6 +27,10 @@ export function getProfileMissingFields(profile: ProfileCompletenessInput | null
   if (!hasPhone) missing.push('phone');
   if (!profile.phone_verified) missing.push('phone_verified');
   if (!hasCountry) missing.push('country');
+  if (!profile.city?.trim()) missing.push('city');
+  if (!profile.nationality?.trim()) missing.push('nationality');
+  if (!profile.date_of_birth) missing.push('date_of_birth');
+  if (!profile.gender?.trim()) missing.push('gender');
 
   return missing;
 }

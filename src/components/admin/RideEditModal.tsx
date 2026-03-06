@@ -6,7 +6,6 @@ import {
     Calendar,
     Clock,
     Users,
-    DollarSign,
     FileText,
     AlertTriangle,
     RefreshCw,

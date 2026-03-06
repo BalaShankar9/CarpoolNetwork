@@ -12,6 +12,17 @@ import { Cookie, X } from 'lucide-react';
 
 const STORAGE_KEY = 'cookie_consent_v1';
 
+export function hasAnalyticsConsent(): boolean {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return false;
+    const parsed = JSON.parse(stored);
+    return parsed.type === 'all';
+  } catch {
+    return false;
+  }
+}
+
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
 

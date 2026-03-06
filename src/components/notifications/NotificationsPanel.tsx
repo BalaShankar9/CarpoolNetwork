@@ -45,6 +45,31 @@ const getNotificationTarget = (notification: Notification) => {
             return data.thread_id
                 ? { path: `/community/thread/${data.thread_id}` }
                 : { path: '/community' };
+        case 'RIDE_MATCH':
+            return data.ride_id
+                ? { path: `/ride/${data.ride_id}` }
+                : { path: '/my-rides' };
+        case 'BOOKING_REQUEST':
+        case 'BOOKING_CONFIRMED':
+        case 'BOOKING_CANCELLED':
+            return data.booking_id
+                ? { path: `/booking/${data.booking_id}` }
+                : { path: '/my-rides' };
+        case 'REVIEW':
+            return { path: '/profile?tab=reviews' };
+        case 'SAFETY_ALERT':
+            return { path: '/safety' };
+        case 'SYSTEM':
+            if (data.original_type === 'ACHIEVEMENT_UNLOCKED') {
+                return { path: '/profile?tab=achievements' };
+            }
+            if (data.original_type === 'ECO_MILESTONE') {
+                return { path: '/profile?tab=impact' };
+            }
+            if (data.ride_id) {
+                return { path: `/ride/${data.ride_id}` };
+            }
+            return null;
         default:
             return null;
     }

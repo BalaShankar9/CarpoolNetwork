@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Accessibility, Eye, Volume2, Hand, Vibrate, Keyboard, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { useAccessibility } from '../../contexts/AccessibilityContext';
 
 interface AccessibilityPrefs {
   screen_reader_enabled: boolean;
@@ -16,8 +17,18 @@ interface AccessibilityPrefs {
   sound_alerts: boolean;
 }
 
+// Map from DB field names to AccessibilityContext setting names
+const dbToContextKey: Record<string, string> = {
+  high_contrast: 'highContrast',
+  reduce_motion: 'reducedMotion',
+  screen_reader_enabled: 'screenReaderOptimized',
+  color_blind_mode: 'colorBlindMode',
+  large_text: 'fontSize',
+};
+
 export default function AccessibilitySettings() {
   const { profile } = useAuth();
+  const { updateSetting } = useAccessibility();
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -94,6 +105,18 @@ export default function AccessibilitySettings() {
       if (updateError) throw updateError;
 
       setPrefs({ ...prefs, [key]: value });
+
+      // Apply setting via AccessibilityContext so it takes effect on the DOM
+      const contextKey = dbToContextKey[key];
+      if (contextKey) {
+        if (key === 'large_text') {
+          // Map large_text boolean to fontSize setting
+          updateSetting('fontSize', value ? 'large' : 'medium');
+        } else {
+          updateSetting(contextKey as any, value);
+        }
+      }
+
       setSuccess('Accessibility settings updated');
     } catch (err: any) {
       setError(err.message || 'Failed to update preferences');

@@ -14,15 +14,19 @@ export default function VerifyEmail() {
     setMessage('');
     setError('');
 
-    const { error: resendError } = await resendVerificationEmail();
+    try {
+      const { error: resendError } = await resendVerificationEmail();
 
-    if (resendError) {
-      setError('Failed to resend verification email. Please try again.');
-    } else {
-      setMessage('Verification email sent! Please check your inbox.');
+      if (resendError) {
+        setError('Failed to resend verification email. Please try again.');
+      } else {
+        setMessage('Verification email sent! Please check your inbox.');
+      }
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setResending(false);
     }
-
-    setResending(false);
   };
 
   const handleSignOut = async () => {

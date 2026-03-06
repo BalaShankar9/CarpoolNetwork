@@ -81,7 +81,7 @@ export function SOSButton({ rideId, userId, onAlert }: SOSButtonProps) {
 
         setIsTriggering(true);
         try {
-            await emergencyService.triggerSOS(rideId || 'emergency', userId, currentLocation);
+            await emergencyService.triggerSOS(rideId || undefined, userId, currentLocation);
             setAlertSent(true);
             onAlert?.();
 

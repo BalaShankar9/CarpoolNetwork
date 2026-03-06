@@ -3,7 +3,6 @@ import {
     Car,
     Users,
     Star,
-    DollarSign,
     TrendingUp,
     Calendar,
     Clock,

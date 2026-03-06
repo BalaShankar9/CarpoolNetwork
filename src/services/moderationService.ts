@@ -64,19 +64,39 @@ export interface ModerationAction {
     createdAt: string;
 }
 
-// Profanity filter word list (simplified - in production use a proper library)
+// Profanity filter word list
 const BLOCKED_WORDS = [
-    // This would contain actual blocked words
-    // Using placeholders for demo
-    'badword1',
-    'badword2',
+    // Obscenities
+    'fuck', 'fucker', 'fucking', 'fucked', 'fuckoff',
+    'shit', 'shitty', 'bullshit', 'shithead',
+    'ass', 'asshole', 'arsehole', 'dumbass', 'jackass',
+    'bitch', 'bitches', 'bitchy',
+    'bastard', 'damn', 'damned', 'goddamn',
+    'dick', 'dickhead', 'cock', 'cocksucker',
+    'cunt', 'twat', 'prick', 'wanker',
+    'motherfucker', 'motherfucking',
+    'crap', 'piss', 'pissed',
+    // Slurs — racial / ethnic
+    'nigger', 'nigga', 'chink', 'gook', 'spic', 'wetback',
+    'kike', 'beaner', 'gringo', 'cracker', 'honky',
+    'raghead', 'towelhead', 'camel jockey', 'sandnigger',
+    'redskin', 'injun', 'coon', 'darkie', 'jigaboo',
+    // Slurs — gender / sexuality
+    'fag', 'faggot', 'dyke', 'homo', 'tranny', 'shemale',
+    'queer', 'lesbo',
+    // Slurs — disability
+    'retard', 'retarded', 'spaz', 'spastic', 'cripple',
+    // Threats / violence
+    'kill yourself', 'kys', 'go die',
+    // Common evasions
+    'f u c k', 'sh1t', 'b1tch', 'a$$', 'fck', 'stfu', 'gtfo',
 ];
 
 const SPAM_PATTERNS = [
-    /\b(free money|click here|win \$|lottery|prize)/gi,
-    /(.)\1{5,}/g, // Repeated characters
-    /\b\d{10,}\b/g, // Long numbers (potential phone spam)
-    /(https?:\/\/[^\s]+){3,}/g, // Multiple URLs
+    /\b(free money|click here|win \$|lottery|prize)/i,
+    /(.)\1{5,}/, // Repeated characters
+    /\b\d{10,}\b/, // Long numbers (potential phone spam)
+    /(https?:\/\/[^\s]+){3,}/, // Multiple URLs
 ];
 
 class ModerationService {

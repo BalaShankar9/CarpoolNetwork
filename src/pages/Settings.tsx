@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  Search, User, Shield, Bell, Palette, Database, Globe,
-  Accessibility, Heart, HelpCircle, FileText, Settings as SettingsIcon,
-  Car, Users, Briefcase, Headphones, ChevronRight, CheckCircle
+  Search, User, Shield, Bell, Palette, Database,
+  Accessibility, HelpCircle, Settings as SettingsIcon,
+  Car, Users, ChevronRight, CheckCircle
 } from 'lucide-react';
 import AccountSettings from '../components/settings/AccountSettings';
 import NotificationSettings from '../components/settings/NotificationSettings';
@@ -28,7 +27,7 @@ type SettingsSection =
 
 interface SettingsCategory {
   id: SettingsSection;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   title: string;
   description: string;
   badge?: string;
@@ -36,7 +35,6 @@ interface SettingsCategory {
 }
 
 export default function Settings() {
-  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState<SettingsSection | null>(null);
 

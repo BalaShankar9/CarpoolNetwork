@@ -56,20 +56,21 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
   const markAsRead = async (notificationId: string) => {
     const timestamp = new Date().toISOString();
-    let wasUnread = false;
 
-    setNotifications(prev =>
-      prev.map(n => {
+    setNotifications(prev => {
+      let foundUnread = false;
+      const next = prev.map(n => {
         if (n.id === notificationId && !n.read_at) {
-          wasUnread = true;
+          foundUnread = true;
           return { ...n, read_at: timestamp };
         }
         return n;
-      })
-    );
-    if (wasUnread) {
-      setUnreadNotifications(prev => Math.max(0, prev - 1));
-    }
+      });
+      if (foundUnread) {
+        setUnreadNotifications(c => Math.max(0, c - 1));
+      }
+      return next;
+    });
 
     try {
       await NotificationsService.markAsRead(notificationId);
@@ -118,7 +119,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     loadUnreadMessages();
 
     const notifChannel = supabase
-      .channel('notifications-channel')
+      .channel(`notifications:${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -162,13 +163,14 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       .subscribe();
 
     const bookingChan = supabase
-      .channel('bookings-channel')
+      .channel(`bookings:${user.id}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'ride_bookings'
+          table: 'ride_bookings',
+          filter: `passenger_id=eq.${user.id}`
         },
         () => {
           window.dispatchEvent(new CustomEvent('booking-update'));
@@ -177,6 +179,8 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       .subscribe();
 
     // Keep unread counts in sync for new messages and read updates.
+    // Note: chat_messages has no recipient column (conversation-based model),
+    // so we filter out own messages; RLS + the RPC handle user scoping.
     const messageChan = supabase
       .channel(`chat-messages:${user.id}`)
       .on(
@@ -184,7 +188,8 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'chat_messages'
+          table: 'chat_messages',
+          filter: `sender_id=neq.${user.id}`
         },
         () => {
           loadUnreadMessages();

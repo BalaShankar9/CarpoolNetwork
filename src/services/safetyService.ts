@@ -234,47 +234,50 @@ export async function getTripShareByToken(token: string): Promise<{
  */
 export async function triggerSOS(
     userId: string,
-    rideId: string,
+    rideId?: string,
     location?: { latitude: number; longitude: number }
 ): Promise<{ success: boolean; message: string }> {
-    const { data, error } = await supabase.rpc('trigger_ride_emergency', {
-        p_ride_id: rideId,
-        p_lat: location?.latitude,
-        p_lng: location?.longitude,
-    });
-
-    if (error) {
-        // Fallback - create emergency alert manually
-        await supabase.from('safety_alerts').insert({
-            user_id: userId,
-            ride_id: rideId,
-            alert_type: 'sos',
-            location: location
-                ? `POINT(${location.longitude} ${location.latitude})`
-                : null,
-            status: 'active',
+    // If rideId is provided, try the RPC-based emergency flow
+    if (rideId) {
+        const { data, error } = await supabase.rpc('trigger_ride_emergency', {
+            p_ride_id: rideId,
+            p_lat: location?.latitude,
+            p_lng: location?.longitude,
         });
 
-        // Notify emergency contacts
-        const contacts = await getEmergencyContacts(userId);
-        const sosContacts = contacts.filter(c => c.notify_on_sos);
-
-        // Queue notifications for each contact
-        for (const contact of sosContacts) {
-            await supabase.from('notification_queue').insert({
-                user_id: userId,
-                notification_type: 'sos_alert',
-                title: 'Emergency SOS Alert',
-                message: `${contact.name}, an emergency has been triggered. Location has been shared.`,
-                data: { contact_phone: contact.phone, ride_id: rideId, location },
-                priority: 'urgent',
-            });
+        if (!error) {
+            return data?.[0] || { success: true, message: 'Emergency services notified' };
         }
-
-        return { success: true, message: 'Emergency alert sent to contacts and safety team' };
     }
 
-    return data?.[0] || { success: true, message: 'Emergency services notified' };
+    // Fallback / no-ride SOS — create emergency alert manually
+    await supabase.from('safety_alerts').insert({
+        user_id: userId,
+        ride_id: rideId ?? null,
+        alert_type: 'sos',
+        location: location
+            ? `POINT(${location.longitude} ${location.latitude})`
+            : null,
+        status: 'active',
+    });
+
+    // Notify emergency contacts
+    const contacts = await getEmergencyContacts(userId);
+    const sosContacts = contacts.filter(c => c.notify_on_sos);
+
+    // Queue notifications for each contact
+    for (const contact of sosContacts) {
+        await supabase.from('notification_queue').insert({
+            user_id: userId,
+            notification_type: 'sos_alert',
+            title: 'Emergency SOS Alert',
+            message: `${contact.name}, an emergency has been triggered. Location has been shared.`,
+            data: { contact_phone: contact.phone, ride_id: rideId ?? null, location },
+            priority: 'urgent',
+        });
+    }
+
+    return { success: true, message: 'Emergency alert sent to contacts and safety team' };
 }
 
 /**
@@ -465,12 +468,9 @@ export async function getSafetyScoreBreakdown(userId: string): Promise<{
 
 // Helper functions
 function generateShareToken(): string {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-    let token = '';
-    for (let i = 0; i < 12; i++) {
-        token += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return token;
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
 }
 
 function isOlderThanMonths(dateString: string, months: number): boolean {

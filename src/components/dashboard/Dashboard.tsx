@@ -125,7 +125,7 @@ export default function Dashboard() {
             <div>
               <p className="text-sm text-gray-600 mb-1">Average Rating</p>
               <p className="text-3xl font-bold text-gray-900">
-                {profile?.average_rating.toFixed(1) || '0.0'}
+                {(profile?.average_rating ?? 0).toFixed(1)}
               </p>
             </div>
             <Star className="w-12 h-12 text-orange-600" />

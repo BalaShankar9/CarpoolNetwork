@@ -64,10 +64,21 @@ export default function AccountSettings() {
     if (formData.bio.length > 500) {
       return 'Bio must be 500 characters or fewer.';
     }
+    if (formData.date_of_birth) {
+      const dob = new Date(formData.date_of_birth + 'T00:00:00');
+      if (isNaN(dob.getTime()) || dob > new Date()) {
+        return 'Date of birth must be a valid past date.';
+      }
+    }
     return null;
   };
 
   const handleSave = async () => {
+    if (!profile?.id) {
+      setError('Profile not loaded. Please refresh the page.');
+      return;
+    }
+
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
@@ -88,7 +99,7 @@ export default function AccountSettings() {
           phone: phoneE164,
           phone_number: phoneE164,
         })
-        .eq('id', profile?.id);
+        .eq('id', profile!.id);
 
       if (updateError) throw updateError;
 
@@ -238,6 +249,7 @@ export default function AccountSettings() {
               <input
                 type="date"
                 value={formData.date_of_birth}
+                max={new Date().toISOString().split('T')[0]}
                 onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -387,7 +399,7 @@ export default function AccountSettings() {
         <div className="space-y-3 text-sm">
           <div className="flex justify-between py-2 border-b border-gray-100">
             <span className="text-gray-600">Account ID</span>
-            <span className="text-gray-900 font-mono text-xs">{profile?.id.slice(0, 8)}...</span>
+            <span className="text-gray-900 font-mono text-xs">{profile?.id?.slice(0, 8)}...</span>
           </div>
           <div className="flex justify-between py-2 border-b border-gray-100">
             <span className="text-gray-600">Member Since</span>

@@ -36,7 +36,8 @@ export default function RideStatusTracker({ rideId, isDriver }: RideStatusTracke
 
   useEffect(() => {
     loadRideStatus();
-    setupRealtimeSubscription();
+    const cleanup = setupRealtimeSubscription();
+    return cleanup;
   }, [rideId]);
 
   const setupRealtimeSubscription = () => {

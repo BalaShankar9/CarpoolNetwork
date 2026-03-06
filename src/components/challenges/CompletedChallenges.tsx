@@ -103,7 +103,7 @@ export default function CompletedChallenges() {
                   <span className="font-semibold">{item.challenge?.reward_value}</span>
                 </div>
                 <span className="text-gray-500">
-                  Completed {new Date(item.completed_at).toLocaleDateString()}
+                  {item.completed_at ? `Completed ${new Date(item.completed_at).toLocaleDateString()}` : 'Completed'}
                 </span>
               </div>
             </div>

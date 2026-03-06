@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Calendar, Users, Star, Eye, Cloud, CheckCircle, AlertCircle, TrendingUp, Filter, X, Shield } from 'lucide-react';
+import { Search, MapPin, Calendar, Users, Star, Eye, CheckCircle, AlertCircle, TrendingUp, Filter, X, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from '../components/shared/LocationAutocomplete';
@@ -75,6 +75,7 @@ export default function FindRides() {
   const [myTripRequests, setMyTripRequests] = useState<TripRequest[]>([]);
   const [showCreateRequest, setShowCreateRequest] = useState(false);
   const [eligibilityStatus, setEligibilityStatus] = useState<any>(null);
+  const loadAllRidesRef = useRef<() => void>();
   // New ride type filter
   const [selectedRideTypes, setSelectedRideTypes] = useState<RideType[]>([]);
 
@@ -99,6 +100,14 @@ export default function FindRides() {
     loadAllRides();
     loadMyTripRequests();
 
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedLoadAllRides = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        loadAllRidesRef.current?.();
+      }, 1000);
+    };
+
     const ridesChannel = supabase
       .channel('rides-changes')
       .on(
@@ -109,7 +118,7 @@ export default function FindRides() {
           table: 'rides'
         },
         () => {
-          loadAllRides();
+          debouncedLoadAllRides();
         }
       )
       .on(
@@ -120,12 +129,13 @@ export default function FindRides() {
           table: 'ride_bookings'
         },
         () => {
-          loadAllRides();
+          debouncedLoadAllRides();
         }
       )
       .subscribe();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(ridesChannel);
     };
   }, []);
@@ -205,29 +215,16 @@ export default function FindRides() {
       const bookings = bookingsResult.data || [];
       const reliabilityScores = reliabilityResult.data || [];
 
-      const ridesWithBookings = await Promise.all(ridesWithDrivers.map(async (ride) => {
+      const ridesWithBookings = ridesWithDrivers.map((ride) => {
         const booking = bookings.find(b => b.ride_id === ride.id);
         const reliability = reliabilityScores.find(r => r.user_id === ride.driver_id);
-        let weather: { temperature: number; condition: string; humidity: number; windSpeed: number; icon: string } | null = null;
-
-        if (ride.origin_lat && ride.origin_lng) {
-          try {
-            weather = await googleMapsService.getWeather(ride.origin_lat, ride.origin_lng);
-          } catch (e) {
-            console.error('Failed to load weather:', e);
-          }
-        }
 
         return {
           ...ride,
           userBooking: booking ? { id: booking.id, status: booking.status } : undefined,
           reliabilityScore: reliability?.reliability_score || 100,
-          weather: weather && weather.condition !== 'Unavailable' ? {
-            temperature: weather.temperature,
-            condition: weather.condition
-          } : undefined
         };
-      }));
+      });
 
       let filteredRides = ridesWithBookings.filter(ride => ride.available_seats > 0);
 
@@ -259,6 +256,9 @@ export default function FindRides() {
       setLoading(false);
     }
   };
+
+  // Keep ref current so realtime callbacks use latest filters
+  loadAllRidesRef.current = loadAllRides;
 
   // Haversine distance in km between two lat/lng points
   const haversineDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -294,10 +294,8 @@ export default function FindRides() {
         .gt('available_seats', 0);
 
       if (date) {
-        const startOfDay = new Date(date);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(date);
-        endOfDay.setHours(23, 59, 59, 999);
+        const startOfDay = new Date(date + 'T00:00:00');
+        const endOfDay = new Date(date + 'T23:59:59.999');
         query = query
           .gte('departure_time', startOfDay.toISOString())
           .lte('departure_time', endOfDay.toISOString());
@@ -461,7 +459,7 @@ export default function FindRides() {
     }
 
     try {
-      const departureTime = new Date(date);
+      const departureTime = new Date(date + 'T09:00:00');
 
       const { data: originCoords } = await googleMapsService.geocodeAddress(origin);
       const { data: destCoords } = await googleMapsService.geocodeAddress(destination);
@@ -748,12 +746,6 @@ export default function FindRides() {
                           </span>
                         </div>
                       )}
-                      {ride.weather && (
-                        <div className="flex items-center gap-1 mt-1 text-xs text-gray-600">
-                          <Cloud className="w-3 h-3" />
-                          <span>{Math.round(ride.weather.temperature)}°C - {ride.weather.condition}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
 
@@ -818,16 +810,22 @@ export default function FindRides() {
                         View Booking
                       </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        requestRide(ride.id);
-                      }}
-                      className="flex-1 lg:flex-none px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium whitespace-nowrap"
-                    >
-                      Request Ride
-                    </button>
+                    {ride.userBooking && ride.userBooking.status !== 'cancelled' ? (
+                      <span className="flex-1 lg:flex-none px-6 py-2 bg-green-100 text-green-800 rounded-lg font-medium whitespace-nowrap text-center">
+                        Booked
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          requestRide(ride.id);
+                        }}
+                        className="flex-1 lg:flex-none px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium whitespace-nowrap"
+                      >
+                        Request Ride
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+
+const sanitizeSearch = (input: string) => input.replace(/[%_*()]/g, '');
 import {
     Bell,
     Send,
@@ -107,7 +109,7 @@ export default function NotificationsManagement() {
 
             // Apply filters
             if (filters.search) {
-                query = query.or(`title.ilike.%${filters.search}%,body.ilike.%${filters.search}%`);
+                query = query.or(`title.ilike.%${sanitizeSearch(filters.search)}%,body.ilike.%${sanitizeSearch(filters.search)}%`);
             }
             if (filters.type !== 'all') {
                 query = query.eq('type', filters.type);

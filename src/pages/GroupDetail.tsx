@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
     ArrowLeft, Users, Globe, Lock, UserPlus, MessageCircle,
-    Settings, Crown, Shield, User, Calendar, MapPin,
+    Crown, Shield, User, Calendar, MapPin,
     MoreVertical, UserMinus, AlertTriangle, Loader2,
-    Share2, Bell, BellOff, ChevronDown
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -60,10 +59,13 @@ export default function GroupDetail() {
     const [processingAction, setProcessingAction] = useState<string | null>(null);
     const [showLeaveModal, setShowLeaveModal] = useState(false);
     const [showMemberActions, setShowMemberActions] = useState<string | null>(null);
+    const [showRemoveConfirm, setShowRemoveConfirm] = useState<{ memberId: string; userName: string } | null>(null);
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [inviteSearch, setInviteSearch] = useState('');
     const [inviteSearchResults, setInviteSearchResults] = useState<any[]>([]);
     const [searchingUsers, setSearchingUsers] = useState(false);
+    const inviteSearchTimeoutRef = useRef<NodeJS.Timeout>();
+    const memberActionsRef = useRef<HTMLDivElement>(null);
 
     const loadGroup = useCallback(async () => {
         if (!groupId) return;
@@ -125,6 +127,18 @@ export default function GroupDetail() {
     useEffect(() => {
         loadGroup();
     }, [loadGroup]);
+
+    // Close member actions dropdown on click outside
+    useEffect(() => {
+        if (!showMemberActions) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (memberActionsRef.current && !memberActionsRef.current.contains(e.target as Node)) {
+                setShowMemberActions(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showMemberActions]);
 
     const joinGroup = async () => {
         if (!groupId) return;
@@ -229,11 +243,18 @@ export default function GroupDetail() {
 
             if (error) throw error;
 
-            // Update member count
-            await supabase
+            // Decrement member count atomically by re-reading from DB
+            const { data: currentGroup } = await supabase
                 .from('social_groups')
-                .update({ member_count: (group?.member_count || 1) - 1 })
-                .eq('id', groupId);
+                .select('member_count')
+                .eq('id', groupId)
+                .single();
+            if (currentGroup) {
+                await supabase
+                    .from('social_groups')
+                    .update({ member_count: Math.max(0, (currentGroup.member_count || 1) - 1) })
+                    .eq('id', groupId);
+            }
 
             toast.success(`Removed ${userName} from group`);
             await loadGroup();
@@ -477,7 +498,7 @@ export default function GroupDetail() {
 
                             {/* Member Actions (for admins) */}
                             {canManageMembers && member.user_id !== profile?.id && member.role !== 'OWNER' && (
-                                <div className="relative">
+                                <div className="relative" ref={showMemberActions === member.id ? memberActionsRef : undefined}>
                                     <button
                                         onClick={() => setShowMemberActions(showMemberActions === member.id ? null : member.id)}
                                         className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -506,7 +527,10 @@ export default function GroupDetail() {
                                                 </button>
                                             )}
                                             <button
-                                                onClick={() => removeMember(member.id, member.user.full_name)}
+                                                onClick={() => {
+                                                    setShowMemberActions(null);
+                                                    setShowRemoveConfirm({ memberId: member.id, userName: member.user.full_name });
+                                                }}
                                                 disabled={processingAction === member.id}
                                                 className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                                             >
@@ -538,6 +562,23 @@ export default function GroupDetail() {
                 loading={processingAction === 'leave'}
             />
 
+            {/* Remove Member Confirmation Modal */}
+            <ConfirmModal
+                isOpen={!!showRemoveConfirm}
+                onClose={() => setShowRemoveConfirm(null)}
+                onConfirm={() => {
+                    if (showRemoveConfirm) {
+                        removeMember(showRemoveConfirm.memberId, showRemoveConfirm.userName);
+                        setShowRemoveConfirm(null);
+                    }
+                }}
+                title="Remove Member"
+                message={`Are you sure you want to remove ${showRemoveConfirm?.userName || 'this member'} from the group?`}
+                confirmText="Remove"
+                variant="danger"
+                loading={!!processingAction}
+            />
+
             {/* Invite Modal */}
             {showInviteModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -563,8 +604,12 @@ export default function GroupDetail() {
                                 type="text"
                                 value={inviteSearch}
                                 onChange={(e) => {
-                                    setInviteSearch(e.target.value);
-                                    searchUsersToInvite(e.target.value);
+                                    const value = e.target.value;
+                                    setInviteSearch(value);
+                                    clearTimeout(inviteSearchTimeoutRef.current);
+                                    inviteSearchTimeoutRef.current = setTimeout(() => {
+                                        searchUsersToInvite(value);
+                                    }, 300);
                                 }}
                                 placeholder="Search users by name..."
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"

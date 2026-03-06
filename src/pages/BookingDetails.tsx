@@ -103,29 +103,29 @@ export default function BookingDetails() {
     if (!bookingId || !user) return;
 
     try {
-      const { data, error } = await supabase
+      const { data: reviewData, error: reviewError } = await supabase
         .from('ride_reviews_detailed')
         .select('id')
         .eq('booking_id', bookingId)
         .eq('reviewer_id', user.id)
         .maybeSingle();
 
-      if (!error && data) {
+      if (!reviewError && reviewData) {
         setHasReviewed(true);
       }
-    } catch (error) {
-      console.error('Error checking review status:', error);
+    } catch (err) {
+      console.error('Error checking review status:', err);
     }
   };
 
   const loadDriverPhone = async (driverId: string) => {
     if (!user) return;
     try {
-      const { data: canView, error } = await supabase.rpc('can_view_phone', {
+      const { data: canView, error: rpcError } = await supabase.rpc('can_view_phone', {
         p_viewer: user.id,
         p_owner: driverId,
       });
-      if (error || !canView) {
+      if (rpcError || !canView) {
         setDriverPhone(null);
         return;
       }
@@ -143,7 +143,7 @@ export default function BookingDetails() {
 
   const loadBookingDetails = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('ride_bookings')
         .select(`
           *,
@@ -155,7 +155,7 @@ export default function BookingDetails() {
         .eq('id', bookingId)
         .maybeSingle();
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
 
       if (!data) {
         console.error('Booking not found');
@@ -176,6 +176,7 @@ export default function BookingDetails() {
         await loadDriverPhone(data.ride.driver_id);
       }
       setError(null);
+      setLoading(false);
 
       if (data?.ride) {
         loadWeather(data.ride.origin_lat, data.ride.origin_lng);
@@ -189,6 +190,7 @@ export default function BookingDetails() {
   };
 
   const loadWeather = async (lat: number, lng: number) => {
+    if (!lat || !lng) return;
     try {
       const response = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code,wind_speed_10m`
@@ -212,12 +214,12 @@ export default function BookingDetails() {
     setCancelling(true);
     const reason = cancelReason || 'No reason provided';
     try {
-      const { data, error } = await supabase.rpc('cancel_booking_with_impact', {
+      const { data, error: cancelError } = await supabase.rpc('cancel_booking_with_impact', {
         p_booking_id: bookingId!,
-        p_reason: reason || 'No reason provided'
+        p_reason: reason
       });
 
-      if (error) throw error;
+      if (cancelError) throw cancelError;
 
       if (data && data.length > 0) {
         const result = data[0];
@@ -261,18 +263,21 @@ export default function BookingDetails() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const message = `EMERGENCY: I need help!\n\nBooking ID: ${bookingId}\nDriver: ${booking?.ride.driver?.full_name ?? 'Unknown'}\nMy Location: https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}\n\nThis is an automated emergency alert.`;
-
-          toast.warning('SOS Activated! ' + message + ' In a real emergency: 1. Call emergency services (999) 2. Contact driver 3. Share your live location with trusted contacts', 15000);
-
+          const locationUrl = `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`;
+          toast.warning(
+            `SOS Activated! In a real emergency:\n1. Call 999 immediately\n2. Share your location: ${locationUrl}\n3. Contact your driver or a trusted contact`,
+            15000
+          );
           setSosActive(false);
         },
-        (error) => {
-          console.error('Location error:', error);
-          toast.error('Could not get your location. Please call emergency services immediately if you need help.');
+        () => {
+          toast.error('Could not get your location. Please call 999 immediately if you need help.');
           setSosActive(false);
         }
       );
+    } else {
+      toast.error('Location services unavailable. Please call 999 immediately if you need help.');
+      setSosActive(false);
     }
   };
 
@@ -291,11 +296,14 @@ export default function BookingDetails() {
     }
   };
 
+  const [messagingDriver, setMessagingDriver] = useState(false);
   const messageDriver = async () => {
-    if (!booking?.ride || !driverId || !booking.passenger_id || !user?.id) return;
+    if (!booking?.ride || !driverId || !booking.passenger_id || !user?.id || messagingDriver) return;
+    setMessagingDriver(true);
     const rateLimitCheck = await checkRateLimit(user.id, 'conversation');
     if (!rateLimitCheck.allowed) {
       toast.error(rateLimitCheck.error || 'Too many new conversations. Please wait.');
+      setMessagingDriver(false);
       return;
     }
     const conversationId = await getOrCreateRideConversation(
@@ -305,9 +313,11 @@ export default function BookingDetails() {
     );
     if (!conversationId) {
       toast.error('Unable to start this conversation.');
+      setMessagingDriver(false);
       return;
     }
-    await recordRateLimitAction(user.id, user.id, 'conversation');
+    await recordRateLimitAction(user.id, driverId, 'conversation');
+    setMessagingDriver(false);
     navigate(`/messages?c=${conversationId}`, {
       state: {
         conversationId,
@@ -336,7 +346,7 @@ export default function BookingDetails() {
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-    if (hours < 0) return 'Departed';
+    if (diff < 0) return 'Departed';
     if (hours === 0) return `${minutes} minutes`;
     return `${hours}h ${minutes}m`;
   };
@@ -396,7 +406,7 @@ export default function BookingDetails() {
             booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
               'bg-gray-100 text-gray-800'
           }`}>
-          {booking.status}
+          {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
         </span>
       </div>
 
@@ -419,7 +429,7 @@ export default function BookingDetails() {
             >
               {sosActive ? (
                 <div className="flex items-center gap-2">
-                  <div className="animate-spin w-5 h-5 border-3 border-red-600 border-t-transparent rounded-full" />
+                  <div className="animate-spin w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full" />
                   <span>ACTIVATING...</span>
                 </div>
               ) : (
@@ -538,7 +548,8 @@ export default function BookingDetails() {
             {canMessageInApp && (
               <button
                 onClick={messageDriver}
-                className="flex items-center justify-center gap-2 px-4 py-3 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                disabled={messagingDriver}
+                className="flex items-center justify-center gap-2 px-4 py-3 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50"
               >
                 <MessageCircle className="w-4 h-4" />
                 Message
@@ -615,12 +626,8 @@ export default function BookingDetails() {
             <Navigation className="w-5 h-5 text-blue-600" />
             Ride in Progress
           </h3>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium text-gray-700">Live tracking active</span>
-          </div>
           <p className="text-sm text-gray-600 mb-3">
-            Your driver has started the ride. Location updates are being tracked for safety.
+            Your driver has started the ride. Stay safe and enjoy your trip.
           </p>
           <div className="text-sm text-gray-700">
             <p><strong>Driver:</strong> {driverName}</p>

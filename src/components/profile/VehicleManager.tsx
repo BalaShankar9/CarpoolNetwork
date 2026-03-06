@@ -57,6 +57,13 @@ export default function VehicleManager() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; vehicle: Vehicle | null }>({ show: false, vehicle: null });
   const [deleting, setDeleting] = useState(false);
+  const progressResetTimerRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    return () => {
+      if (progressResetTimerRef.current) clearTimeout(progressResetTimerRef.current);
+    };
+  }, []);
 
   const [formData, setFormData] = useState<VehicleFormData>({
     make: '',
@@ -183,8 +190,9 @@ export default function VehicleManager() {
       return;
     }
 
-    if (!file.type.startsWith('image/')) {
-      setError('Please upload a valid image file');
+    const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setError('Please upload a JPEG, PNG, or WebP image');
       return;
     }
 
@@ -212,14 +220,18 @@ export default function VehicleManager() {
         setUploadProgress(prev => Math.min(prev + 10, 90));
       }, 200);
 
-      const { error: uploadError } = await supabase.storage
-        .from('vehicle-images')
-        .upload(filePath, vehicleImage, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      clearInterval(progressInterval);
+      let uploadError: Error | null = null;
+      try {
+        const result = await supabase.storage
+          .from('vehicle-images')
+          .upload(filePath, vehicleImage, {
+            cacheControl: '3600',
+            upsert: false
+          });
+        uploadError = result.error;
+      } finally {
+        clearInterval(progressInterval);
+      }
 
       if (uploadError) {
         setUploadProgress(0);
@@ -239,7 +251,8 @@ export default function VehicleManager() {
     } finally {
       setIsUploading(false);
       // Reset progress after a short delay
-      setTimeout(() => setUploadProgress(0), 1000);
+      if (progressResetTimerRef.current) clearTimeout(progressResetTimerRef.current);
+      progressResetTimerRef.current = setTimeout(() => setUploadProgress(0), 1000);
     }
   };
 
@@ -303,7 +316,8 @@ export default function VehicleManager() {
         const { error: updateError } = await supabase
           .from('vehicles')
           .update(vehicleData)
-          .eq('id', editingVehicle.id);
+          .eq('id', editingVehicle.id)
+          .eq('user_id', profile?.id);
 
         if (updateError) throw updateError;
 
@@ -313,7 +327,8 @@ export default function VehicleManager() {
             await supabase
               .from('vehicles')
               .update({ vehicle_photo_url: imageUrl })
-              .eq('id', editingVehicle.id);
+              .eq('id', editingVehicle.id)
+              .eq('user_id', profile?.id);
           }
         }
 

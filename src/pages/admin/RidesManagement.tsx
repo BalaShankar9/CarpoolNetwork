@@ -21,7 +21,6 @@ import {
     MapPin,
     Calendar,
     Users,
-    DollarSign,
     Copy,
     Check,
     MessageSquare,

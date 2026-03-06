@@ -22,9 +22,9 @@ export default function SignIn() {
   const handleGoogleSignIn = async () => {
     setError('');
     try {
-      const { error } = await signInWithGoogle();
-      if (error) {
-        setError(mapAuthError(error.message));
+      const { error: googleError } = await signInWithGoogle();
+      if (googleError) {
+        setError(mapAuthError(googleError.message));
       }
     } catch {
       setError('An unexpected error occurred');
@@ -34,16 +34,16 @@ export default function SignIn() {
   const handleGitHubSignIn = async () => {
     setError('');
     try {
-      const { error } = await signInWithGitHub();
-      if (error) {
-        setError(mapAuthError(error.message));
+      const { error: ghError } = await signInWithGitHub();
+      if (ghError) {
+        setError(mapAuthError(ghError.message));
       }
     } catch {
       setError('An unexpected error occurred');
     }
   };
 
-  const handlePasswordLogin = async (identifier: string, password: string, _rememberMe: boolean) => {
+  const handlePasswordLogin = async (identifier: string, password: string) => {
     setError('');
     try {
       const isEmail = identifier.includes('@');
@@ -53,25 +53,25 @@ export default function SignIn() {
         return;
       }
 
-      const { error } = await signIn(identifier, password);
-      if (error) {
-        setError(mapAuthError(error.message));
-        throw error; // Re-throw to track failed attempts
+      const { error: authError } = await signIn(identifier, password);
+      if (authError) {
+        setError(mapAuthError(authError.message));
+        throw new Error('Login failed');
       } else {
         navigate('/');
       }
-    } catch {
-      // Error already set above
-      throw new Error('Login failed');
+    } catch (err) {
+      if (!error) setError('Login failed');
+      throw err;
     }
   };
 
   const handleSendOTP = async (identifier: string, isPhone: boolean) => {
     setError('');
     try {
-      const { error } = await signInWithOTP(identifier, isPhone);
-      if (error) {
-        const friendlyMessage = getOtpErrorMessage(error, allowOtpSignups);
+      const { error: otpError } = await signInWithOTP(identifier, isPhone);
+      if (otpError) {
+        const friendlyMessage = getOtpErrorMessage(otpError, allowOtpSignups);
         setError(friendlyMessage || error.message);
       } else {
         navigate('/verify-otp', {

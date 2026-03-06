@@ -61,6 +61,10 @@ export default function RequestRide() {
       return;
     }
 
+    if (!checkAccess('request-ride')) {
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -96,6 +100,8 @@ export default function RequestRide() {
   };
 
   return (
+    <>
+    <ServiceGatingModal />
     <div className="max-w-2xl mx-auto px-4 py-8">
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Request a Ride</h1>
@@ -204,5 +210,6 @@ export default function RequestRide() {
         </form>
       </div>
     </div>
+    </>
   );
 }

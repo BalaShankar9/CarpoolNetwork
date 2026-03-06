@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, BellOff, Mail, MessageSquare, Smartphone, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Bell, Mail, MessageSquare, Smartphone, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 
@@ -49,12 +49,16 @@ export default function NotificationSettings() {
   }, [profile?.id]);
 
   const loadPreferences = async () => {
+    if (!profile?.id) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const { data, error: fetchError } = await supabase
         .from('notification_preferences')
         .select('*')
-        .eq('user_id', profile?.id)
+        .eq('user_id', profile.id)
         .maybeSingle();
 
       if (fetchError) throw fetchError;
@@ -76,22 +80,25 @@ export default function NotificationSettings() {
       }
     } catch (err) {
       console.error('Error loading notification preferences:', err);
+      setError('Failed to load notification preferences');
     } finally {
       setLoading(false);
     }
   };
 
   const updatePreference = async (key: keyof NotificationPrefs, value: boolean | string) => {
+    if (!profile?.id) return;
     try {
       setSaving(true);
       setError('');
 
+      const updatedPrefs = { ...prefs, [key]: value };
       const { error: updateError } = await supabase
         .from('notification_preferences')
         .upsert(
           {
-            user_id: profile?.id,
-            [key]: value,
+            user_id: profile.id,
+            ...updatedPrefs,
             updated_at: new Date().toISOString()
           },
           { onConflict: 'user_id' }

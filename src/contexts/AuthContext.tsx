@@ -29,7 +29,6 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signInWithGitHub: () => Promise<{ error: AuthError | null }>;
-  signInWithFacebook: () => Promise<{ error: AuthError | null }>;
   signInWithOTP: (emailOrPhone: string, isPhone?: boolean) => Promise<{ error: AuthError | null }>;
   verifyOTP: (emailOrPhone: string, token: string, isPhone?: boolean) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<{ error: AuthError | null }>;
@@ -68,11 +67,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      supabase.realtime.setAuth(session?.access_token || '');
+      if (session?.access_token) {
+        supabase.realtime.setAuth(session.access_token);
+      }
+      // Only reload profile on meaningful auth events, not token refreshes
+      if (event === 'TOKEN_REFRESHED') return;
       if (session?.user) {
         loadProfile(session.user);
       } else {
         setProfile(null);
+        setAdminRole(null);
+        setPermissions([]);
         setLoading(false);
       }
     });
@@ -219,16 +224,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signInWithFacebook = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'facebook',
-      options: {
-        redirectTo: `${window.location.origin}/`,
-      },
-    });
-    return { error };
-  };
-
   const signInWithOTP = async (emailOrPhone: string, isPhone = false) => {
     try {
       if (isPhone) {
@@ -276,6 +271,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    setProfile(null);
+    setAdminRole(null);
+    setPermissions([]);
     const { error } = await supabase.auth.signOut();
     return { error };
   };
@@ -353,7 +351,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signInWithGoogle,
     signInWithGitHub,
-    signInWithFacebook,
     signInWithOTP,
     verifyOTP,
     signOut,

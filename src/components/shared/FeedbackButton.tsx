@@ -85,7 +85,7 @@ export default function FeedbackButton() {
               setIsOpen(true);
             }
           }}
-          className="bg-red-600 text-white p-3 md:p-4 rounded-full shadow-lg hover:bg-red-700 transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 animate-pulse"
+          className="bg-red-600 text-white p-3 md:p-4 rounded-full shadow-lg hover:bg-red-700 transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
           title="Report a problem"
           aria-label="Report a problem or bug"
           tabIndex={0}

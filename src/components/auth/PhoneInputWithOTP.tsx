@@ -318,6 +318,7 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
                 onKeyDown={(e) => handleOtpKeyDown(index, e)}
                 onPaste={handleOtpPaste}
                 disabled={disabled || verifying}
+                aria-label={`Verification code digit ${index + 1} of 6`}
                 className={`w-11 h-12 text-center text-xl font-semibold border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:bg-gray-100 ${
                   error ? 'border-red-300 bg-red-50' : 'border-gray-300'
                 }`}

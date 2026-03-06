@@ -172,6 +172,19 @@ export default function VerificationQueue() {
 
     setProcessing(true);
     try {
+      // Update the license record status to 'rejected'
+      const { error: licenseError } = await supabase
+        .from('driver_licenses')
+        .update({
+          verified: false,
+          status: 'rejected',
+          rejection_reason: rejectionReason,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', licenseId);
+
+      if (licenseError) throw licenseError;
+
       const { error: attemptError } = await supabase
         .from('license_verification_attempts')
         .insert({
@@ -181,7 +194,7 @@ export default function VerificationQueue() {
           error_message: rejectionReason,
         });
 
-      if (attemptError) throw attemptError;
+      if (attemptError) console.error('Error logging verification attempt:', attemptError);
 
       setPendingLicenses(prev => prev.filter(l => l.id !== licenseId));
       setViewModal(false);

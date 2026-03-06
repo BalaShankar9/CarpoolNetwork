@@ -29,8 +29,18 @@ let ga4Initialized = false;
  * 3. Handle consent before loading
  */
 export function initializeGA4(): void {
+  // PECR compliance: check cookie consent before loading analytics
+  try {
+    const consent = localStorage.getItem('cookie_consent_v1');
+    if (!consent || JSON.parse(consent).type !== 'all') {
+      return;
+    }
+  } catch {
+    return;
+  }
+
   const config = getAnalyticsConfig();
-  
+
   if (config.disabled || !config.ga4MeasurementId) {
     if (config.debug) {
       console.log('[Analytics:GA4] Skipping initialization - disabled or no measurement ID');

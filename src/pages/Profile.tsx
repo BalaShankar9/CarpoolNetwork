@@ -68,6 +68,14 @@ export default function Profile() {
   });
   const [preferencesLoading, setPreferencesLoading] = useState(false);
   const [preferencesSaving, setPreferencesSaving] = useState(false);
+  const messageTimerRef = useRef<NodeJS.Timeout>();
+
+  // Cleanup all message timers on unmount
+  useEffect(() => {
+    return () => {
+      if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
+    };
+  }, []);
 
   const [editForm, setEditForm] = useState({
     full_name: '',
@@ -127,24 +135,16 @@ export default function Profile() {
     if (!profile?.id) return;
     try {
       setPreferencesLoading(true);
-      const { data, error } = await supabase
-        .from('user_preferences')
-        .select('auto_accept_rides, smoking_policy, pets_allowed, music_preference, conversation_level, instant_booking_enabled')
-        .eq('user_id', profile.id)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (data) {
-        setPreferences({
-          auto_accept_rides: data.auto_accept_rides ?? false,
-          smoking_policy: data.smoking_policy ?? 'no-smoking',
-          pets_allowed: data.pets_allowed ?? false,
-          music_preference: data.music_preference ?? 'any',
-          conversation_level: data.conversation_level ?? 'any',
-          instant_booking_enabled: data.instant_booking_enabled ?? false,
-        });
-      }
+      // Read preferences from profiles table (same table onboarding writes to)
+      const profileData = profile as any;
+      setPreferences({
+        auto_accept_rides: profileData.auto_accept_rides ?? false,
+        smoking_policy: profileData.smoking_policy ?? 'no-smoking',
+        pets_allowed: profileData.pets_allowed ?? false,
+        music_preference: profileData.music_preference ?? 'any',
+        conversation_level: profileData.conversation_level ?? 'any',
+        instant_booking_enabled: profileData.instant_booking_enabled ?? false,
+      });
     } catch (err) {
       console.error('Error loading preferences:', err);
     } finally {
@@ -156,18 +156,22 @@ export default function Profile() {
     if (!profile?.id) return;
     try {
       setPreferencesSaving(true);
+      // Write preferences to profiles table (same table onboarding uses)
       const { error } = await supabase
-        .from('user_preferences')
-        .upsert({ user_id: profile.id, [key]: value }, { onConflict: 'user_id' });
+        .from('profiles')
+        .update({ [key]: value })
+        .eq('id', profile.id);
 
       if (error) throw error;
       setPreferences(prev => ({ ...prev, [key]: value }));
       setSuccess('Preference updated');
-      setTimeout(() => setSuccess(''), 2000);
+      if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
+      messageTimerRef.current = setTimeout(() => setSuccess(''), 2000);
     } catch (err) {
       console.error('Error updating preference:', err);
       setError('Failed to update preference');
-      setTimeout(() => setError(''), 3000);
+      if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
+      messageTimerRef.current = setTimeout(() => setError(''), 3000);
     } finally {
       setPreferencesSaving(false);
     }
@@ -203,7 +207,8 @@ export default function Profile() {
       } else {
         setSuccess('Profile updated successfully!');
         setShowEditProfile(false);
-        setTimeout(() => setSuccess(''), 3000);
+        if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
+        messageTimerRef.current = setTimeout(() => setSuccess(''), 3000);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to update profile');
@@ -245,7 +250,8 @@ export default function Profile() {
       if (updateError) throw updateError;
 
       setSuccess('Profile photo uploaded successfully!');
-      setTimeout(() => setSuccess(''), 3000);
+      if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
+      messageTimerRef.current = setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message || 'Failed to upload profile photo');
     } finally {
@@ -533,6 +539,7 @@ export default function Profile() {
                         checked={preferences.auto_accept_rides}
                         onChange={(e) => updatePreference('auto_accept_rides', e.target.checked)}
                         disabled={preferencesSaving}
+                        aria-label="Auto-accept requests"
                       />
                       <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                     </label>
@@ -550,6 +557,7 @@ export default function Profile() {
                         checked={preferences.instant_booking_enabled}
                         onChange={(e) => updatePreference('instant_booking_enabled', e.target.checked)}
                         disabled={preferencesSaving}
+                        aria-label="Instant booking"
                       />
                       <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                     </label>
@@ -567,6 +575,7 @@ export default function Profile() {
                         checked={preferences.pets_allowed}
                         onChange={(e) => updatePreference('pets_allowed', e.target.checked)}
                         disabled={preferencesSaving}
+                        aria-label="Pets allowed"
                       />
                       <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                     </label>

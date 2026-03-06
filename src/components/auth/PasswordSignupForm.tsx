@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { User, Mail, Lock, Loader2, Eye, EyeOff, CheckCircle, XCircle, ChevronDown, Search, Phone, Gift } from 'lucide-react';
+import { User, Mail, Lock, Loader2, Eye, EyeOff, CheckCircle, XCircle, ChevronDown, Search, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { validateEmail } from '../../services/emailValidation';
 import { countryCodes, CountryCode, defaultCountry } from '../../data/countryCodes';
@@ -17,7 +17,6 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [referralCode, setReferralCode] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   // UI state
@@ -73,7 +72,7 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
   }, []);
 
   const passwordRequirements = {
-    length: password.length >= 6,
+    length: password.length >= 8,
     lowercase: /[a-z]/.test(password),
     uppercase: /[A-Z]/.test(password),
     digit: /\d/.test(password),
@@ -81,7 +80,7 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
   };
 
   const passwordRequirementList = [
-    { label: 'At least 6 characters', met: passwordRequirements.length },
+    { label: 'At least 8 characters', met: passwordRequirements.length },
     { label: 'One lowercase letter', met: passwordRequirements.lowercase },
     { label: 'One uppercase letter', met: passwordRequirements.uppercase },
     { label: 'One number', met: passwordRequirements.digit },
@@ -386,28 +385,6 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
             {passwordsMatch ? 'Passwords match' : 'Passwords do not match'}
           </p>
         )}
-      </div>
-
-      {/* Referral Code (Optional) */}
-      <div>
-        <label htmlFor="referralCode" className="block text-sm font-medium text-gray-700 mb-2">
-          Referral Code <span className="text-gray-400 font-normal">(Optional)</span>
-        </label>
-        <div className="relative">
-          <Gift className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            id="referralCode"
-            type="text"
-            value={referralCode}
-            onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-            placeholder="Enter referral code"
-            disabled={disabled || loading}
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed uppercase"
-          />
-        </div>
-        <p className="mt-1 text-xs text-gray-500">
-          Got a code from a friend? Both of you get rewards!
-        </p>
       </div>
 
       {/* Terms and Conditions */}

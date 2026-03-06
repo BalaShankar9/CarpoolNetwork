@@ -204,7 +204,7 @@ export const safetyAnalyticsService = {
             };
         } catch (error) {
             console.error('Failed to get safety metrics:', error);
-            return this.getMockMetrics();
+            throw new Error('Failed to load safety metrics');
         }
     },
 
@@ -430,44 +430,30 @@ export const safetyAnalyticsService = {
 
     // Area Safety Scores
     async getAreaSafetyScores(): Promise<AreaSafetyScore[]> {
-        // In production, this would calculate based on incidents per region
-        return [
-            {
-                region: 'Downtown',
-                score: 85,
-                incidentCount: 12,
-                mostCommonIssue: 'Behavior',
-                trend: 'improving',
-            },
-            {
-                region: 'University Area',
-                score: 92,
-                incidentCount: 5,
-                mostCommonIssue: 'No Show',
-                trend: 'stable',
-            },
-            {
-                region: 'Suburbs North',
-                score: 88,
-                incidentCount: 8,
-                mostCommonIssue: 'Route Issue',
-                trend: 'stable',
-            },
-            {
-                region: 'Suburbs South',
-                score: 78,
-                incidentCount: 18,
-                mostCommonIssue: 'Payment',
-                trend: 'declining',
-            },
-            {
-                region: 'Industrial Zone',
-                score: 82,
-                incidentCount: 10,
-                mostCommonIssue: 'Safety',
-                trend: 'improving',
-            },
-        ];
+        try {
+            const { data, error } = await supabase
+                .from('safety_incidents')
+                .select('location_region')
+                .not('location_region', 'is', null);
+
+            if (error || !data || data.length === 0) return [];
+
+            const regionMap = new Map<string, number>();
+            data.forEach((d: any) => {
+                const region = d.location_region || 'Unknown';
+                regionMap.set(region, (regionMap.get(region) || 0) + 1);
+            });
+
+            return Array.from(regionMap.entries()).map(([region, count]) => ({
+                region,
+                score: Math.max(0, 100 - count * 2),
+                incidentCount: count,
+                mostCommonIssue: 'N/A',
+                trend: 'stable' as const,
+            }));
+        } catch {
+            return [];
+        }
     },
 
     // Real-time monitoring

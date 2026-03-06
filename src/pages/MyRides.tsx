@@ -9,11 +9,11 @@ import { getRideLifecyclePhase, getRideActions, isRideExpired } from '../lib/rid
 import { getOrCreateRideConversation } from '../lib/chatHelpers';
 import { useAuth } from '../contexts/AuthContext';
 import RecurringRidesManager from '../components/rides/RecurringRidesManager';
-import EditRideModal from '../components/rides/EditRideModal';
+
 import RideTracking from '../components/rides/RideTracking';
 import ClickableUserProfile from '../components/shared/ClickableUserProfile';
 import ConfirmDialog from '../components/shared/ConfirmDialog';
-import { analytics, useFlowStage } from '../lib/analytics';
+import { analytics } from '../lib/analytics';
 
 type ConfirmAction =
   | { type: 'delete-ride'; rideId: string }
@@ -155,7 +155,7 @@ export default function MyRides() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
   const [expandedTrackingRideId, setExpandedTrackingRideId] = useState<string | null>(null);
-  const [editingRide, setEditingRide] = useState<Ride | null>(null);
+
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
 
@@ -469,6 +469,32 @@ export default function MyRides() {
 
       if (error) throw error;
 
+      // Update all active/confirmed bookings to cancelled and notify passengers
+      const { data: affectedBookings } = await supabase
+        .from('ride_bookings')
+        .select('id, passenger_id')
+        .eq('ride_id', rideId)
+        .in('status', ['confirmed', 'active', 'pending']);
+
+      if (affectedBookings && affectedBookings.length > 0) {
+        await supabase
+          .from('ride_bookings')
+          .update({ status: 'cancelled' })
+          .eq('ride_id', rideId)
+          .in('status', ['confirmed', 'active', 'pending']);
+
+        // Create a notification for each affected passenger
+        const notifications = affectedBookings.map((booking) => ({
+          user_id: booking.passenger_id,
+          type: 'ride_cancelled',
+          title: 'Ride Cancelled',
+          message: 'A ride you booked has been cancelled by the driver.',
+          data: { ride_id: rideId, booking_id: booking.id },
+        }));
+
+        await supabase.from('notifications').insert(notifications);
+      }
+
       loadRides();
       toast.success('Ride cancelled successfully!');
     } catch (error) {
@@ -539,11 +565,8 @@ export default function MyRides() {
     }
   };
 
-  const rejectBookingRequest = async (request: BookingRequest) => {
-    const reason = prompt('Reason for rejecting (optional):');
-    if (reason === null) return;
-
-    setConfirmAction({ type: 'reject-booking', request, reason: reason || '' });
+  const rejectBookingRequest = (request: BookingRequest) => {
+    setConfirmAction({ type: 'reject-booking', request, reason: '' });
   };
 
   const executeRejectBooking = async (request: BookingRequest) => {
@@ -569,20 +592,9 @@ export default function MyRides() {
     }
   };
 
-  const handleRideSaved = (updatedRide: Ride) => {
-    setOfferedRides((prev) =>
-      prev.map((ride) => (ride.id === updatedRide.id ? { ...ride, ...updatedRide } : ride))
-    );
-  };
 
-  const cancelBooking = async (bookingId: string, departureTime: string) => {
-    const reason = prompt('Please provide a reason for cancellation (optional):');
-
-    if (reason === null) {
-      return;
-    }
-
-    setConfirmAction({ type: 'cancel-booking', bookingId, departureTime, reason: reason || 'No reason provided' });
+  const cancelBooking = (bookingId: string, departureTime: string) => {
+    setConfirmAction({ type: 'cancel-booking', bookingId, departureTime, reason: 'User cancelled' });
   };
 
   const executeCancelBooking = async (bookingId: string, reason: string) => {
@@ -805,14 +817,14 @@ export default function MyRides() {
             <div className="flex flex-wrap items-center gap-3 mt-1 text-sm">
               <span className="flex items-center gap-1">
                 <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                {passenger.passenger.average_rating.toFixed(1)}
+                {(passenger.passenger.average_rating ?? 0).toFixed(1)}
               </span>
               <span className="text-gray-600">
                 {passenger.passenger.total_bookings} bookings
               </span>
               <span className="flex items-center gap-1 font-medium text-green-600">
                 <Shield className="w-4 h-4" />
-                {passenger.passenger.reliability_score.toFixed(1)} reliability
+                {(passenger.passenger.reliability_score ?? 0).toFixed(1)} reliability
               </span>
             </div>
           </div>
@@ -863,7 +875,7 @@ export default function MyRides() {
                 toast.error('Unable to start this conversation.');
                 return;
               }
-              await recordRateLimitAction(user.id, user.id, 'conversation');
+              await recordRateLimitAction(user.id, passenger.passenger.id, 'conversation');
               navigate(`/messages?c=${conversationId}`, { state: { conversationId } });
             }}
             disabled={archived}
@@ -1200,8 +1212,8 @@ export default function MyRides() {
                   }
 
                   const reliabilityColor =
-                    request.passenger.reliability_score >= 4.5 ? 'text-green-600' :
-                    request.passenger.reliability_score >= 3.5 ? 'text-yellow-600' :
+                    request.passenger.reliability_score >= 90 ? 'text-green-600' :
+                    request.passenger.reliability_score >= 70 ? 'text-yellow-600' :
                     'text-red-600';
 
                   return (
@@ -1226,14 +1238,14 @@ export default function MyRides() {
                             <div className="flex flex-wrap items-center gap-3 mt-1 text-sm">
                               <span className="flex items-center gap-1">
                                 <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                                {request.passenger.average_rating.toFixed(1)}
+                                {(request.passenger.average_rating ?? 0).toFixed(1)}
                               </span>
                               <span className="text-gray-600">
                                 {request.passenger.total_bookings} bookings
                               </span>
                               <span className={`flex items-center gap-1 font-medium ${reliabilityColor}`}>
                                 <Shield className="w-4 h-4" />
-                                {request.passenger.reliability_score.toFixed(1)} reliability
+                                {(request.passenger.reliability_score ?? 0).toFixed(1)} reliability
                               </span>
                             </div>
                             {request.passenger.cancelled_bookings > 0 && (
@@ -1423,7 +1435,7 @@ export default function MyRides() {
                         <p>
                           Driver: <span className="font-medium">{booking.ride.driver?.full_name}</span>
                           {' • '}
-                          <span className="text-yellow-600">⭐ {booking.ride.driver?.average_rating.toFixed(1)}</span>
+                          <span className="text-yellow-600">⭐ {(booking.ride.driver?.average_rating ?? 0).toFixed(1)}</span>
                         </p>
                       </div>
                     </div>
@@ -1665,7 +1677,7 @@ export default function MyRides() {
                               toast.error('Unable to start this conversation.');
                               return;
                             }
-                            await recordRateLimitAction(user.id, user.id, 'conversation');
+                            await recordRateLimitAction(user.id, match.passenger_id, 'conversation');
                             navigate(`/messages?c=${conversationId}`, { state: { conversationId } });
                           }}
                           className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
@@ -1689,13 +1701,6 @@ export default function MyRides() {
           ) : null}
         </div>
       </div>
-
-      <EditRideModal
-        ride={editingRide}
-        isOpen={Boolean(editingRide)}
-        onClose={() => setEditingRide(null)}
-        onSaved={handleRideSaved}
-      />
 
       <RecurringRidesManager />
 

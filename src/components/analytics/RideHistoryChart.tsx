@@ -34,37 +34,58 @@ export function RideHistoryChart({ months = 6 }: RideHistoryChartProps) {
             setLoading(true);
 
             const now = new Date();
-            const monthsData: MonthData[] = [];
+            // Calculate the full date range for all months at once
+            const oldestMonth = new Date(now.getFullYear(), now.getMonth() - (months - 1) - offset, 1);
+            const newestMonth = new Date(now.getFullYear(), now.getMonth() - offset + 1, 0);
+            const rangeStart = oldestMonth.toISOString();
+            const rangeEnd = newestMonth.toISOString();
 
-            for (let i = 0; i < months; i++) {
-                const targetMonth = new Date(now.getFullYear(), now.getMonth() - i - offset, 1);
-                const monthStart = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1);
-                const monthEnd = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0);
-
-                // Get rides as driver
-                const { count: driverCount } = await supabase
+            // Two queries instead of 2*months queries
+            const [driverResult, passengerResult] = await Promise.all([
+                supabase
                     .from('rides')
-                    .select('*', { count: 'exact', head: true })
+                    .select('departure_time')
                     .eq('driver_id', user.id)
                     .eq('status', 'completed')
-                    .gte('departure_time', monthStart.toISOString())
-                    .lte('departure_time', monthEnd.toISOString());
-
-                // Get rides as passenger
-                const { count: passengerCount } = await supabase
+                    .gte('departure_time', rangeStart)
+                    .lte('departure_time', rangeEnd),
+                supabase
                     .from('ride_bookings')
-                    .select('*', { count: 'exact', head: true })
+                    .select('created_at')
                     .eq('passenger_id', user.id)
                     .eq('status', 'completed')
-                    .gte('created_at', monthStart.toISOString())
-                    .lte('created_at', monthEnd.toISOString());
+                    .gte('created_at', rangeStart)
+                    .lte('created_at', rangeEnd),
+            ]);
 
-                monthsData.unshift({
+            // Group results by month on the client
+            const driverByMonth: Record<string, number> = {};
+            const passengerByMonth: Record<string, number> = {};
+
+            driverResult.data?.forEach((row: any) => {
+                const d = new Date(row.departure_time);
+                const key = `${d.getFullYear()}-${d.getMonth()}`;
+                driverByMonth[key] = (driverByMonth[key] || 0) + 1;
+            });
+
+            passengerResult.data?.forEach((row: any) => {
+                const d = new Date(row.created_at);
+                const key = `${d.getFullYear()}-${d.getMonth()}`;
+                passengerByMonth[key] = (passengerByMonth[key] || 0) + 1;
+            });
+
+            const monthsData: MonthData[] = [];
+            for (let i = months - 1; i >= 0; i--) {
+                const targetMonth = new Date(now.getFullYear(), now.getMonth() - i - offset, 1);
+                const key = `${targetMonth.getFullYear()}-${targetMonth.getMonth()}`;
+                const asDriver = driverByMonth[key] || 0;
+                const asPassenger = passengerByMonth[key] || 0;
+                monthsData.push({
                     month: targetMonth.toLocaleString('default', { month: 'short' }),
                     year: targetMonth.getFullYear(),
-                    asDriver: driverCount || 0,
-                    asPassenger: passengerCount || 0,
-                    total: (driverCount || 0) + (passengerCount || 0),
+                    asDriver,
+                    asPassenger,
+                    total: asDriver + asPassenger,
                 });
             }
 

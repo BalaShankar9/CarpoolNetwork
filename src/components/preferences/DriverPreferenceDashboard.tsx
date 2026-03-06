@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  Car, Shield, Users, DollarSign, Calendar, Settings,
-  Music, Thermometer, MessageCircle, Cigarette, Dog, Baby,
+  Car, Shield, Users, PoundSterling, Calendar,
+  Music, Thermometer, MessageCircle, Cigarette, Dog,
   Wifi, Battery, Wind, Package, Accessibility, Star,
-  CheckCircle, XCircle, AlertCircle, Save
+  CheckCircle, Save
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,6 +22,13 @@ export default function DriverPreferenceDashboard({ onClose }: DriverPreferenceD
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const savedTimerRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    return () => {
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     loadPreferences();
@@ -30,13 +37,15 @@ export default function DriverPreferenceDashboard({ onClose }: DriverPreferenceD
   const loadPreferences = async () => {
     if (!user) return;
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('user_preferences')
       .select('*')
       .eq('user_id', user.id)
       .maybeSingle();
 
-    if (data) {
+    if (error) {
+      console.error('Error loading preferences:', error);
+    } else if (data) {
       setPreferences(data);
     }
     setLoading(false);
@@ -54,9 +63,12 @@ export default function DriverPreferenceDashboard({ onClose }: DriverPreferenceD
         updated_at: new Date().toISOString()
       });
 
-    if (!error) {
+    if (error) {
+      console.error('Error saving preferences:', error);
+    } else {
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setSaved(false), 2000);
     }
     setSaving(false);
   };
@@ -70,7 +82,7 @@ export default function DriverPreferenceDashboard({ onClose }: DriverPreferenceD
     { id: 'policies', label: 'Ride Policies', icon: Shield },
     { id: 'screening', label: 'Passenger Requirements', icon: Users },
     { id: 'safety', label: 'Safety & Communication', icon: Shield },
-    { id: 'pricing', label: 'Cost Sharing Info', icon: DollarSign },
+    { id: 'pricing', label: 'Cost Sharing Info', icon: PoundSterling },
     { id: 'templates', label: 'Recurring & Templates', icon: Calendar }
   ];
 
@@ -413,6 +425,8 @@ function RidePoliciesTab({ preferences, updatePreference }: any) {
                   <input
                     type="text"
                     placeholder="Dogs, Cats, Small pets..."
+                    value={preferences.allowed_pet_types || ''}
+                    onChange={(e) => updatePreference('allowed_pet_types' as any, e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
                   />
                 </div>
@@ -420,15 +434,24 @@ function RidePoliciesTab({ preferences, updatePreference }: any) {
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Size Limit
                   </label>
-                  <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg">
-                    <option>Small only (under 10kg)</option>
-                    <option>Medium (under 25kg)</option>
-                    <option>Large (any size)</option>
+                  <select
+                    value={preferences.pet_size_limit || 'any'}
+                    onChange={(e) => updatePreference('pet_size_limit' as any, e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
+                  >
+                    <option value="small">Small only (under 10kg)</option>
+                    <option value="medium">Medium (under 25kg)</option>
+                    <option value="any">Large (any size)</option>
                   </select>
                 </div>
               </div>
               <label className="flex items-center gap-2">
-                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" />
+                <input
+                  type="checkbox"
+                  checked={preferences.pet_carrier_required || false}
+                  onChange={(e) => updatePreference('pet_carrier_required' as any, e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded"
+                />
                 <span className="text-xs text-gray-600">Carrier required</span>
               </label>
             </div>
@@ -597,18 +620,6 @@ function PassengerScreeningTab({ preferences, updatePreference }: any) {
           </div>
 
           <div>
-            <label className="flex items-center gap-3 mb-3">
-              <input
-                type="checkbox"
-                checked={preferences.same_gender_only || false}
-                onChange={(e) => updatePreference('same_gender_only', e.target.checked)}
-                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
-              />
-              <span className="text-sm font-medium text-gray-700">Same gender passengers only</span>
-            </label>
-          </div>
-
-          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Minimum Age
             </label>
@@ -616,7 +627,7 @@ function PassengerScreeningTab({ preferences, updatePreference }: any) {
               type="number"
               min="0"
               max="100"
-              value={preferences.age_restriction_min || ''}
+              value={preferences.age_restriction_min ?? ''}
               onChange={(e) => updatePreference('age_restriction_min', e.target.value ? parseInt(e.target.value) : null)}
               placeholder="No minimum"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -631,7 +642,7 @@ function PassengerScreeningTab({ preferences, updatePreference }: any) {
               type="number"
               min="0"
               max="120"
-              value={preferences.age_restriction_max || ''}
+              value={preferences.age_restriction_max ?? ''}
               onChange={(e) => updatePreference('age_restriction_max', e.target.value ? parseInt(e.target.value) : null)}
               placeholder="No maximum"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -771,8 +782,12 @@ function TemplatesTab() {
         <p className="text-gray-600 mb-6">
           Save your frequently posted rides as templates for quick posting
         </p>
-        <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-          Create Your First Template
+        <button
+          disabled
+          className="px-6 py-3 bg-gray-400 text-white rounded-lg cursor-not-allowed"
+          aria-label="Coming soon"
+        >
+          Coming Soon
         </button>
       </div>
     </div>

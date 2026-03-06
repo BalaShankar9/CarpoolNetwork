@@ -98,7 +98,7 @@ export default function Home() {
   const loadDashboardData = async () => {
     try {
       // Load active rides count
-      const { data: activeRidesData } = await supabase
+      const { count: activeRidesCount } = await supabase
         .from('rides')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active')
@@ -179,8 +179,8 @@ export default function Home() {
       setStats({
         totalRidesOffered: profile?.total_rides_offered || 0,
         totalRidesTaken: profile?.total_rides_taken || 0,
-        upcomingRides: activeRidesData?.length || 0,
-        activeRides: activeRidesData?.length || 0,
+        upcomingRides: activeRidesCount || 0,
+        activeRides: activeRidesCount || 0,
         unreadMessages: unreadMessagesCount || 0,
         friendsCount,
       });

@@ -65,12 +65,22 @@ export const notify = (message: unknown, kind?: ToastKind) => {
 };
 
 let alertOverrideInstalled = false;
+let originalAlert: ((message?: any) => void) | null = null;
 
 export const installAlertOverride = () => {
   if (alertOverrideInstalled || typeof window === 'undefined') return;
   alertOverrideInstalled = true;
+  originalAlert = window.alert.bind(window);
 
   window.alert = (message?: any) => {
     notify(message);
   };
+};
+
+export const restoreAlert = () => {
+  if (originalAlert && typeof window !== 'undefined') {
+    window.alert = originalAlert;
+    originalAlert = null;
+    alertOverrideInstalled = false;
+  }
 };

@@ -157,8 +157,8 @@ export default function CommunityPostPage() {
         .eq('post_id', postId)
         .eq('user_id', user.id)
         .maybeSingle();
-      if (voteData?.vote) {
-        setVote(voteData.vote);
+      if (voteData != null) {
+        setVote(voteData.vote ?? 0);
       }
     }
 

@@ -92,7 +92,8 @@ export default function EmergencyContactsManager() {
             relationship: formData.relationship.trim(),
             is_primary: formData.is_primary
           })
-          .eq('id', editingId);
+          .eq('id', editingId)
+          .eq('user_id', profile?.id);
 
         if (error) throw error;
         setSuccess('Contact updated successfully');
@@ -138,7 +139,8 @@ export default function EmergencyContactsManager() {
       const { error } = await supabase
         .from('emergency_contacts')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', profile?.id);
 
       if (error) throw error;
       setSuccess('Contact deleted successfully');

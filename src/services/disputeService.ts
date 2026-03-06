@@ -18,13 +18,13 @@ export interface Dispute {
 }
 
 export type DisputeType =
-    | 'payment'
     | 'no_show'
     | 'safety'
     | 'behavior'
     | 'property_damage'
     | 'route_issue'
     | 'cancellation'
+    | 'communication'
     | 'other';
 
 export type DisputeStatus =
@@ -52,14 +52,12 @@ export interface DisputeResolution {
     outcome: 'favor_creator' | 'favor_other' | 'mutual' | 'no_action' | 'both_warned';
     summary: string;
     actions: ResolutionAction[];
-    creditAmount?: number;
-    refundAmount?: number;
     resolvedBy: string;
     createdAt: string;
 }
 
 export interface ResolutionAction {
-    type: 'warning' | 'suspension' | 'ban' | 'credit' | 'refund' | 'restriction';
+    type: 'warning' | 'suspension' | 'ban' | 'restriction' | 'account_flag';
     targetUserId: string;
     details: string;
 }
@@ -92,8 +90,8 @@ class DisputeService {
             safety: 'urgent',
             property_damage: 'high',
             behavior: 'high',
-            payment: 'medium',
             no_show: 'medium',
+            communication: 'medium',
             route_issue: 'low',
             cancellation: 'low',
             other: 'low',
@@ -262,8 +260,6 @@ class DisputeService {
             outcome: DisputeResolution['outcome'];
             summary: string;
             actions: ResolutionAction[];
-            creditAmount?: number;
-            refundAmount?: number;
         }
     ): Promise<DisputeResolution> {
         // Create resolution record
@@ -275,8 +271,6 @@ class DisputeService {
                 outcome: resolution.outcome,
                 summary: resolution.summary,
                 actions: resolution.actions,
-                credit_amount: resolution.creditAmount,
-                refund_amount: resolution.refundAmount,
             })
             .select()
             .single();
@@ -295,11 +289,6 @@ class DisputeService {
 
         // Execute resolution actions
         await this.executeResolutionActions(disputeId, resolution.actions);
-
-        // Handle credits/refunds
-        if (resolution.creditAmount || resolution.refundAmount) {
-            await this.processCompensation(disputeId, resolution.creditAmount, resolution.refundAmount);
-        }
 
         // Add system message
         await this.sendMessage(
@@ -360,49 +349,6 @@ class DisputeService {
                 message: action.details,
                 data: { dispute_id: disputeId, action_type: action.type },
                 priority: 'high',
-            });
-        }
-    }
-
-    private async processCompensation(
-        disputeId: string,
-        creditAmount?: number,
-        refundAmount?: number
-    ): Promise<void> {
-        const { data: dispute } = await supabase
-            .from('disputes')
-            .select('created_by, ride_id')
-            .eq('id', disputeId)
-            .single();
-
-        if (!dispute) return;
-
-        if (creditAmount && creditAmount > 0) {
-            // Add credit to user's account
-            await supabase.from('user_credits').insert({
-                user_id: dispute.created_by,
-                amount: creditAmount,
-                reason: `Dispute resolution credit - Dispute #${disputeId.slice(0, 8)}`,
-                dispute_id: disputeId,
-            });
-
-            await supabase.from('notifications').insert({
-                user_id: dispute.created_by,
-                type: 'credit_added',
-                title: '💰 Credit Added',
-                message: `£${creditAmount.toFixed(2)} has been added to your account as dispute resolution.`,
-            });
-        }
-
-        if (refundAmount && refundAmount > 0) {
-            // Process refund (would integrate with payment provider in production)
-            await supabase.from('refunds').insert({
-                user_id: dispute.created_by,
-                ride_id: dispute.ride_id,
-                amount: refundAmount,
-                reason: 'Dispute resolution',
-                dispute_id: disputeId,
-                status: 'pending',
             });
         }
     }
@@ -613,8 +559,6 @@ class DisputeService {
             outcome: data.outcome as DisputeResolution['outcome'],
             summary: data.summary as string,
             actions: data.actions as ResolutionAction[],
-            creditAmount: data.credit_amount as number | undefined,
-            refundAmount: data.refund_amount as number | undefined,
             resolvedBy: data.resolved_by as string,
             createdAt: data.created_at as string,
         };

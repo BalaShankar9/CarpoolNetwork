@@ -11,7 +11,7 @@ export interface UserStats {
     totalDistance: number; // km
     totalDuration: number; // minutes
     moneySaved: number;
-    moneyEarned: number;
+    fuelContributions: number;
     co2Saved: number; // kg
     treesEquivalent: number;
     averageRating: number;
@@ -49,7 +49,7 @@ export interface TrendData {
     ridesTaken: number;
     co2Saved: number;
     distance: number;
-    earnings: number;
+    contributions: number;
     savings: number;
 }
 
@@ -169,7 +169,7 @@ class AnalyticsService {
         );
 
         // Calculate money
-        const moneyEarned = completedDriverRides.reduce((sum, r) => {
+        const fuelContributions = completedDriverRides.reduce((sum, r) => {
             const confirmedBookings = r.ride_bookings?.filter((b: any) => b.status === 'confirmed').length || 0;
             return sum + (r.price_per_seat || 0) * confirmedBookings;
         }, 0);
@@ -224,7 +224,7 @@ class AnalyticsService {
             totalDistance: totalDistanceDriver + totalDistancePassenger,
             totalDuration: totalDurationDriver + totalDurationPassenger,
             moneySaved,
-            moneyEarned,
+            fuelContributions,
             co2Saved: totalCo2Saved,
             treesEquivalent: totalCo2Saved / CO2_PER_TREE_PER_YEAR,
             averageRating: avgRating,
@@ -272,7 +272,7 @@ class AnalyticsService {
                 ridesTaken: 0,
                 co2Saved: 0,
                 distance: 0,
-                earnings: 0,
+                contributions: 0,
                 savings: 0,
             });
             if (granularity === 'day') {
@@ -291,7 +291,7 @@ class AnalyticsService {
                 if (confirmedBookings > 0) {
                     trend.ridesGiven++;
                     trend.distance += ride.distance_km || 0;
-                    trend.earnings += (ride.price_per_seat || 0) * confirmedBookings;
+                    trend.contributions += (ride.price_per_seat || 0) * confirmedBookings;
                     trend.co2Saved += (ride.distance_km || 0) * CO2_PER_KM_CAR * confirmedBookings;
                 }
             }
@@ -570,7 +570,7 @@ class AnalyticsService {
         lines.push(`Rides Taken,${report.stats.ridesTaken}`);
         lines.push(`Total Distance (km),${report.stats.totalDistance.toFixed(1)}`);
         lines.push(`Money Saved (£),${report.stats.moneySaved.toFixed(2)}`);
-        lines.push(`Money Earned (£),${report.stats.moneyEarned.toFixed(2)}`);
+        lines.push(`Fuel Contributions (£),${report.stats.fuelContributions.toFixed(2)}`);
         lines.push(`CO2 Saved (kg),${report.stats.co2Saved.toFixed(1)}`);
         lines.push(`Trees Equivalent,${report.stats.treesEquivalent.toFixed(1)}`);
         lines.push(`Average Rating,${report.stats.averageRating.toFixed(1)}`);
@@ -578,9 +578,9 @@ class AnalyticsService {
 
         // Trends
         lines.push('DAILY TRENDS');
-        lines.push('Date,Rides Given,Rides Taken,CO2 Saved (kg),Distance (km),Earnings (£),Savings (£)');
+        lines.push('Date,Rides Given,Rides Taken,CO2 Saved (kg),Distance (km),Contributions (£),Savings (£)');
         report.trends.forEach((t) => {
-            lines.push(`${t.date},${t.ridesGiven},${t.ridesTaken},${t.co2Saved.toFixed(1)},${t.distance.toFixed(1)},${t.earnings.toFixed(2)},${t.savings.toFixed(2)}`);
+            lines.push(`${t.date},${t.ridesGiven},${t.ridesTaken},${t.co2Saved.toFixed(1)},${t.distance.toFixed(1)},${t.contributions.toFixed(2)},${t.savings.toFixed(2)}`);
         });
         lines.push('');
 

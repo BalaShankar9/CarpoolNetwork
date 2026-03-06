@@ -83,7 +83,7 @@ export default function VerificationBadges({
   if (!profile && !hasExternalStatus) return null;
 
   const resolvedEmailVerified = emailVerified ?? profile?.email_verified ?? profile?.is_verified ?? false;
-  const resolvedPhoneVerified = phoneVerified ?? profile?.phone_verified ?? !!profile?.phone;
+  const resolvedPhoneVerified = phoneVerified ?? profile?.phone_verified ?? false;
   const resolvedPhotoVerified = photoVerified ?? profile?.photo_verified ?? profile?.profile_verified ?? false;
   const resolvedIdVerified = idVerified ?? profile?.id_verified ?? false;
 

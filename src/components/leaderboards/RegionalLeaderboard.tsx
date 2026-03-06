@@ -50,13 +50,16 @@ export default function RegionalLeaderboard({ category, period }: RegionalLeader
       const regions = [...new Set(data?.map(p => p.city).filter(Boolean))] as string[];
       setAvailableRegions(regions.sort());
 
-      if (profile?.city) {
+      if (profile?.city && regions.includes(profile.city)) {
         setSelectedRegion(profile.city);
       } else if (regions.length > 0) {
         setSelectedRegion(regions[0]);
+      } else {
+        setLoading(false);
       }
     } catch (error) {
       console.error('Error loading regions:', error);
+      setLoading(false);
     }
   };
 

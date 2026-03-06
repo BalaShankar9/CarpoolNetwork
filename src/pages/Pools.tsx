@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Users,
@@ -6,7 +6,6 @@ import {
     Search,
     Key,
     MapPin,
-    RefreshCw,
     Sparkles
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,6 +36,26 @@ const Pools: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [searchOrigin, setSearchOrigin] = useState('');
     const [searchDestination, setSearchDestination] = useState('');
+    const [debouncedOrigin, setDebouncedOrigin] = useState('');
+    const [debouncedDestination, setDebouncedDestination] = useState('');
+    const originTimeoutRef = useRef<NodeJS.Timeout>();
+    const destinationTimeoutRef = useRef<NodeJS.Timeout>();
+
+    const handleOriginChange = (value: string) => {
+        setSearchOrigin(value);
+        clearTimeout(originTimeoutRef.current);
+        originTimeoutRef.current = setTimeout(() => {
+            setDebouncedOrigin(value);
+        }, 300);
+    };
+
+    const handleDestinationChange = (value: string) => {
+        setSearchDestination(value);
+        clearTimeout(destinationTimeoutRef.current);
+        destinationTimeoutRef.current = setTimeout(() => {
+            setDebouncedDestination(value);
+        }, 300);
+    };
 
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showJoinModal, setShowJoinModal] = useState(false);
@@ -72,8 +91,8 @@ const Pools: React.FC = () => {
             setIsLoading(true);
             try {
                 const pools = await searchPools(
-                    searchOrigin || undefined,
-                    searchDestination || undefined
+                    debouncedOrigin || undefined,
+                    debouncedDestination || undefined
                 );
                 setDiscoverPools(pools);
             } catch (err) {
@@ -84,28 +103,39 @@ const Pools: React.FC = () => {
         };
 
         loadDiscoverPools();
-    }, [activeTab, searchOrigin, searchDestination]);
+    }, [activeTab, debouncedOrigin, debouncedDestination]);
 
     const handleCreatePool = async (
         poolData: Omit<CarpoolPool, 'id' | 'created_by' | 'created_at' | 'invite_code'>
     ) => {
         if (!user) return;
-        const newPool = await createPool(user.id, poolData);
-        setMyPools(prev => [newPool, ...prev]);
+        try {
+            const newPool = await createPool(user.id, poolData);
+            setMyPools(prev => [newPool, ...prev]);
+        } catch (err) {
+            console.error('Failed to create pool:', err);
+        }
     };
 
     const handleJoinPool = async (poolId: string, isDriver: boolean) => {
         if (!user) return;
-        await joinPool(poolId, user.id, undefined, isDriver);
-        // Refresh pools
-        const pools = await getUserPools(user.id);
-        setMyPools(pools);
+        try {
+            await joinPool(poolId, user.id, undefined, isDriver);
+            const pools = await getUserPools(user.id);
+            setMyPools(pools);
+        } catch (err) {
+            console.error('Failed to join pool:', err);
+        }
     };
 
     const handleJoinByCode = async (code: string, isDriver: boolean) => {
         if (!user) return;
-        const { pool } = await joinPoolByCode(code, user.id, isDriver);
-        setMyPools(prev => [pool, ...prev]);
+        try {
+            const { pool } = await joinPoolByCode(code, user.id, isDriver);
+            setMyPools(prev => [pool, ...prev]);
+        } catch (err) {
+            console.error('Failed to join pool by code:', err);
+        }
     };
 
     const handleSearch = () => {
@@ -206,7 +236,7 @@ const Pools: React.FC = () => {
                                     <input
                                         type="text"
                                         value={searchOrigin}
-                                        onChange={e => setSearchOrigin(e.target.value)}
+                                        onChange={e => handleOriginChange(e.target.value)}
                                         placeholder="e.g., North Side"
                                         className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none text-sm"
                                     />
@@ -221,7 +251,7 @@ const Pools: React.FC = () => {
                                     <input
                                         type="text"
                                         value={searchDestination}
-                                        onChange={e => setSearchDestination(e.target.value)}
+                                        onChange={e => handleDestinationChange(e.target.value)}
                                         placeholder="e.g., Downtown"
                                         className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none text-sm"
                                     />

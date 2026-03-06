@@ -46,7 +46,7 @@ export default function PostRide() {
   const [originCoords, setOriginCoords] = useState({ lat: 0, lng: 0 });
   const [destCoords, setDestCoords] = useState({ lat: 0, lng: 0 });
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState<string | boolean>(false);
   const [error, setError] = useState('');
 
   const selectedVehicle =
@@ -280,6 +280,17 @@ export default function PostRide() {
       }
       
       // Single ride (or fallback from failed recurring ride creation)
+      // In edit mode, account for existing bookings to prevent overbooking
+      let availableSeats = seatsToOffer;
+      if (isEditMode && editRideId) {
+        const { count: bookedCount } = await supabase
+          .from('ride_bookings')
+          .select('id', { count: 'exact', head: true })
+          .eq('ride_id', editRideId)
+          .in('status', ['confirmed', 'active']);
+        availableSeats = Math.max(seatsToOffer - (bookedCount || 0), 0);
+      }
+
       const ridePayload = {
         vehicle_id: vehicleToUse.id,
         origin: formData.origin,
@@ -290,7 +301,7 @@ export default function PostRide() {
         destination_lng: destCoords.lng,
         departure_time: departureDateTime,
         time_type: dateTime.timeType,
-        available_seats: seatsToOffer,
+        available_seats: availableSeats,
         total_seats: seatsToOffer,
         notes: formData.notes,
         is_recurring: formData.isRecurring,

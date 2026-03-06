@@ -34,8 +34,28 @@ export default function SecuritySettings() {
       return;
     }
 
+    if (!passwordForm.currentPassword) {
+      setError('Please enter your current password');
+      return;
+    }
+
     try {
       setLoading(true);
+
+      // Re-authenticate with current password before allowing change
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error('Unable to verify identity');
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: passwordForm.currentPassword,
+      });
+
+      if (signInError) {
+        setError('Current password is incorrect');
+        setLoading(false);
+        return;
+      }
 
       const { error } = await supabase.auth.updateUser({
         password: passwordForm.newPassword
@@ -58,12 +78,17 @@ export default function SecuritySettings() {
   };
 
   const handleDeleteAccount = async () => {
+    if (!profile?.id) {
+      setError('Unable to verify your account. Please sign in again.');
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
 
       const { error } = await supabase.rpc('delete_user_account', {
-        user_id: profile?.id
+        user_id: profile.id
       });
 
       if (error) throw error;
@@ -119,6 +144,21 @@ export default function SecuritySettings() {
             </div>
 
             <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Current Password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                  placeholder="Enter current password"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                  disabled={loading}
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   New Password <span className="text-red-500">*</span>
