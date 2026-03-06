@@ -16,7 +16,6 @@ import {
     Calendar,
     Clock,
     Users,
-    DollarSign,
     FileText,
     CheckCircle,
     AlertTriangle,
@@ -63,7 +62,6 @@ interface RideDetail {
     arrival_time: string | null;
     available_seats: number;
     total_seats: number;
-    price_per_seat: number | null;
     status: string;
     notes: string | null;
     is_recurring: boolean;
@@ -597,14 +595,11 @@ export default function RideDetailAdmin() {
                                 </div>
                             </div>
 
-                            {/* Price */}
+                            {/* Cost */}
                             <div>
-                                <label className="block text-xs font-medium text-gray-500 mb-1">Price per Seat</label>
+                                <label className="block text-xs font-medium text-gray-500 mb-1">Cost</label>
                                 <div className="flex items-center gap-2">
-                                    <DollarSign className="w-4 h-4 text-gray-400" />
-                                    <span className="font-medium text-gray-900">
-                                        {ride.price_per_seat ? `£${ride.price_per_seat.toFixed(2)}` : 'Free'}
-                                    </span>
+                                    <span className="font-medium text-green-600">Free</span>
                                 </div>
                             </div>
 

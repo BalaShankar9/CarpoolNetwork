@@ -59,6 +59,7 @@ export default function PostRide() {
   // Load existing ride data when in edit mode
   useEffect(() => {
     if (!editRideId || !user) return;
+    let active = true;
     (async () => {
       const { data, error: fetchErr } = await supabase
         .from('rides')
@@ -67,6 +68,7 @@ export default function PostRide() {
         .eq('driver_id', user.id)
         .single();
 
+      if (!active) return;
       if (fetchErr || !data) {
         setError('Ride not found or you do not have permission to edit it.');
         return;
@@ -92,6 +94,7 @@ export default function PostRide() {
       if (data.ride_type) setRideType(data.ride_type as RideType);
       if (data.vehicle_id) setSelectedVehicleId(data.vehicle_id);
     })();
+    return () => { active = false; };
   }, [editRideId, user]);
 
   // Update recurring based on ride type

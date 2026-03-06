@@ -76,7 +76,7 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
 
       if (otpError) {
         const friendlyMessage = getOtpErrorMessage(otpError, allowOtpSignups);
-        setError(friendlyMessage || otpError.message || 'Failed to send verification code');
+        setError(friendlyMessage || 'Failed to send verification code. Please try again.');
       } else {
         setOtpSent(true);
         setCooldown(60);

@@ -164,6 +164,14 @@ export default function BookingDetails() {
         return;
       }
 
+      // IDOR protection: verify current user is the passenger or the driver
+      if (data.passenger_id !== user!.id && data.ride?.driver_id !== user!.id) {
+        console.warn('Unauthorized booking access attempt by user:', user!.id);
+        setError('Booking not found');
+        setLoading(false);
+        return;
+      }
+
       const driverProfile = await fetchPublicProfileById(data.ride.driver_id);
       setBooking({
         ...data,

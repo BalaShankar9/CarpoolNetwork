@@ -1,3 +1,4 @@
+const sanitizeSearch = (input: string) => input.replace(/[%_*()]/g, '');
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
@@ -46,7 +47,6 @@ interface AdminBooking {
         origin: string;
         destination: string;
         departure_time: string;
-        price_per_seat: number | null;
         driver_id: string;
         driver: {
             id: string;
@@ -141,7 +141,6 @@ export default function BookingsManagement() {
             origin,
             destination,
             departure_time,
-            price_per_seat,
             driver_id,
             driver:profiles!driver_id (
               id,
@@ -176,7 +175,7 @@ export default function BookingsManagement() {
             // Apply search query
             if (searchQuery) {
                 // Search by booking ID prefix
-                query = query.or(`id.ilike.${searchQuery}%`);
+                query = query.or(`id.ilike.${sanitizeSearch(searchQuery)}%`);
             }
 
             // Apply sorting
@@ -678,11 +677,6 @@ export default function BookingsManagement() {
                                                     <Users className="w-4 h-4 text-gray-400" />
                                                     <span className="font-medium text-gray-900">{booking.seats_requested}</span>
                                                 </div>
-                                                {booking.ride?.price_per_seat && (
-                                                    <div className="text-xs text-gray-500 mt-0.5">
-                                                        £{(booking.seats_requested * booking.ride.price_per_seat).toFixed(2)}
-                                                    </div>
-                                                )}
                                             </td>
 
                                             {/* Status */}

@@ -41,9 +41,9 @@ export default function DataSettings() {
         .eq('driver_id', profile.id);
 
       const { data: bookingsData } = await supabase
-        .from('bookings')
+        .from('ride_bookings')
         .select('*')
-        .eq('user_id', profile.id);
+        .eq('passenger_id', profile.id);
 
       const { data: vehiclesData } = await supabase
         .from('vehicles')

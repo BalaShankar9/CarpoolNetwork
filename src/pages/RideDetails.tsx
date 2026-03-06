@@ -172,19 +172,6 @@ export default function RideDetails() {
 
         await loadRideDetails();
       } else {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('total_bookings')
-          .eq('id', user.id)
-          .single();
-
-        if (profile) {
-          await supabase
-            .from('profiles')
-            .update({ total_bookings: (profile.total_bookings || 0) + 1 })
-            .eq('id', user.id);
-        }
-
         toast.success('Ride request sent successfully!');
         await Promise.all([loadRideDetails(), checkUserBooking()]);
       }

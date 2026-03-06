@@ -280,6 +280,14 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
   const typingTimeoutRef = useRef<number | null>(null);
   const conversationChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const overviewChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const retryTimeoutRef = useRef<number | null>(null);
+  const queueItemsRef = useRef<QueueItem[]>(queueItems);
+  const resolvingAttachmentsRef = useRef(false);
+
+  // Keep queueItemsRef in sync with queueItems state
+  useEffect(() => {
+    queueItemsRef.current = queueItems;
+  }, [queueItems]);
 
   useEffect(() => {
     serializeQueue(queueItems);
@@ -872,6 +880,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
     }
 
     if (updated.length) {
+      resolvingAttachmentsRef.current = true;
       setMessages((prev) =>
         prev.map((msg) => {
           const found = updated.find((u) => u.id === msg.id);
@@ -1030,8 +1039,9 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
         } else if (status === 'CHANNEL_ERROR') {
           console.error('[Realtime] Channel error:', err);
           toast.error('Connection lost. Retrying...');
-          // Retry after 3 seconds
-          setTimeout(() => setupConversationChannel(conversationId), 3000);
+          // Retry after 3 seconds (store timeout ID for cleanup)
+          if (retryTimeoutRef.current) window.clearTimeout(retryTimeoutRef.current);
+          retryTimeoutRef.current = window.setTimeout(() => setupConversationChannel(conversationId), 3000);
         } else if (status === 'TIMED_OUT') {
           console.error('[Realtime] Subscription timeout');
           toast.warning('Slow connection detected');
@@ -1439,7 +1449,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
 
   const processQueue = async () => {
     const now = Date.now();
-    for (const item of queueItems) {
+    for (const item of queueItemsRef.current) {
       if (item.status === 'failed') continue;
       const sendAt = new Date(item.sendAt).getTime();
       if (sendAt > now) continue;
@@ -1842,18 +1852,33 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
     });
     loadReadState(selectedConversationId);
     updatePresence(selectedConversationId);
-    const otherUserId = selectedConversation?.members.find((m) => m.user_id !== user.id)?.user_id;
+    // Derive otherUserId from conversations state directly to avoid depending on selectedConversation object ref
+    const conv = conversations.find((c) => c.id === selectedConversationId);
+    const otherUserId = conv?.members.find((m) => m.user_id !== user.id)?.user_id;
     checkBlocked(otherUserId);
     setupConversationChannel(selectedConversationId);
     return () => {
+      if (retryTimeoutRef.current) {
+        window.clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
       if (conversationChannelRef.current) {
         supabase.removeChannel(conversationChannelRef.current);
       }
     };
-  }, [selectedConversationId, user, selectedConversation, session?.access_token]);
+    // Note: we intentionally read `conversations` inside but don't list it as a dependency.
+    // The effect should only re-run when the selected conversation ID, user, or session token changes,
+    // not when conversation metadata (e.g., unread counts) updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedConversationId, user, session?.access_token]);
 
   useEffect(() => {
     if (!messages.length || !selectedConversationId) return;
+    // Skip if this effect's own resolveAttachmentUrls call triggered the messages update
+    if (resolvingAttachmentsRef.current) {
+      resolvingAttachmentsRef.current = false;
+      return;
+    }
     resolveAttachmentUrls(messages);
   }, [messages, selectedConversationId]);
 
@@ -1883,13 +1908,17 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
       processQueue();
     }, 3000);
     return () => window.clearInterval(interval);
-  }, [queueItems]);
+    // processQueue reads from queueItemsRef, so no need for queueItems in deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => processQueue();
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
-  }, [queueItems]);
+    // processQueue reads from queueItemsRef, so no need for queueItems in deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (loading) {
     return (

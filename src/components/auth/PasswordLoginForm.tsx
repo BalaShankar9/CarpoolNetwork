@@ -24,6 +24,7 @@ export default function PasswordLoginForm({ onSubmit, disabled = false }: Passwo
     } catch {
       setFailedAttempts(prev => prev + 1);
     } finally {
+      setPassword('');
       setLoading(false);
     }
   };

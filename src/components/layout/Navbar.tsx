@@ -49,7 +49,11 @@ export default function Navbar() {
                     onClose={() => setNotificationsOpen(false)}
                   />
                 </div>
-                <button className="p-2 text-gray-600 hover:text-blue-600 transition-colors relative" title="Messages">
+                <button
+                  onClick={() => navigate('/messages')}
+                  className="p-2 text-gray-600 hover:text-blue-600 transition-colors relative"
+                  title="Messages"
+                >
                   <MessageSquare className="w-6 h-6" />
                 </button>
                 <button

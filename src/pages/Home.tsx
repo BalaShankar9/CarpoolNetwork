@@ -62,7 +62,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadDashboardData();
+    let active = true;
+    loadDashboardData(active);
 
     const ridesChannel = supabase
       .channel('home-rides-changes')
@@ -74,7 +75,7 @@ export default function Home() {
           table: 'rides'
         },
         () => {
-          loadDashboardData();
+          loadDashboardData(true);
         }
       )
       .on(
@@ -85,17 +86,18 @@ export default function Home() {
           table: 'ride_bookings'
         },
         () => {
-          loadDashboardData();
+          loadDashboardData(true);
         }
       )
       .subscribe();
 
     return () => {
+      active = false;
       supabase.removeChannel(ridesChannel);
     };
   }, []);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (isMounted = true) => {
     try {
       // Load active rides count
       const { count: activeRidesCount } = await supabase
@@ -176,6 +178,8 @@ export default function Home() {
         }
       }
 
+      if (!isMounted) return;
+
       setStats({
         totalRidesOffered: profile?.total_rides_offered || 0,
         totalRidesTaken: profile?.total_rides_taken || 0,
@@ -188,6 +192,7 @@ export default function Home() {
       const rides = (recentRidesData as RecentRide[]) || [];
       const driverIds = rides.map((ride) => ride.driver_id);
       const driversById = await fetchPublicProfilesByIds(driverIds);
+      if (!isMounted) return;
       const filteredRides = rides
         .filter((ride) => ride.available_seats > 0)
         .map((ride) => ({

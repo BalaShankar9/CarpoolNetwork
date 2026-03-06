@@ -276,21 +276,21 @@ class ReferralService {
                 onConflict: 'user_id,badge_type'
             });
 
-        // Create notifications
+        // Create notifications using canonical SYSTEM type
         await supabase.from('notifications').insert([
             {
                 user_id: referrerId,
-                type: 'referral_complete',
-                title: 'Referral Reward! 🎉',
+                type: 'SYSTEM',
+                title: 'Referral Reward!',
                 message: `Your friend completed their first ride! You earned ${tierMultiplier} Community Champion badge${tierMultiplier > 1 ? 's' : ''}.`,
-                data: { referredId }
+                data: { referredId, original_type: 'referral_complete' }
             },
             {
                 user_id: referredId,
-                type: 'welcome_bonus',
-                title: 'Welcome to CarpoolNetwork! 🚗',
+                type: 'SYSTEM',
+                title: 'Welcome to CarpoolNetwork!',
                 message: 'You earned a Welcome Bonus badge for joining through a referral!',
-                data: { referrerId }
+                data: { referrerId, original_type: 'welcome_bonus' }
             }
         ]);
     }

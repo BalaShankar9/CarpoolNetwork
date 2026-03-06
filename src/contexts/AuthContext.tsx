@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
 
       if (!data) {
-        const fallbackEmail = user.email || `phone-${(user.phone || user.id).replace(/[^0-9A-Za-z]/g, '')}@carpoolnetwork.co.uk`;
+        const fallbackEmail = user.email || `phone-${(user.phone || user.id).replace(/[^0-9A-Za-z]/g, '')}@phone.noreply.invalid`;
         const fallbackName =
           user.user_metadata?.full_name ||
           user.user_metadata?.name ||

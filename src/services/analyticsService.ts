@@ -105,7 +105,6 @@ class AnalyticsService {
         departure_time,
         distance_km,
         duration_minutes,
-        price_per_seat,
         ride_bookings(id, passenger_id, status)
       `)
             .eq('driver_id', userId)
@@ -126,7 +125,6 @@ class AnalyticsService {
           departure_time,
           distance_km,
           duration_minutes,
-          price_per_seat,
           driver_id
         )
       `)
@@ -168,18 +166,9 @@ class AnalyticsService {
             0
         );
 
-        // Calculate money
-        const fuelContributions = completedDriverRides.reduce((sum, r) => {
-            const confirmedBookings = r.ride_bookings?.filter((b: any) => b.status === 'confirmed').length || 0;
-            return sum + (r.price_per_seat || 0) * confirmedBookings;
-        }, 0);
-
-        const moneySaved = completedPassengerRides.reduce((sum, r) => {
-            const distance = (r.ride as any)?.distance_km || 0;
-            const fuelCost = (distance / FUEL_EFFICIENCY) * FUEL_PRICE_PER_LITER;
-            const actualPaid = ((r.ride as any)?.price_per_seat || 0) * (r.seats_booked || 1);
-            return sum + Math.max(0, fuelCost - actualPaid);
-        }, 0);
+        // Free platform — no monetary transactions
+        const fuelContributions = 0;
+        const moneySaved = 0;
 
         // Calculate CO2 saved (sharing a ride saves emissions)
         const co2SavedDriver = completedDriverRides.reduce((sum, r) => {
@@ -246,14 +235,14 @@ class AnalyticsService {
         // Fetch all rides in period
         const { data: ridesAsDriver } = await supabase
             .from('rides')
-            .select('departure_time, distance_km, price_per_seat, ride_bookings(status)')
+            .select('departure_time, distance_km, ride_bookings(status)')
             .eq('driver_id', userId)
             .gte('departure_time', dateRange.start.toISOString())
             .lte('departure_time', dateRange.end.toISOString());
 
         const { data: ridesAsPassenger } = await supabase
             .from('ride_bookings')
-            .select('created_at, seats_booked, ride:rides(distance_km, price_per_seat)')
+            .select('created_at, seats_booked, ride:rides(distance_km)')
             .eq('passenger_id', userId)
             .eq('status', 'confirmed')
             .gte('created_at', dateRange.start.toISOString())
@@ -291,7 +280,7 @@ class AnalyticsService {
                 if (confirmedBookings > 0) {
                     trend.ridesGiven++;
                     trend.distance += ride.distance_km || 0;
-                    trend.contributions += (ride.price_per_seat || 0) * confirmedBookings;
+                    trend.contributions += 0;
                     trend.co2Saved += (ride.distance_km || 0) * CO2_PER_KM_CAR * confirmedBookings;
                 }
             }
@@ -306,9 +295,7 @@ class AnalyticsService {
                 const distance = (booking.ride as any).distance_km || 0;
                 trend.distance += distance;
                 trend.co2Saved += distance * CO2_PER_KM_CAR;
-                const fuelCost = (distance / FUEL_EFFICIENCY) * FUEL_PRICE_PER_LITER;
-                const paid = ((booking.ride as any).price_per_seat || 0) * (booking.seats_booked || 1);
-                trend.savings += Math.max(0, fuelCost - paid);
+                trend.savings += 0;
             }
         });
 

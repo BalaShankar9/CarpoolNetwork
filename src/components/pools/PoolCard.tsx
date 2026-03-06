@@ -124,12 +124,18 @@ export const PoolCard: React.FC<PoolCardProps> = ({
                             </>
                         ) : (
                             <>
-                                <button
-                                    onClick={onJoin}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                                >
-                                    {pool.is_private ? 'Request to Join' : 'Join Pool'}
-                                </button>
+                                {count >= pool.max_members ? (
+                                    <span className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-lg text-sm font-medium cursor-not-allowed">
+                                        Pool Full
+                                    </span>
+                                ) : (
+                                    <button
+                                        onClick={onJoin}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                                    >
+                                        {pool.is_private ? 'Request to Join' : 'Join Pool'}
+                                    </button>
+                                )}
                                 <Link
                                     to={`/pools/${pool.id}`}
                                     className="flex items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-sm"

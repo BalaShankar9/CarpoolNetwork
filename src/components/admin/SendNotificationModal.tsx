@@ -1,3 +1,4 @@
+const sanitizeSearch = (input: string) => input.replace(/[%_*()]/g, '');
 import { useState, useEffect } from 'react';
 import { X, Send, User, Search, Users } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -71,7 +72,7 @@ export default function SendNotificationModal({
                 const { data } = await supabase
                     .from('profiles')
                     .select('id, full_name, email, avatar_url')
-                    .or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
+                    .or(`full_name.ilike.%${sanitizeSearch(searchTerm)}%,email.ilike.%${sanitizeSearch(searchTerm)}%`)
                     .limit(10);
                 setUsers(data || []);
             } catch (err) {

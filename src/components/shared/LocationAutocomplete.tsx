@@ -54,6 +54,8 @@ export default function LocationAutocomplete({
   }, []);
 
   useEffect(() => {
+    let pollingInterval: ReturnType<typeof setInterval> | null = null;
+
     const loadGoogleMaps = async () => {
       if (typeof window.google !== 'undefined' && window.google.maps) {
         initAutocomplete();
@@ -67,13 +69,15 @@ export default function LocationAutocomplete({
 
       if (document.querySelector('script[src*="maps.googleapis.com"]')) {
         let attempts = 0;
-        const checkGoogle = setInterval(() => {
+        pollingInterval = setInterval(() => {
           attempts++;
           if (typeof window.google !== 'undefined' && window.google.maps) {
-            clearInterval(checkGoogle);
+            clearInterval(pollingInterval!);
+            pollingInterval = null;
             initAutocomplete();
           } else if (attempts > 50) {
-            clearInterval(checkGoogle);
+            clearInterval(pollingInterval!);
+            pollingInterval = null;
           }
         }, 100);
         return;
@@ -128,6 +132,9 @@ export default function LocationAutocomplete({
     };
 
     loadGoogleMaps();
+    return () => {
+      if (pollingInterval) clearInterval(pollingInterval);
+    };
   }, [onChange, mapsApiKey]);
 
   useEffect(() => {

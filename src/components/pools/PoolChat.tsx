@@ -43,6 +43,7 @@ export const PoolChat: React.FC<PoolChatProps> = ({ poolId, poolName }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
     const [showEmojis, setShowEmojis] = useState(false);
+    const [isMember, setIsMember] = useState<boolean | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -50,8 +51,36 @@ export const PoolChat: React.FC<PoolChatProps> = ({ poolId, poolName }) => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, []);
 
+    // Check pool membership
+    useEffect(() => {
+        const checkMembership = async () => {
+            if (!user) {
+                setIsMember(false);
+                return;
+            }
+            try {
+                const { data, error } = await supabase
+                    .from('carpool_pool_members')
+                    .select('id')
+                    .eq('pool_id', poolId)
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+
+                if (error) throw error;
+                setIsMember(!!data);
+            } catch (err) {
+                console.error('Failed to check pool membership:', err);
+                setIsMember(false);
+            }
+        };
+
+        checkMembership();
+    }, [poolId, user]);
+
     // Load messages
     useEffect(() => {
+        if (!isMember) return;
+
         const loadMessages = async () => {
             setIsLoading(true);
             try {
@@ -80,10 +109,12 @@ export const PoolChat: React.FC<PoolChatProps> = ({ poolId, poolName }) => {
         };
 
         loadMessages();
-    }, [poolId]);
+    }, [poolId, isMember]);
 
     // Subscribe to new messages
     useEffect(() => {
+        if (!isMember) return;
+
         const channel = supabase
             .channel(`pool-chat-${poolId}`)
             .on(
@@ -111,7 +142,7 @@ export const PoolChat: React.FC<PoolChatProps> = ({ poolId, poolName }) => {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [poolId]);
+    }, [poolId, isMember]);
 
     // Scroll to bottom when messages change
     useEffect(() => {
@@ -187,6 +218,24 @@ export const PoolChat: React.FC<PoolChatProps> = ({ poolId, poolName }) => {
             groupedMessages[groupedMessages.length - 1].messages.push(msg);
         }
     });
+
+    if (isMember === null) {
+        return (
+            <div className="flex items-center justify-center h-[500px] bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
+
+    if (!isMember) {
+        return (
+            <div className="flex items-center justify-center h-[500px] bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+                <p className="text-gray-500 dark:text-gray-400 text-center px-4">
+                    You must be a pool member to access chat.
+                </p>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-[500px] bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">

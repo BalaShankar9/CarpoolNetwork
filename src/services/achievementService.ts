@@ -199,6 +199,8 @@ export async function getUserStats(userId: string): Promise<UserStats> {
     reviewsGivenResult,
     profileResult,
     friendsResult,
+    uniquePassengersResult,
+    uniqueDriversResult,
   ] = await Promise.all([
     supabase
       .from('rides')
@@ -227,12 +229,30 @@ export async function getUserStats(userId: string): Promise<UserStats> {
     supabase
       .from('friendships')
       .select('*', { count: 'exact', head: true })
-      .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
-      .eq('status', 'accepted'),
+      .or(`user_a.eq.${userId},user_b.eq.${userId}`),
+    supabase
+      .from('ride_bookings')
+      .select('passenger_id')
+      .eq('status', 'completed')
+      .in('ride_id',
+        (await supabase.from('rides').select('id').eq('driver_id', userId).eq('status', 'completed')).data?.map(r => r.id) || []
+      ),
+    supabase
+      .from('ride_bookings')
+      .select('ride_id, rides!inner(driver_id)')
+      .eq('passenger_id', userId)
+      .eq('status', 'completed'),
   ]);
 
   const ridesAsDriver = ridesAsDriverResult.count || 0;
   const ridesAsPassenger = ridesAsPassengerResult.count || 0;
+
+  const uniquePassengers = new Set(
+    (uniquePassengersResult.data || []).map((b: any) => b.passenger_id)
+  ).size;
+  const uniqueDrivers = new Set(
+    (uniqueDriversResult.data || []).map((b: any) => (b.rides as any)?.driver_id)
+  ).size;
 
   const profile = profileResult.data;
   const accountAgeDays = profile?.created_at
@@ -255,9 +275,9 @@ export async function getUserStats(userId: string): Promise<UserStats> {
     totalRides: ridesAsDriver + ridesAsPassenger,
     fiveStarRatings: fiveStarResult.count || 0,
     reviewsGiven: reviewsGivenResult.count || 0,
-    uniquePassengers: 0, // Would need separate query
-    uniqueDrivers: 0, // Would need separate query
-    co2Saved: (ridesAsDriver + ridesAsPassenger) * 2.3, // ~2.3kg per shared ride
+    uniquePassengers,
+    uniqueDrivers,
+    co2Saved: (ridesAsDriver + ridesAsPassenger) * 2.3,
     accountAgeDays,
     verificationLevel,
     friendsCount: friendsResult.count || 0,

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Calendar, Save, X, Users } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import LocationAutocomplete from '../shared/LocationAutocomplete';
 import TrainlineDateTimePicker from '../shared/TrainlineDateTimePicker';
 import { notify } from '../../lib/toast';
@@ -42,6 +43,7 @@ const parseTimeValue = (value: string) => {
 };
 
 export default function EditRideModal({ ride, isOpen, onClose, onSaved }: EditRideModalProps) {
+  const { user } = useAuth();
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [originCoords, setOriginCoords] = useState({ lat: 0, lng: 0 });

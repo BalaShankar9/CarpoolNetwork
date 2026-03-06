@@ -3,7 +3,6 @@ import {
     Car,
     Users,
     Star,
-    TrendingUp,
     Calendar,
     Clock,
     MapPin,
@@ -24,7 +23,6 @@ interface DriverStats {
     totalRides: number;
     totalPassengers: number;
     averageRating: number;
-    totalEarnings: number;
     totalDistance: number;
     co2Saved: number;
     completionRate: number;
@@ -38,7 +36,6 @@ interface UpcomingRide {
     departure_time: string;
     available_seats: number;
     booked_count: number;
-    price_per_seat: number;
     status: string;
 }
 
@@ -88,7 +85,7 @@ export default function DriverDashboard() {
             const [ridesData, reviewsData] = await Promise.all([
                 supabase
                     .from('rides')
-                    .select('id, status, price_per_seat, distance_km')
+                    .select('id, status, distance_km')
                     .eq('driver_id', user.id),
                 supabase
                     .from('ride_reviews_detailed')
@@ -108,9 +105,6 @@ export default function DriverDashboard() {
             const bookings = bookingsData || [];
             const completedBookings = bookings.filter((b: any) => b.status === 'completed');
             const totalPassengers = completedBookings.reduce((sum: number, b: any) => sum + (b.seats_requested || 1), 0);
-            const totalEarnings = rides
-                .filter(r => r.status === 'completed')
-                .reduce((sum, r) => sum + (r.price_per_seat || 0), 0);
 
             const totalDistance = rides.reduce((sum, r) => sum + (r.distance_km || 0), 0);
             const avgRating = reviews.length > 0
@@ -121,7 +115,6 @@ export default function DriverDashboard() {
                 totalRides: rides.filter(r => r.status === 'completed').length,
                 totalPassengers,
                 averageRating: avgRating,
-                totalEarnings,
                 totalDistance,
                 co2Saved: totalDistance * 0.12, // ~120g CO2 per km saved per passenger
                 completionRate: rides.length > 0
@@ -139,7 +132,6 @@ export default function DriverDashboard() {
           destination,
           departure_time,
           available_seats,
-          price_per_seat,
           status,
           ride_bookings(id, status)
         `)
@@ -505,7 +497,7 @@ export default function DriverDashboard() {
                                             <p className="font-medium">
                                                 {ride.booked_count}/{ride.available_seats} booked
                                             </p>
-                                            <p className="text-sm text-gray-500">${ride.price_per_seat}/seat</p>
+                                            <p className="text-sm text-green-600">Free</p>
                                         </div>
                                     </div>
                                 </div>

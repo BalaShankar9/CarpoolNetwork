@@ -73,10 +73,10 @@ export default function ProfileCompletionTracker() {
   const isComplete = completionPercentage === 100;
 
   const getMilestone = () => {
-    if (completionPercentage >= 100) return { level: 'Complete', badge: '🎉', color: 'green' };
-    if (completionPercentage >= 75) return { level: 'Almost There', badge: '⭐', color: 'yellow' };
-    if (completionPercentage >= 50) return { level: 'Halfway', badge: '🚀', color: 'blue' };
-    return { level: 'Getting Started', badge: '🌱', color: 'gray' };
+    if (completionPercentage >= 100) return { level: 'Complete', badge: '🎉', color: 'green', textClass: 'text-green-500' };
+    if (completionPercentage >= 75) return { level: 'Almost There', badge: '⭐', color: 'yellow', textClass: 'text-yellow-500' };
+    if (completionPercentage >= 50) return { level: 'Halfway', badge: '🚀', color: 'blue', textClass: 'text-blue-500' };
+    return { level: 'Getting Started', badge: '🌱', color: 'gray', textClass: 'text-gray-500' };
   };
 
   const milestone = getMilestone();
@@ -140,7 +140,7 @@ export default function ProfileCompletionTracker() {
               fill="transparent"
               strokeDasharray={`${2 * Math.PI * 35}`}
               strokeDashoffset={`${2 * Math.PI * 35 * (1 - completionPercentage / 100)}`}
-              className={`text-${milestone.color}-500 transition-all duration-500`}
+              className={`${milestone.textClass} transition-all duration-500`}
               strokeLinecap="round"
             />
           </svg>

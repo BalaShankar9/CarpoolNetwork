@@ -7,7 +7,6 @@ import {
     Calendar,
     MapPin,
     Users,
-    DollarSign,
     Search,
 } from 'lucide-react';
 
@@ -21,8 +20,6 @@ export interface RideFiltersType {
     destinationSearch: string;
     minSeats: string;
     maxSeats: string;
-    minPrice: string;
-    maxPrice: string;
     hasBookings: 'all' | 'yes' | 'no';
     isRecurring: 'all' | 'yes' | 'no';
 }
@@ -44,8 +41,6 @@ export const DEFAULT_RIDE_FILTERS: RideFiltersType = {
     destinationSearch: '',
     minSeats: '',
     maxSeats: '',
-    minPrice: '',
-    maxPrice: '',
     hasBookings: 'all',
     isRecurring: 'all',
 };
@@ -238,39 +233,6 @@ export default function RideFilters({
                                 value={filters.maxSeats}
                                 onChange={(e) => updateFilter('maxSeats', e.target.value)}
                                 placeholder="10"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                            />
-                        </div>
-
-                        {/* Min Price */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                <DollarSign className="w-4 h-4 inline mr-1" />
-                                Min Price
-                            </label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={filters.minPrice}
-                                onChange={(e) => updateFilter('minPrice', e.target.value)}
-                                placeholder="£0"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                            />
-                        </div>
-
-                        {/* Max Price */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Max Price
-                            </label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={filters.maxPrice}
-                                onChange={(e) => updateFilter('maxPrice', e.target.value)}
-                                placeholder="£999"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                             />
                         </div>

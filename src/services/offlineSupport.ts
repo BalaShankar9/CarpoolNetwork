@@ -80,7 +80,7 @@ class OfflineManager {
           return await supabase.from('rides').insert(action.action_data);
 
         case 'book_ride':
-          return await supabase.from('bookings').insert(action.action_data);
+          return await supabase.from('ride_bookings').insert(action.action_data);
 
         case 'send_message':
         case 'send_chat_message':
@@ -94,7 +94,7 @@ class OfflineManager {
 
         case 'cancel_booking':
           return await supabase
-            .from('bookings')
+            .from('ride_bookings')
             .update({ status: 'cancelled' })
             .eq('id', action.action_data.id);
 

@@ -117,7 +117,16 @@ export async function searchPools(
     const { data, error } = await query.limit(20);
 
     if (error) throw error;
-    return data || [];
+
+    // member_count comes back as [{count: N}] from the aggregate; extract the number
+    const pools = (data || []).map((pool: any) => ({
+        ...pool,
+        member_count: Array.isArray(pool.member_count)
+            ? pool.member_count[0]?.count ?? 0
+            : pool.member_count ?? 0,
+    }));
+
+    return pools;
 }
 
 /**
@@ -174,11 +183,12 @@ export async function updatePool(
 /**
  * Delete a pool
  */
-export async function deletePool(poolId: string): Promise<void> {
+export async function deletePool(poolId: string, userId: string): Promise<void> {
     const { error } = await supabase
         .from('carpool_pools')
         .delete()
-        .eq('id', poolId);
+        .eq('id', poolId)
+        .eq('created_by', userId);
 
     if (error) throw error;
 }

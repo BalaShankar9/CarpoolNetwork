@@ -91,7 +91,8 @@ export default function RecurringRidesManager() {
       const { error } = await supabase
         .from('rides')
         .delete()
-        .eq('id', deleteConfirmId);
+        .eq('id', deleteConfirmId)
+        .eq('driver_id', profile?.id);
 
       if (error) throw error;
       await loadRecurringRides();

@@ -265,7 +265,7 @@ export default function SOSButton({ rideId, location, compact = false }: SOSButt
       )}
 
       {sosActive && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg z-[60] animate-pulse">
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg z-[9998] animate-pulse">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5" />
             <span className="font-bold">Emergency SOS Active</span>

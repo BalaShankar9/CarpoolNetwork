@@ -189,11 +189,16 @@ export const RidePreferencesForm: React.FC<RidePreferencesFormProps> = ({
                 ].map(toggle => {
                     const Icon = toggle.icon;
                     const isEnabled = preferences[toggle.key as keyof typeof preferences] as boolean;
+                    const iconColorMap: Record<string, string> = {
+                        red: 'text-red-500',
+                        amber: 'text-amber-500',
+                        pink: 'text-pink-500',
+                    };
 
                     return (
                         <div key={toggle.key} className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <Icon className={`w-5 h-5 text-${toggle.color}-500`} />
+                                <Icon className={`w-5 h-5 ${iconColorMap[toggle.color] || 'text-gray-500'}`} />
                                 <span className="text-gray-700 dark:text-gray-300">{toggle.label}</span>
                             </div>
                             <button

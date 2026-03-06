@@ -251,9 +251,9 @@ class TrustVerificationService {
             .eq('driver_id', userId);
 
         const { data: asPassenger } = await supabase
-            .from('bookings')
+            .from('ride_bookings')
             .select('status')
-            .eq('user_id', userId);
+            .eq('passenger_id', userId);
 
         const allRides = [...(asDriver || []), ...(asPassenger || [])];
 

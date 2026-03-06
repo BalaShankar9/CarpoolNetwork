@@ -10,7 +10,6 @@ import {
     Clock,
     MapPin,
     Users,
-    DollarSign,
     Car,
     CheckCircle,
     XCircle,
@@ -53,7 +52,6 @@ interface BookingDetail {
         departure_time: string;
         arrival_time: string | null;
         available_seats: number;
-        price_per_seat: number | null;
         status: string;
         notes: string | null;
         driver_id: string;
@@ -137,7 +135,6 @@ export default function BookingDetailAdmin() {
             departure_time,
             arrival_time,
             available_seats,
-            price_per_seat,
             status,
             notes,
             driver_id,
@@ -319,8 +316,6 @@ export default function BookingDetailAdmin() {
 
     const rideDt = formatDateTime(booking.ride.departure_time);
     const createdDt = formatDateTime(booking.created_at);
-    const totalAmount = booking.seats_requested * (booking.ride.price_per_seat || 0);
-
     return (
         <AdminLayout
             title="Booking Details"
@@ -446,10 +441,9 @@ export default function BookingDetailAdmin() {
                                 </div>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-500 mb-1">Total Amount</p>
+                                <p className="text-sm text-gray-500 mb-1">Cost</p>
                                 <div className="flex items-center gap-2">
-                                    <DollarSign className="w-5 h-5 text-gray-400" />
-                                    <span className="text-lg font-semibold text-gray-900">£{totalAmount.toFixed(2)}</span>
+                                    <span className="text-lg font-semibold text-green-600">Free</span>
                                 </div>
                             </div>
                             {booking.pickup_location && (
@@ -628,14 +622,10 @@ export default function BookingDetailAdmin() {
                         </div>
                     )}
 
-                    {/* Payment Info */}
+                    {/* Ride Cost */}
                     <div className="bg-white rounded-xl border border-gray-200 p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Ride Cost</h3>
                         <div className="space-y-3">
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">Price per seat</span>
-                                <span className="font-medium">£{(booking.ride.price_per_seat || 0).toFixed(2)}</span>
-                            </div>
                             <div className="flex justify-between">
                                 <span className="text-gray-500">Seats</span>
                                 <span className="font-medium">× {booking.seats_requested}</span>
@@ -643,19 +633,8 @@ export default function BookingDetailAdmin() {
                             <hr />
                             <div className="flex justify-between text-lg">
                                 <span className="font-medium">Total</span>
-                                <span className="font-bold text-green-600">£{totalAmount.toFixed(2)}</span>
+                                <span className="font-bold text-green-600">Free</span>
                             </div>
-                            {booking.payment_status && (
-                                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                                    <p className="text-xs text-gray-500">Payment Status</p>
-                                    <p className={`font-medium ${booking.payment_status === 'completed' ? 'text-green-600' :
-                                            booking.payment_status === 'pending' ? 'text-orange-600' :
-                                                'text-gray-600'
-                                        }`}>
-                                        {booking.payment_status.charAt(0).toUpperCase() + booking.payment_status.slice(1)}
-                                    </p>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>

@@ -601,16 +601,16 @@ class EmergencyService {
     ): Promise<void> {
         // Get ride passengers
         const { data: bookings } = await supabase
-            .from('bookings')
-            .select('user_id')
+            .from('ride_bookings')
+            .select('passenger_id')
             .eq('ride_id', rideId)
             .eq('status', 'confirmed');
 
         // Notify passengers
         for (const booking of bookings || []) {
             await supabase.from('notifications').insert({
-                user_id: booking.user_id,
-                type: 'route_deviation',
+                user_id: booking.passenger_id,
+                type: 'SAFETY_ALERT',
                 title: '⚠️ Route Deviation Detected',
                 message: `The driver has deviated ${deviationKm.toFixed(1)}km from the expected route.`,
                 data: { ride_id: rideId, latitude: location.lat, longitude: location.lng },

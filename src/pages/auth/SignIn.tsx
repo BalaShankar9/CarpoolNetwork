@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { AlertCircle } from 'lucide-react';
 import AuthLayout from '../../components/auth/AuthLayout';
@@ -14,6 +14,7 @@ type AuthMode = 'password' | 'otp';
 
 export default function SignIn() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [authMode, setAuthMode] = useState<AuthMode>('password');
   const [error, setError] = useState('');
   const { signIn, signInWithGoogle, signInWithGitHub, signInWithOTP } = useAuth();
@@ -58,7 +59,8 @@ export default function SignIn() {
         setError(mapAuthError(authError.message));
         throw new Error('Login failed');
       } else {
-        navigate('/');
+        const from = location.state?.from?.pathname || '/';
+        navigate(from, { replace: true });
       }
     } catch (err) {
       if (!error) setError('Login failed');

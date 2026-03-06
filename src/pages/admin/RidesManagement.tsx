@@ -1,3 +1,4 @@
+const sanitizeSearch = (input: string) => input.replace(/[%_*()]/g, '');
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
@@ -59,7 +60,6 @@ interface AdminRide {
     departure_time: string;
     available_seats: number;
     total_seats: number;
-    price_per_seat: number | null;
     status: string;
     notes: string | null;
     is_recurring: boolean;
@@ -154,22 +154,16 @@ export default function RidesManagement() {
                 query = query.lte('departure_time', filters.dateTo + 'T23:59:59');
             }
             if (filters.originSearch) {
-                query = query.ilike('origin', `%${filters.originSearch}%`);
+                query = query.ilike('origin', `%${sanitizeSearch(filters.originSearch)}%`);
             }
             if (filters.destinationSearch) {
-                query = query.ilike('destination', `%${filters.destinationSearch}%`);
+                query = query.ilike('destination', `%${sanitizeSearch(filters.destinationSearch)}%`);
             }
             if (filters.minSeats) {
                 query = query.gte('available_seats', parseInt(filters.minSeats));
             }
             if (filters.maxSeats) {
                 query = query.lte('available_seats', parseInt(filters.maxSeats));
-            }
-            if (filters.minPrice) {
-                query = query.gte('price_per_seat', parseFloat(filters.minPrice));
-            }
-            if (filters.maxPrice) {
-                query = query.lte('price_per_seat', parseFloat(filters.maxPrice));
             }
             if (filters.isRecurring === 'yes') {
                 query = query.eq('is_recurring', true);
@@ -179,7 +173,7 @@ export default function RidesManagement() {
 
             // Apply search query
             if (searchQuery) {
-                query = query.or(`origin.ilike.%${searchQuery}%,destination.ilike.%${searchQuery}%`);
+                query = query.or(`origin.ilike.%${sanitizeSearch(searchQuery)}%,destination.ilike.%${sanitizeSearch(searchQuery)}%`);
             }
 
             // Apply sorting
@@ -194,32 +188,29 @@ export default function RidesManagement() {
 
             if (error) throw error;
 
-            // Fetch booking counts for each ride
-            const ridesWithBookings = await Promise.all(
-                (data || []).map(async (ride) => {
-                    const { data: bookings } = await supabase
-                        .from('ride_bookings')
-                        .select('status')
-                        .eq('ride_id', ride.id);
+            // Batch fetch booking counts (single query instead of N+1)
+            const rideIds = (data || []).map(r => r.id);
+            const { data: allBookings } = rideIds.length > 0
+                ? await supabase
+                    .from('ride_bookings')
+                    .select('ride_id, status')
+                    .in('ride_id', rideIds)
+                : { data: [] };
 
-                    const bookingStats = bookings?.reduce(
-                        (acc, b) => {
-                            acc.total++;
-                            if (b.status === 'confirmed') acc.confirmed++;
-                            if (b.status === 'pending') acc.pending++;
-                            return acc;
-                        },
-                        { total: 0, confirmed: 0, pending: 0 }
-                    ) || { total: 0, confirmed: 0, pending: 0 };
+            const bookingsByRide = (allBookings || []).reduce((acc: Record<string, { total: number; confirmed: number; pending: number }>, b) => {
+                if (!acc[b.ride_id]) acc[b.ride_id] = { total: 0, confirmed: 0, pending: 0 };
+                acc[b.ride_id].total++;
+                if (b.status === 'confirmed') acc[b.ride_id].confirmed++;
+                if (b.status === 'pending') acc[b.ride_id].pending++;
+                return acc;
+            }, {});
 
-                    return {
-                        ...ride,
-                        bookings_count: bookingStats.total,
-                        confirmed_bookings: bookingStats.confirmed,
-                        pending_bookings: bookingStats.pending,
-                    };
-                })
-            );
+            const ridesWithBookings = (data || []).map(ride => ({
+                ...ride,
+                bookings_count: bookingsByRide[ride.id]?.total || 0,
+                confirmed_bookings: bookingsByRide[ride.id]?.confirmed || 0,
+                pending_bookings: bookingsByRide[ride.id]?.pending || 0,
+            }));
 
             // Apply hasBookings filter client-side
             let filteredRides = ridesWithBookings;
@@ -370,7 +361,7 @@ export default function RidesManagement() {
                 : rides;
 
             const csv = [
-                'Ride ID,Driver Name,Driver Email,Origin,Destination,Departure Date,Departure Time,Total Seats,Available Seats,Price,Status,Bookings,Notes,Created At',
+                'Ride ID,Driver Name,Driver Email,Origin,Destination,Departure Date,Departure Time,Total Seats,Available Seats,Status,Bookings,Notes,Created At',
                 ...dataToExport.map(r => [
                     r.id,
                     r.driver?.full_name || 'Unknown',
@@ -381,7 +372,6 @@ export default function RidesManagement() {
                     new Date(r.departure_time).toLocaleTimeString(),
                     r.total_seats,
                     r.available_seats,
-                    r.price_per_seat || 0,
                     r.status,
                     r.bookings_count,
                     `"${r.notes || ''}"`,

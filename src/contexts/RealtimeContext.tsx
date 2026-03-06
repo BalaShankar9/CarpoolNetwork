@@ -181,6 +181,15 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     // Keep unread counts in sync for new messages and read updates.
     // Note: chat_messages has no recipient column (conversation-based model),
     // so we filter out own messages; RLS + the RPC handle user scoping.
+    //
+    // SECURITY: The `sender_id=neq.${user.id}` filter alone does NOT scope
+    // events to conversations this user belongs to. However, Supabase Realtime
+    // enforces RLS policies on postgres_changes by default (using the
+    // authenticated user's JWT). The "Members can read chat messages" SELECT
+    // policy on chat_messages ensures the user only receives INSERT events for
+    // conversations where they are a member. No additional client-side
+    // filtering is required as long as RLS remains enabled on the table.
+    // See migration: 20260105120000_upgrade_messaging_system.sql, lines 584-593.
     const messageChan = supabase
       .channel(`chat-messages:${user.id}`)
       .on(

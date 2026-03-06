@@ -243,19 +243,7 @@ export default function GroupDetail() {
 
             if (error) throw error;
 
-            // Decrement member count atomically by re-reading from DB
-            const { data: currentGroup } = await supabase
-                .from('social_groups')
-                .select('member_count')
-                .eq('id', groupId)
-                .single();
-            if (currentGroup) {
-                await supabase
-                    .from('social_groups')
-                    .update({ member_count: Math.max(0, (currentGroup.member_count || 1) - 1) })
-                    .eq('id', groupId);
-            }
-
+            // Reload group data to get accurate member_count from the database
             toast.success(`Removed ${userName} from group`);
             await loadGroup();
         } catch (err) {
@@ -424,7 +412,7 @@ export default function GroupDetail() {
                                         </button>
                                     )}
                                 </>
-                            ) : (
+                            ) : group.visibility === 'PUBLIC' ? (
                                 <button
                                     onClick={joinGroup}
                                     disabled={processingAction === 'join'}
@@ -437,6 +425,11 @@ export default function GroupDetail() {
                                     )}
                                     Join Group
                                 </button>
+                            ) : (
+                                <span className="flex items-center gap-2 px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
+                                    <Lock className="w-4 h-4" />
+                                    {group.visibility === 'INVITE_ONLY' ? 'Invite Only' : 'Private Group'}
+                                </span>
                             )}
                         </div>
                     </div>

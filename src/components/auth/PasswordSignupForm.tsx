@@ -124,7 +124,7 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
     try {
       await onSubmit(email, password, fullName, fullPhoneNumber);
     } catch (err: any) {
-      setError(err.message || 'Failed to create account. Please try again.');
+      setError('Failed to create account. Please try again.');
     } finally {
       setLoading(false);
     }

@@ -23,7 +23,6 @@ interface BookingEditModalProps {
         special_requests: string | null;
         ride: {
             available_seats: number;
-            price_per_seat: number | null;
         };
     };
     onClose: () => void;
@@ -141,8 +140,6 @@ export default function BookingEditModal({ booking, onClose, onSave }: BookingEd
         }
     };
 
-    const totalAmount = formData.seats_requested * (booking.ride.price_per_seat || 0);
-
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
@@ -182,8 +179,8 @@ export default function BookingEditModal({ booking, onClose, onSave }: BookingEd
                         {errors.seats_requested && (
                             <p className="text-sm text-red-600 mt-1">{errors.seats_requested}</p>
                         )}
-                        <p className="text-sm text-gray-500 mt-1">
-                            New total: £{totalAmount.toFixed(2)}
+                        <p className="text-sm text-green-600 mt-1">
+                            Free community ride
                         </p>
                     </div>
 

@@ -1,3 +1,63 @@
+/**
+ * Sanitize a URL for safe use in href attributes.
+ * Only allows http: and https: protocols. Returns '#' for anything
+ * dangerous (javascript:, data:, vbscript:, etc.).
+ */
+export const sanitizeUrl = (url: string | undefined | null): string => {
+  if (!url) return '#';
+  const trimmed = url.trim();
+  if (!trimmed) return '#';
+  try {
+    const parsed = new URL(trimmed);
+    const protocol = parsed.protocol.toLowerCase();
+    if (protocol === 'http:' || protocol === 'https:') {
+      return parsed.href;
+    }
+    return '#';
+  } catch {
+    // Relative URLs or malformed — reject to be safe
+    return '#';
+  }
+};
+
+/**
+ * Maximum file upload size in bytes (10 MB).
+ */
+export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Maximum number of files per message.
+ */
+export const MAX_FILE_COUNT = 5;
+
+/**
+ * Allowed MIME type prefixes / extensions for file uploads.
+ * Used as the `accept` attribute value on file inputs.
+ */
+export const ALLOWED_FILE_ACCEPT =
+  'image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip';
+
+/**
+ * Validate files selected for upload.
+ * Returns an error string if validation fails, or null if all files are valid.
+ */
+export const validateFileUploads = (
+  files: FileList | File[]
+): string | null => {
+  const fileArray = Array.from(files);
+  if (fileArray.length === 0) return 'No files selected.';
+  if (fileArray.length > MAX_FILE_COUNT) {
+    return `You can attach up to ${MAX_FILE_COUNT} files at a time.`;
+  }
+  for (const file of fileArray) {
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      const sizeMB = (MAX_FILE_SIZE_BYTES / (1024 * 1024)).toFixed(0);
+      return `"${file.name}" exceeds the ${sizeMB} MB size limit.`;
+    }
+  }
+  return null;
+};
+
 export type ChatMessageLite = {
   id?: string;
   conversation_id?: string;

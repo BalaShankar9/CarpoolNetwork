@@ -25,7 +25,6 @@ interface RideEditModalProps {
         departure_time: string;
         available_seats: number;
         total_seats: number;
-        price_per_seat: number | null;
         status: string;
         notes: string | null;
     };
@@ -45,7 +44,6 @@ export default function RideEditModal({ ride, onClose, onSaved }: RideEditModalP
         departure_time: ride.departure_time.split('T')[1]?.slice(0, 5) || '09:00',
         available_seats: ride.available_seats.toString(),
         total_seats: ride.total_seats.toString(),
-        price_per_seat: ride.price_per_seat?.toString() || '',
         status: ride.status,
         notes: ride.notes || '',
     });
@@ -110,7 +108,6 @@ export default function RideEditModal({ ride, onClose, onSaved }: RideEditModalP
                 departure_time: departureTime,
                 available_seats: parseInt(formData.available_seats),
                 total_seats: parseInt(formData.total_seats),
-                price_per_seat: formData.price_per_seat ? parseFloat(formData.price_per_seat) : null,
                 status: formData.status,
                 notes: formData.notes || null,
             };
@@ -264,13 +261,13 @@ export default function RideEditModal({ ride, onClose, onSaved }: RideEditModalP
                         </div>
                     </div>
 
-                    {/* Capacity & Pricing */}
+                    {/* Capacity */}
                     <div>
                         <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                             <Users className="w-4 h-4 text-gray-400" />
-                            Capacity & Pricing
+                            Capacity
                         </h3>
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Total Seats *
@@ -298,20 +295,6 @@ export default function RideEditModal({ ride, onClose, onSaved }: RideEditModalP
                                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.available_seats ? 'border-red-500' : 'border-gray-300'}`}
                                 />
                                 {errors.available_seats && <p className="text-xs text-red-500 mt-1">{errors.available_seats}</p>}
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Price per Seat (£)
-                                </label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={formData.price_per_seat}
-                                    onChange={(e) => handleChange('price_per_seat', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    placeholder="0.00"
-                                />
                             </div>
                         </div>
                     </div>

@@ -31,7 +31,9 @@ export async function checkRateLimit(
 
     if (error) {
       console.error('Rate limit check error:', error);
-      return { allowed: true };
+      // Fail-closed: deny the request when rate-limit state is unknown to
+      // prevent bypass during database outages.
+      return { allowed: false, error: 'Rate limit check unavailable. Please try again shortly.' };
     }
 
     if (!data) {
@@ -44,7 +46,9 @@ export async function checkRateLimit(
     return { allowed: true };
   } catch (err) {
     console.error('Rate limit check failed:', err);
-    return { allowed: true };
+    // Fail-closed: deny the request when rate-limit state is unknown to
+    // prevent bypass during database outages.
+    return { allowed: false, error: 'Rate limit check unavailable. Please try again shortly.' };
   }
 }
 
