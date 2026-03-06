@@ -134,7 +134,10 @@ export const PoolChat: React.FC<PoolChatProps> = ({ poolId, poolName }) => {
                         .single();
 
                     const newMsg = payload.new as ChatMessage;
-                    setMessages(prev => [...prev, { ...newMsg, user: userData || undefined }]);
+                    setMessages(prev => {
+                        if (prev.some(m => m.id === newMsg.id)) return prev;
+                        return [...prev, { ...newMsg, user: userData || undefined }];
+                    });
                 }
             )
             .subscribe();

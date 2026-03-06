@@ -198,9 +198,11 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
           event: 'INSERT',
           schema: 'public',
           table: 'chat_messages',
-          filter: `sender_id=neq.${user.id}`
         },
-        () => {
+        (payload) => {
+          // Supabase Realtime only supports eq/in/lt/lte/gt/gte filters,
+          // NOT neq. Filter out own messages client-side instead.
+          if (payload.new && (payload.new as any).sender_id === user.id) return;
           loadUnreadMessages();
         }
       )
