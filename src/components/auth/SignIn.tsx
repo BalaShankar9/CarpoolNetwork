@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { mapAuthError } from '../../utils/authErrors';
 
 export default function SignIn({ onToggle }: { onToggle: () => void }) {
   const [email, setEmail] = useState('');
@@ -15,7 +17,7 @@ export default function SignIn({ onToggle }: { onToggle: () => void }) {
 
     const { error } = await signIn(email, password);
     if (error) {
-      setError(error.message);
+      setError(mapAuthError(error.message));
     }
     setLoading(false);
   };
@@ -62,6 +64,15 @@ export default function SignIn({ onToggle }: { onToggle: () => void }) {
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="••••••••"
           />
+        </div>
+
+        <div className="flex items-center justify-end">
+          <Link
+            to="/forgot-password"
+            className="text-sm text-blue-600 font-medium hover:underline"
+          >
+            Forgot Password?
+          </Link>
         </div>
 
         <button

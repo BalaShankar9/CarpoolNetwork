@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Phone, Plus, Edit, Trash2, AlertTriangle, CheckCircle, X, UserPlus } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -26,6 +26,12 @@ export default function EmergencyContactsManager() {
     relationship: '',
     is_primary: false
   });
+
+  useEffect(() => {
+    if (!success) return;
+    const timer = setTimeout(() => setSuccess(''), 3000);
+    return () => clearTimeout(timer);
+  }, [success]);
 
   useEffect(() => {
     if (profile?.id) {
@@ -61,6 +67,12 @@ export default function EmergencyContactsManager() {
     try {
       if (!formData.name.trim() || !formData.phone.trim()) {
         setError('Name and phone number are required');
+        return;
+      }
+
+      const phoneDigits = formData.phone.replace(/\D/g, '');
+      if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+        setError('Please enter a valid phone number with country code (e.g., +44 7700 900000)');
         return;
       }
 
@@ -103,7 +115,6 @@ export default function EmergencyContactsManager() {
       setShowForm(false);
       setEditingId(null);
       await loadContacts();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message || 'Failed to save contact');
     }
@@ -132,7 +143,6 @@ export default function EmergencyContactsManager() {
       if (error) throw error;
       setSuccess('Contact deleted successfully');
       await loadContacts();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message || 'Failed to delete contact');
     }

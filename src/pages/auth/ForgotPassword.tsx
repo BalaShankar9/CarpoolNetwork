@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { mapAuthError } from '../../utils/authErrors';
 import { AlertCircle, CheckCircle, Mail, Loader2, ArrowLeft, Phone, Shield } from 'lucide-react';
 import AuthLayout from '../../components/auth/AuthLayout';
 import AuthCard from '../../components/auth/AuthCard';
@@ -16,16 +17,46 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const { resetPassword } = useAuth();
 
+  const validateEmail = (value: string): boolean => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (recoveryMethod === 'email') {
+      if (!email.trim()) {
+        setError('Please enter your email address.');
+        return;
+      }
+      if (!validateEmail(email.trim())) {
+        setError('Please enter a valid email address.');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
       if (recoveryMethod === 'email') {
-        const { error } = await resetPassword(email);
+        const { error } = await resetPassword(email.trim());
+        // Always show success to prevent user enumeration —
+        // do not reveal whether the email exists in our system.
         if (error) {
-          setError(error.message);
+          // Log for debugging but only surface rate-limit / network errors
+          const friendly = mapAuthError(error.message);
+          const isRateOrNetwork =
+            error.message.toLowerCase().includes('rate limit') ||
+            error.message.toLowerCase().includes('too many') ||
+            error.message.toLowerCase().includes('fetch') ||
+            error.message.toLowerCase().includes('network');
+          if (isRateOrNetwork) {
+            setError(friendly);
+          } else {
+            // For all other errors (e.g. "user not found"), show success anyway
+            setSuccess(true);
+          }
         } else {
           setSuccess(true);
         }
@@ -33,7 +64,7 @@ export default function ForgotPassword() {
         setError('Phone recovery is coming soon. Please use email recovery for now.');
       }
     } catch {
-      setError('An unexpected error occurred');
+      setError('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }

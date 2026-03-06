@@ -7,6 +7,7 @@ import AuthCard from '../../components/auth/AuthCard';
 import SocialAuthButtons from '../../components/auth/SocialAuthButtons';
 import PasswordSignupForm from '../../components/auth/PasswordSignupForm';
 import { analytics } from '../../lib/analytics';
+import { mapAuthError } from '../../utils/authErrors';
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -19,8 +20,7 @@ export default function SignUp() {
     try {
       const { error } = await signInWithGoogle();
       if (error) {
-        setError(error.message);
-        // Track auth error
+        setError(mapAuthError(error.message));
         analytics.track.errorStateShown({
           error_type: 'auth',
           error_source: 'signup_google',
@@ -44,7 +44,7 @@ export default function SignUp() {
     try {
       const { error } = await signInWithGitHub();
       if (error) {
-        setError(error.message);
+        setError(mapAuthError(error.message));
         analytics.track.errorStateShown({
           error_type: 'auth',
           error_source: 'signup_github',
@@ -68,7 +68,7 @@ export default function SignUp() {
     try {
       const { error, requiresEmailConfirmation } = await signUp(email, password, fullName, phone);
       if (error) {
-        setError(error.message);
+        setError(mapAuthError(error.message));
         analytics.track.errorStateShown({
           error_type: 'auth',
           error_source: 'signup_email',

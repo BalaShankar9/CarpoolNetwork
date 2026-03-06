@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
@@ -48,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [adminRole, setAdminRole] = useState<AdminRole | null>(null);
   const [permissions, setPermissions] = useState<Permission[]>([]);
+  const profileLoadingRef = useRef(false);
   const allowOtpSignups = getAllowOtpSignups();
 
   useEffect(() => {
@@ -79,6 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
   const loadProfile = async (user: User) => {
+    if (profileLoadingRef.current) return;
+    profileLoadingRef.current = true;
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -138,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
+      profileLoadingRef.current = false;
       setLoading(false);
     }
   };
@@ -311,11 +315,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  // Skip email verification in development if configured
-  const skipEmailVerification = import.meta.env.VITE_SKIP_EMAIL_VERIFICATION === 'true';
+  // Skip email verification ONLY in development mode
+  const skipEmailVerification = import.meta.env.DEV && import.meta.env.VITE_SKIP_EMAIL_VERIFICATION === 'true';
   const isEmailVerified = skipEmailVerification || !!user?.email_confirmed_at;
-  // Support both legacy is_admin flag and new admin_role
-  const isAdmin = profile?.is_admin === true || adminRole !== null;
+  // Admin check: only use admin_role (standardized)
+  const isAdmin = adminRole !== null;
   const profileMissingFields = getProfileMissingFields(profile);
   const isProfileComplete = isProfileCompleteUtil(profile);
 

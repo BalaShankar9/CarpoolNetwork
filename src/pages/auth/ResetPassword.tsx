@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { mapAuthError } from '../../utils/authErrors';
 import { AlertCircle, CheckCircle, Lock, Eye, EyeOff, Loader2, Check, X } from 'lucide-react';
 import AuthLayout from '../../components/auth/AuthLayout';
 import AuthCard from '../../components/auth/AuthCard';
@@ -67,7 +68,7 @@ export default function ResetPassword() {
       });
 
       if (error) {
-        setError(error.message);
+        setError(mapAuthError(error.message));
       } else {
         setSuccess(true);
         setTimeout(() => {
@@ -75,7 +76,7 @@ export default function ResetPassword() {
         }, 2500);
       }
     } catch {
-      setError('An unexpected error occurred');
+      setError('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }

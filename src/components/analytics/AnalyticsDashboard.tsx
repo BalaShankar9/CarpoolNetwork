@@ -211,7 +211,7 @@ export function AnalyticsDashboard() {
                             />
                         </div>
 
-                        {/* Financial Overview */}
+                        {/* Savings Overview */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white">
                                 <div className="flex items-center gap-3 mb-4">
@@ -219,7 +219,7 @@ export function AnalyticsDashboard() {
                                         <Wallet className="w-6 h-6" />
                                     </div>
                                     <div>
-                                        <p className="text-green-100">Money Saved</p>
+                                        <p className="text-green-100">Estimated Savings</p>
                                         <p className="text-3xl font-bold">£{stats.moneySaved.toFixed(2)}</p>
                                     </div>
                                 </div>
@@ -234,12 +234,12 @@ export function AnalyticsDashboard() {
                                         <TrendingUp className="w-6 h-6" />
                                     </div>
                                     <div>
-                                        <p className="text-blue-100">Money Earned</p>
-                                        <p className="text-3xl font-bold">£{stats.moneyEarned.toFixed(2)}</p>
+                                        <p className="text-blue-100">Community Impact</p>
+                                        <p className="text-3xl font-bold">{(stats.ridesGiven + stats.ridesTaken) || 0}</p>
                                     </div>
                                 </div>
                                 <p className="text-sm text-blue-100">
-                                    From fuel contributions on your rides
+                                    Total rides shared with the community
                                 </p>
                             </div>
                         </div>

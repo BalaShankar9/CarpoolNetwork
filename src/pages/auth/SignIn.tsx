@@ -8,6 +8,7 @@ import SocialAuthButtons from '../../components/auth/SocialAuthButtons';
 import PasswordLoginForm from '../../components/auth/PasswordLoginForm';
 import OtpRequestForm from '../../components/auth/OtpRequestForm';
 import { getAllowOtpSignups, getOtpErrorMessage } from '../../utils/authOtp';
+import { mapAuthError } from '../../utils/authErrors';
 
 type AuthMode = 'password' | 'otp';
 
@@ -23,7 +24,7 @@ export default function SignIn() {
     try {
       const { error } = await signInWithGoogle();
       if (error) {
-        setError(error.message);
+        setError(mapAuthError(error.message));
       }
     } catch {
       setError('An unexpected error occurred');
@@ -35,7 +36,7 @@ export default function SignIn() {
     try {
       const { error } = await signInWithGitHub();
       if (error) {
-        setError(error.message);
+        setError(mapAuthError(error.message));
       }
     } catch {
       setError('An unexpected error occurred');
@@ -54,13 +55,7 @@ export default function SignIn() {
 
       const { error } = await signIn(identifier, password);
       if (error) {
-        if (error.message.includes('Email not confirmed')) {
-          setError('Please verify your email before signing in. Check your inbox for the verification link.');
-        } else if (error.message.includes('Invalid login credentials')) {
-          setError('Incorrect email or password. Please try again or use the forgot password option.');
-        } else {
-          setError(error.message);
-        }
+        setError(mapAuthError(error.message));
         throw error; // Re-throw to track failed attempts
       } else {
         navigate('/');

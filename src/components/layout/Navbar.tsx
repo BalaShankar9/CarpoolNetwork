@@ -86,15 +86,21 @@ export default function Navbar() {
                 </div>
                 <button
                   onClick={async () => {
+                    const clearAuthStorage = () => {
+                      // Clear only auth-related localStorage keys, preserve user preferences
+                      const keysToRemove = ['supabase.auth.token', 'sb-auth-token'];
+                      keysToRemove.forEach(key => localStorage.removeItem(key));
+                      // Also remove any keys that start with 'sb-' (Supabase auth keys)
+                      Object.keys(localStorage).filter(key => key.startsWith('sb-')).forEach(key => localStorage.removeItem(key));
+                      sessionStorage.clear();
+                    };
                     try {
                       await signOut();
-                      localStorage.clear();
-                      sessionStorage.clear();
+                      clearAuthStorage();
                       window.location.replace('/signin');
                     } catch (err) {
                       console.error('Unexpected logout error:', err);
-                      localStorage.clear();
-                      sessionStorage.clear();
+                      clearAuthStorage();
                       window.location.replace('/signin');
                     }
                   }}
@@ -179,15 +185,21 @@ export default function Navbar() {
                 )}
                 <button
                   onClick={async () => {
+                    const clearAuthStorage = () => {
+                      // Clear only auth-related localStorage keys, preserve user preferences
+                      const keysToRemove = ['supabase.auth.token', 'sb-auth-token'];
+                      keysToRemove.forEach(key => localStorage.removeItem(key));
+                      // Also remove any keys that start with 'sb-' (Supabase auth keys)
+                      Object.keys(localStorage).filter(key => key.startsWith('sb-')).forEach(key => localStorage.removeItem(key));
+                      sessionStorage.clear();
+                    };
                     try {
                       await signOut();
-                      localStorage.clear();
-                      sessionStorage.clear();
+                      clearAuthStorage();
                       window.location.replace('/signin');
                     } catch (err) {
                       console.error('Unexpected logout error:', err);
-                      localStorage.clear();
-                      sessionStorage.clear();
+                      clearAuthStorage();
                       window.location.replace('/signin');
                     }
                   }}

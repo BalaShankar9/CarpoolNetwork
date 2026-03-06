@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Mail, Phone, Loader2 } from 'lucide-react';
 import { getRuntimeConfig } from '../../lib/runtimeConfig';
 import { normalizePhoneNumber } from '../../utils/phone';
@@ -84,12 +84,20 @@ export default function OtpRequestForm({ onSendOTP, disabled = false }: OtpReque
   const [error, setError] = useState('');
   const [mapsApiKey, setMapsApiKey] = useState('');
   const manualCountryCodeRef = useRef(manualCountryCode);
+  const cooldownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const OTP_COOLDOWN_SECONDS = 60;
 
   useEffect(() => {
     manualCountryCodeRef.current = manualCountryCode;
   }, [manualCountryCode]);
+
+  // Clean up cooldown interval on unmount
+  useEffect(() => {
+    return () => {
+      if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -219,10 +227,12 @@ export default function OtpRequestForm({ onSendOTP, disabled = false }: OtpReque
       const payload = isPhone ? normalizedPhone : trimmedIdentifier;
       await onSendOTP(payload, isPhone);
       setCooldown(OTP_COOLDOWN_SECONDS);
-      const interval = setInterval(() => {
+      if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+      cooldownIntervalRef.current = setInterval(() => {
         setCooldown(prev => {
           if (prev <= 1) {
-            clearInterval(interval);
+            if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+            cooldownIntervalRef.current = null;
             return 0;
           }
           return prev - 1;

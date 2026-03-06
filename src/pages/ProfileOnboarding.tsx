@@ -220,7 +220,7 @@ const trustFeatures = [
 ];
 
 export default function ProfileOnboarding() {
-  const { user, profile, updateProfile, isProfileComplete, profileMissingFields } = useAuth();
+  const { user, profile, updateProfile, refreshProfile, isProfileComplete, profileMissingFields } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -581,6 +581,9 @@ export default function ProfileOnboarding() {
       return;
     }
 
+    // Refresh profile from DB to ensure auth context is fully synced
+    await refreshProfile();
+
     setShowConfetti(true);
     setCurrentStep(6);
   };
@@ -592,10 +595,14 @@ export default function ProfileOnboarding() {
   const progress = (currentStep / (steps.length - 1)) * 100;
   const step = steps[currentStep];
 
-  if (isProfileComplete && profileMissingFields.length === 0 && currentStep !== 6) {
-    setCurrentStep(6);
-    setShowConfetti(true);
-  }
+  // Redirect to completion step if profile is already complete
+  // (wrapped in useEffect to avoid setState during render)
+  useEffect(() => {
+    if (isProfileComplete && profileMissingFields.length === 0 && currentStep !== 6) {
+      setCurrentStep(6);
+      setShowConfetti(true);
+    }
+  }, [isProfileComplete, profileMissingFields.length, currentStep]);
 
   return (
     <div className="min-h-screen bg-gray-50">

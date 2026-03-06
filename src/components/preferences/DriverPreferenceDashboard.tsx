@@ -70,7 +70,7 @@ export default function DriverPreferenceDashboard({ onClose }: DriverPreferenceD
     { id: 'policies', label: 'Ride Policies', icon: Shield },
     { id: 'screening', label: 'Passenger Requirements', icon: Users },
     { id: 'safety', label: 'Safety & Communication', icon: Shield },
-    { id: 'pricing', label: 'Pricing & Payments', icon: DollarSign },
+    { id: 'pricing', label: 'Cost Sharing Info', icon: DollarSign },
     { id: 'templates', label: 'Recurring & Templates', icon: Calendar }
   ];
 
@@ -137,7 +137,7 @@ export default function DriverPreferenceDashboard({ onClose }: DriverPreferenceD
             <SafetyCommunicationTab preferences={preferences} updatePreference={updatePreference} />
           )}
           {activeTab === 'pricing' && (
-            <PricingPaymentsTab preferences={preferences} updatePreference={updatePreference} />
+            <PricingPaymentsTab />
           )}
           {activeTab === 'templates' && (
             <TemplatesTab />
@@ -733,100 +733,29 @@ function SafetyCommunicationTab({ preferences, updatePreference }: any) {
   );
 }
 
-function PricingPaymentsTab({ preferences, updatePreference }: any) {
-  // Accepted payment methods stored as comma-separated string
-  const acceptedMethods: string[] = (preferences.accepted_payment_methods || 'cash').split(',').filter(Boolean);
-
-  const togglePaymentMethod = (method: string) => {
-    const current = new Set(acceptedMethods);
-    if (current.has(method)) {
-      current.delete(method);
-    } else {
-      current.add(method);
-    }
-    updatePreference('accepted_payment_methods', Array.from(current).join(','));
-  };
-
+function PricingPaymentsTab() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Pricing Strategy</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Default Pricing Model
-            </label>
-            <select
-              value={preferences.pricing_model || 'cost_sharing'}
-              onChange={(e) => updatePreference('pricing_model', e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="per_km">Per kilometer</option>
-              <option value="fixed">Fixed price</option>
-              <option value="negotiable">Negotiable</option>
-              <option value="cost_sharing">Cost sharing (split fuel)</option>
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Base Price (£)
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={preferences.base_price || ''}
-                onChange={(e) => updatePreference('base_price', parseFloat(e.target.value) || 0)}
-                placeholder="0.00"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Price per KM (£)
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={preferences.price_per_km || ''}
-                onChange={(e) => updatePreference('price_per_km', parseFloat(e.target.value) || 0)}
-                placeholder="0.00"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <p className="text-xs text-gray-500">
-            Prices are suggestions — passengers may negotiate. Cost sharing splits actual fuel cost evenly.
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Community Cost Sharing</h2>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+          <p className="text-sm text-blue-900 mb-4">
+            CarpoolNetwork is a <strong>free community carpooling platform</strong>. We do not facilitate, process,
+            or handle any payments between drivers and passengers.
           </p>
-        </div>
-      </section>
-
-      <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Accepted Payment Methods</h2>
-        <div className="space-y-3">
-          {[
-            { key: 'cash', label: 'Cash' },
-            { key: 'bank_transfer', label: 'Bank Transfer' },
-            { key: 'paypal', label: 'PayPal' },
-            { key: 'in_app', label: 'In-app payment (Stripe)' },
-          ].map(({ key, label }) => (
-            <label
-              key={key}
-              className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-            >
-              <input
-                type="checkbox"
-                checked={acceptedMethods.includes(key)}
-                onChange={() => togglePaymentMethod(key)}
-                className="w-5 h-5 text-blue-600 rounded"
-              />
-              <span className="text-sm text-gray-700">{label}</span>
-            </label>
-          ))}
+          <p className="text-sm text-blue-800 mb-4">
+            Any cost-sharing arrangements (e.g. fuel contributions) are made privately between
+            users outside the platform. The platform bears no responsibility for any private financial
+            arrangements between members.
+          </p>
+          <div className="bg-white/50 rounded-lg p-4 border border-blue-100">
+            <h3 className="font-medium text-blue-900 mb-2">How cost sharing typically works:</h3>
+            <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+              <li>Drivers and passengers discuss contributions via in-app messaging</li>
+              <li>Any arrangements are made privately between users</li>
+              <li>The platform does not set, suggest, or enforce any pricing</li>
+            </ul>
+          </div>
         </div>
       </section>
     </div>

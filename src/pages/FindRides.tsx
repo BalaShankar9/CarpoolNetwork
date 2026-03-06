@@ -260,6 +260,20 @@ export default function FindRides() {
     }
   };
 
+  // Haversine distance in km between two lat/lng points
+  const haversineDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371; // Earth radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  const SEARCH_RADIUS_KM = 25; // Default search radius
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -291,50 +305,71 @@ export default function FindRides() {
         query = query.gte('departure_time', new Date().toISOString());
       }
 
-      query = query.order('departure_time', { ascending: true }).limit(20);
+      query = query.order('departure_time', { ascending: true }).limit(100);
 
       const { data, error } = await query;
 
       if (error) throw error;
 
-      const ridesData = data || [];
+      let ridesData = data || [];
+
+      // CRITICAL FIX: Filter by location proximity using Haversine distance
+      const hasOriginCoords = originCoords.lat !== 0 || originCoords.lng !== 0;
+      const hasDestCoords = destCoords.lat !== 0 || destCoords.lng !== 0;
+
+      if (hasOriginCoords || hasDestCoords) {
+        ridesData = ridesData.filter((ride) => {
+          let matchesOrigin = true;
+          let matchesDest = true;
+
+          if (hasOriginCoords && ride.origin_lat && ride.origin_lng) {
+            const distFromOrigin = haversineDistance(
+              originCoords.lat, originCoords.lng,
+              ride.origin_lat, ride.origin_lng
+            );
+            matchesOrigin = distFromOrigin <= SEARCH_RADIUS_KM;
+          }
+
+          if (hasDestCoords && ride.destination_lat && ride.destination_lng) {
+            const distFromDest = haversineDistance(
+              destCoords.lat, destCoords.lng,
+              ride.destination_lat, ride.destination_lng
+            );
+            matchesDest = distFromDest <= SEARCH_RADIUS_KM;
+          }
+
+          return matchesOrigin && matchesDest;
+        });
+      }
+
+      // Limit to 20 after geo-filtering
+      ridesData = ridesData.slice(0, 20);
+
       const driversById = await fetchPublicProfilesByIds(ridesData.map((ride: Ride) => ride.driver_id));
       const ridesWithDrivers = ridesData.map((ride: Ride) => ({
         ...ride,
         driver: driversById[ride.driver_id] || null,
       }));
 
-      const { data: bookings } = await supabase
-        .from('ride_bookings')
-        .select('ride_id, id, status')
-        .eq('passenger_id', user.id)
-        .in('ride_id', ridesData.map(r => r.id));
+      const { data: bookings } = ridesData.length > 0
+        ? await supabase
+            .from('ride_bookings')
+            .select('ride_id, id, status')
+            .eq('passenger_id', user.id)
+            .in('ride_id', ridesData.map(r => r.id))
+        : { data: [] };
 
-      const ridesWithBookings = await Promise.all(ridesWithDrivers.map(async (ride) => {
+      const ridesWithBookings = ridesWithDrivers.map((ride) => {
         const booking = bookings?.find(b => b.ride_id === ride.id);
-        let weather: { temperature: number; condition: string; humidity: number; windSpeed: number; icon: string } | null = null;
-
-        if (ride.origin_lat && ride.origin_lng) {
-          try {
-            weather = await googleMapsService.getWeather(ride.origin_lat, ride.origin_lng);
-          } catch (e) {
-            console.error('Failed to load weather:', e);
-          }
-        }
-
         return {
           ...ride,
           userBooking: booking ? { id: booking.id, status: booking.status } : undefined,
-          weather: weather && weather.condition !== 'Unavailable' ? {
-            temperature: weather.temperature,
-            condition: weather.condition
-          } : undefined
         };
-      }));
+      });
 
       const availableRides = ridesWithBookings.filter(ride => ride.available_seats > 0);
       setRides(availableRides);
-      
+
       // Analytics: Track search results
       trackSearch(availableRides.length);
     } catch (error) {

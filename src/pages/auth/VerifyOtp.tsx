@@ -6,6 +6,7 @@ import AuthLayout from '../../components/auth/AuthLayout';
 import AuthCard from '../../components/auth/AuthCard';
 import OtpVerifyForm from '../../components/auth/OtpVerifyForm';
 import { getAllowOtpSignups, getOtpErrorMessage } from '../../utils/authOtp';
+import { mapAuthError } from '../../utils/authErrors';
 
 export default function VerifyOtp() {
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ export default function VerifyOtp() {
     try {
       const { error } = await verifyOTP(identifier, code, isPhone);
       if (error) {
-        setError(error.message);
+        setError(mapAuthError(error.message));
       } else {
         navigate('/');
       }

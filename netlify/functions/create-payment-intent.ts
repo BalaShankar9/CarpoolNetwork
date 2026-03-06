@@ -13,7 +13,7 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-04-30.basil',
+  apiVersion: '2025-04-30.acacia',
 });
 
 const supabase = createClient(
@@ -42,12 +42,16 @@ export const handler: Handler = async (event) => {
       .eq('id', userId)
       .single();
 
-    let customerId: string = profile?.stripe_customer_id || '';
+    if (!profile) {
+      return { statusCode: 404, body: JSON.stringify({ error: 'User profile not found' }) };
+    }
+
+    let customerId: string = profile.stripe_customer_id || '';
 
     if (!customerId) {
       const customer = await stripe.customers.create({
-        email: profile?.email,
-        name: profile?.full_name,
+        email: profile.email || undefined,
+        name: profile.full_name || undefined,
         metadata: { supabase_user_id: userId },
       });
       customerId = customer.id;
@@ -58,10 +62,19 @@ export const handler: Handler = async (event) => {
         .eq('id', userId);
     }
 
-    // Create the PaymentIntent
+    // Validate amount
+    const roundedAmount = Math.round(amount);
+    if (roundedAmount <= 0 || roundedAmount > 50000) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Invalid amount' }) };
+    }
+
+    // Create the PaymentIntent with idempotency key
+    const idempotencyKey = `pi_${userId}_${type}_${roundedAmount}_${Date.now()}`;
+    const normalizedCurrency = currency.toUpperCase();
+
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount), // amount in smallest currency unit (pence)
-      currency: currency.toLowerCase(),
+      amount: roundedAmount, // amount in smallest currency unit (pence)
+      currency: normalizedCurrency.toLowerCase(),
       customer: customerId,
       automatic_payment_methods: { enabled: true },
       metadata: {
@@ -69,6 +82,8 @@ export const handler: Handler = async (event) => {
         payment_type: type,
         ...metadata,
       },
+    }, {
+      idempotencyKey,
     });
 
     // Record in Supabase immediately as 'pending'
@@ -79,7 +94,7 @@ export const handler: Handler = async (event) => {
       recipient_id: (metadata as Record<string, string>).recipientId || null,
       ride_id: (metadata as Record<string, string>).rideId || null,
       amount: amount / 100,
-      currency: currency.toUpperCase(),
+      currency: normalizedCurrency,
       status: 'pending',
       type,
       stripe_payment_intent_id: paymentIntent.id,

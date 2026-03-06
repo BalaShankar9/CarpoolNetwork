@@ -32,7 +32,6 @@ export default function RequestRide() {
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
-    console.log('Location state updated:', { fromLocation, toLocation });
     if (fromLocation && toLocation && error === 'Please select both pickup and destination locations') {
       setError('');
     }
@@ -56,13 +55,17 @@ export default function RequestRide() {
       return;
     }
 
+    const departure = new Date(`${dateTime.date}T${dateTime.time}`);
+    if (departure <= new Date()) {
+      setError('Please select a future departure time.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      const departureDateTime = new Date(
-        `${dateTime.date}T${dateTime.time}`
-      ).toISOString();
+      const departureDateTime = departure.toISOString();
 
       const { error: insertError } = await supabase
         .from('trip_requests')

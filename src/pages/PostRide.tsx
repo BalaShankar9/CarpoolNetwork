@@ -162,6 +162,16 @@ export default function PostRide() {
       return;
     }
 
+    // Validate coordinates were set via LocationAutocomplete (not default 0,0)
+    if (!isEditMode && originCoords.lat === 0 && originCoords.lng === 0) {
+      setError('Please select an origin from the dropdown suggestions to ensure accurate location.');
+      return;
+    }
+    if (!isEditMode && destCoords.lat === 0 && destCoords.lng === 0) {
+      setError('Please select a destination from the dropdown suggestions to ensure accurate location.');
+      return;
+    }
+
     if (!dateTime.date || !dateTime.time) {
       setError('Please select a valid date and time for your ride.');
       return;
@@ -174,6 +184,11 @@ export default function PostRide() {
       const departure = new Date(`${dateTime.date}T${dateTime.time}`);
       if (Number.isNaN(departure.getTime())) {
         throw new Error('Invalid date or time. Please pick a valid departure time.');
+      }
+
+      // Validate departure is in the future
+      if (departure <= new Date()) {
+        throw new Error('Departure time must be in the future.');
       }
 
       let vehicleToUse = selectedVehicle;

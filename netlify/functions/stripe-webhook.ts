@@ -22,7 +22,7 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-04-30.basil',
+  apiVersion: '2025-04-30.acacia',
 });
 
 const supabase = createClient(
@@ -222,14 +222,14 @@ async function upsertMembership(
     paused: 'cancelled',
   };
 
-  const mappedStatus = statusMap[sub.status] || 'active';
+  const mappedStatus = statusMap[sub.status] || 'unknown';
 
   await supabase.from('user_memberships').upsert(
     {
       user_id: userId,
       tier,
       status: mappedStatus,
-      billing_cycle: 'monthly',
+      billing_cycle: sub.items.data[0]?.price.recurring?.interval === 'year' ? 'yearly' : 'monthly',
       current_period_start: periodStart.toISOString(),
       current_period_end: periodEnd.toISOString(),
       cancel_at_period_end: sub.cancel_at_period_end,

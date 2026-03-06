@@ -14,7 +14,7 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-04-30.basil',
+  apiVersion: '2025-04-30.acacia',
 });
 
 const supabase = createClient(
@@ -46,12 +46,16 @@ export const handler: Handler = async (event) => {
       .eq('id', userId)
       .single();
 
-    let customerId: string = profile?.stripe_customer_id || '';
+    if (!profile) {
+      return { statusCode: 404, body: JSON.stringify({ error: 'User profile not found' }) };
+    }
+
+    let customerId: string = profile.stripe_customer_id || '';
 
     if (!customerId) {
       const customer = await stripe.customers.create({
-        email: profile?.email,
-        name: profile?.full_name,
+        email: profile.email || undefined,
+        name: profile.full_name || undefined,
         metadata: { supabase_user_id: userId },
       });
       customerId = customer.id;

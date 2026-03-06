@@ -8,7 +8,7 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-04-30.basil',
+  apiVersion: '2025-04-30.acacia',
 });
 
 const supabase = createClient(
@@ -56,7 +56,8 @@ export const handler: Handler = async (event) => {
         refundParams.amount = Math.round(amount * 100); // partial refund in pence
       }
 
-      const refund = await stripe.refunds.create(refundParams);
+      const idempotencyKey = `refund_${paymentId}_${amount || 'full'}_${Date.now()}`;
+      const refund = await stripe.refunds.create(refundParams, { idempotencyKey });
       refundId = refund.id;
     }
 

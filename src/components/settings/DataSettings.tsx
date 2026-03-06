@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Download, Trash2, Database, HardDrive, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -12,6 +12,12 @@ export default function DataSettings() {
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
+  useEffect(() => {
+    if (!success) return;
+    const timer = setTimeout(() => setSuccess(''), 3000);
+    return () => clearTimeout(timer);
+  }, [success]);
 
   const handleExportData = async () => {
     try {
@@ -65,7 +71,6 @@ export default function DataSettings() {
       URL.revokeObjectURL(url);
 
       setSuccess('Your data has been exported successfully');
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message || 'Failed to export data');
     } finally {
@@ -198,6 +203,27 @@ export default function DataSettings() {
           </>
         ) : (
           <>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <Download className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold text-amber-900 mb-1">Export your data first</h3>
+                  <p className="text-sm text-amber-800">
+                    We recommend downloading a copy of your data before deleting your account.
+                    Once deleted, your data cannot be recovered.
+                  </p>
+                  <button
+                    onClick={handleExportData}
+                    disabled={loading}
+                    className="mt-2 px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Download className="w-4 h-4" />
+                    {loading ? 'Exporting...' : 'Export My Data'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />

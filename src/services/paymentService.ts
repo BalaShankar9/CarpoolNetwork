@@ -131,10 +131,7 @@ export const paymentService = {
                 createdAt: new Date(),
             });
 
-            return {
-                clientSecret: `demo_secret_${paymentId}`,
-                paymentId,
-            };
+            throw new Error('Payment service unavailable. Please try again later.');
         }
     },
 

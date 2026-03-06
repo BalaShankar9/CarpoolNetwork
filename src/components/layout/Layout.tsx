@@ -28,7 +28,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error('Sign out error:', err);
     }
-    localStorage.clear();
+    // Clear only auth-related localStorage keys, preserve user preferences
+    const keysToRemove = ['supabase.auth.token', 'sb-auth-token'];
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    // Also remove any keys that start with 'sb-' (Supabase auth keys)
+    Object.keys(localStorage).filter(key => key.startsWith('sb-')).forEach(key => localStorage.removeItem(key));
     sessionStorage.clear();
     window.location.replace('/signin');
   };

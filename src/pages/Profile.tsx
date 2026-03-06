@@ -181,6 +181,11 @@ export default function Profile() {
 
     try {
       const phoneE164 = editForm.phone_e164.trim() || null;
+      if (phoneE164 && !/^\+[1-9]\d{6,14}$/.test(phoneE164)) {
+        setError('Please enter a valid phone number in international format (e.g., +44...)');
+        setSaving(false);
+        return;
+      }
       const updates = {
         full_name: editForm.full_name,
         phone_e164: phoneE164,
@@ -235,12 +240,11 @@ export default function Profile() {
         profile_photo_thumb_path: thumbnailPath,
         profile_photo_url: optimizedUrl,
         avatar_url: optimizedUrl,
-        profile_verified: true
       } as any);
 
       if (updateError) throw updateError;
 
-      setSuccess('Profile photo uploaded and verified!');
+      setSuccess('Profile photo uploaded successfully!');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message || 'Failed to upload profile photo');

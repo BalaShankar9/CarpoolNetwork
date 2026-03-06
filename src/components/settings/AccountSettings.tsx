@@ -24,6 +24,12 @@ export default function AccountSettings() {
   });
 
   useEffect(() => {
+    if (!success) return;
+    const timer = setTimeout(() => setSuccess(''), 3000);
+    return () => clearTimeout(timer);
+  }, [success]);
+
+  useEffect(() => {
     if (profile) {
       setFormData({
         full_name: profile.full_name || '',
@@ -40,7 +46,34 @@ export default function AccountSettings() {
     }
   }, [profile]);
 
+  const validateForm = (): string | null => {
+    if (!formData.full_name.trim()) {
+      return 'Full name is required.';
+    }
+    if (formData.full_name.trim().length < 2) {
+      return 'Full name must be at least 2 characters.';
+    }
+    const phone = formData.phone_e164.trim();
+    if (phone && !/^\+[1-9]\d{6,14}$/.test(phone)) {
+      return 'Phone number must be in E.164 format (e.g. +447123456789).';
+    }
+    const whatsapp = formData.whatsapp_number.trim();
+    if (whatsapp && !/^\+[1-9]\d{6,14}$/.test(whatsapp)) {
+      return 'WhatsApp number must be in E.164 format (e.g. +447123456789).';
+    }
+    if (formData.bio.length > 500) {
+      return 'Bio must be 500 characters or fewer.';
+    }
+    return null;
+  };
+
   const handleSave = async () => {
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
@@ -61,7 +94,6 @@ export default function AccountSettings() {
 
       setSuccess('Account settings updated successfully');
       setIsEditing(false);
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message || 'Failed to update account settings');
     } finally {

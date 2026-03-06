@@ -381,7 +381,10 @@ function NotificationItem({
             onMarkRead();
         }
         if (notification.actionUrl) {
-            window.location.href = notification.actionUrl;
+            // Only allow relative URLs or same-origin URLs (prevent open redirect)
+            if (notification.actionUrl.startsWith('/')) {
+                window.location.href = notification.actionUrl;
+            }
         }
     };
 

@@ -29,13 +29,14 @@ export default defineConfig({
     force: true,
   },
   build: {
-    sourcemap: true, // Required for Sentry source map uploads
+    sourcemap: 'hidden', // Source maps uploaded to Sentry via CI, not served to users
     rollupOptions: {
       output: {
         manualChunks: {
           react: ['react', 'react-dom', 'react-router-dom'],
           supabase: ['@supabase/supabase-js'],
           icons: ['lucide-react'],
+          motion: ['framer-motion'],
         },
       },
     },

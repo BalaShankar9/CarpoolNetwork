@@ -36,6 +36,12 @@ export default function AccessibilitySettings() {
   });
 
   useEffect(() => {
+    if (!success) return;
+    const timer = setTimeout(() => setSuccess(''), 3000);
+    return () => clearTimeout(timer);
+  }, [success]);
+
+  useEffect(() => {
     loadPreferences();
   }, [profile?.id]);
 
@@ -89,7 +95,6 @@ export default function AccessibilitySettings() {
 
       setPrefs({ ...prefs, [key]: value });
       setSuccess('Accessibility settings updated');
-      setTimeout(() => setSuccess(''), 2000);
     } catch (err: any) {
       setError(err.message || 'Failed to update preferences');
     }

@@ -27,3 +27,5 @@ trace_tmp*/
 *.sw?
 .env
 .env.test
+.env.e2e
+.env*.local

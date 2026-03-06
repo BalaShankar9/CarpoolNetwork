@@ -34,6 +34,12 @@ export default function AppearanceSettings() {
   });
 
   useEffect(() => {
+    if (!success) return;
+    const timer = setTimeout(() => setSuccess(''), 3000);
+    return () => clearTimeout(timer);
+  }, [success]);
+
+  useEffect(() => {
     loadPreferences();
   }, [profile?.id]);
 
@@ -86,7 +92,6 @@ export default function AppearanceSettings() {
 
       setPrefs({ ...prefs, [key]: value });
       setSuccess('Appearance settings updated');
-      setTimeout(() => setSuccess(''), 2000);
     } catch (err: any) {
       setError(err.message || 'Failed to update preferences');
     }

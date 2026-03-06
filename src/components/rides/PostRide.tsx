@@ -42,6 +42,10 @@ export default function PostRide() {
         `${formData.departureDate}T${formData.departureTime}`
       ).toISOString();
 
+      // Warn: this simple form lacks geocoding. Redirect to full PostRide page.
+      toast.warning('Please use the full ride posting form for accurate location mapping.');
+      return;
+
       const { error } = await supabase.from('rides').insert([{
         driver_id: user.id,
         vehicle_id: vehicles.id,

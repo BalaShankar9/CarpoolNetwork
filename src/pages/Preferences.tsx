@@ -57,8 +57,8 @@ export default function Preferences() {
         {mode === 'passenger' && (
           <div className="max-w-4xl mx-auto px-4">
             <PassengerFilterCenter
-              onFiltersChange={(filters) => console.log('Filters changed:', filters)}
-              onSearch={() => console.log('Search clicked')}
+              onFiltersChange={() => {}}
+              onSearch={() => {}}
               matchCount={0}
             />
           </div>

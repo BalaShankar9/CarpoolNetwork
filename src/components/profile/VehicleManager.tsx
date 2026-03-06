@@ -158,7 +158,7 @@ export default function VehicleManager() {
         year: vehicleData.year || new Date().getFullYear(),
         color: vehicleData.color || '',
         license_plate: plateNumber,
-        capacity: vehicleData.capacity || 4,
+        capacity: Math.min(9, Math.max(2, vehicleData.capacity || 4)),
         fuel_type: vehicleData.fuel_type || 'petrol',
         vehicle_type: vehicleData.vehicle_type || 'sedan',
       });
@@ -264,8 +264,8 @@ export default function VehicleManager() {
       setError('Please enter a valid year');
       return false;
     }
-    if (formData.capacity < 1 || formData.capacity > 8) {
-      setError('Capacity must be between 1 and 8');
+    if (formData.capacity < 2 || formData.capacity > 9) {
+      setError('Capacity must be between 2 and 9 (driver + at least 1 passenger)');
       return false;
     }
     // Vehicle photo is mandatory for new vehicles
@@ -642,8 +642,8 @@ export default function VehicleManager() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   >
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
-                      <option key={num} value={num}>{num} seat{num > 1 ? 's' : ''}</option>
+                    {[2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                      <option key={num} value={num}>{num} seats</option>
                     ))}
                   </select>
                 </div>
@@ -782,15 +782,12 @@ export default function VehicleManager() {
                   alt={`${vehicle.make} ${vehicle.model}`} 
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    // Hide broken image and show placeholder
+                    // Hide broken image and show placeholder safely (no innerHTML)
                     (e.target as HTMLImageElement).style.display = 'none';
-                    (e.target as HTMLImageElement).parentElement!.innerHTML = `
-                      <div class="w-full h-full flex items-center justify-center bg-gray-100">
-                        <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                        </svg>
-                      </div>
-                    `;
+                    const parent = (e.target as HTMLImageElement).parentElement;
+                    if (parent) {
+                      parent.classList.add('flex', 'items-center', 'justify-center', 'bg-gray-100');
+                    }
                   }}
                 />
               </div>

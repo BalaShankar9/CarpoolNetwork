@@ -304,7 +304,6 @@ export default function MyRides() {
             console.error('Error loading booking requests:', error);
             throw error;
           }
-          console.log('Booking requests loaded:', data);
           setBookingRequests(data || []);
         } else {
           setBookingRequests([]);

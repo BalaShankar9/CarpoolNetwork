@@ -4,7 +4,8 @@ import { supabase } from '../../lib/supabase';
 import { toast } from '../../lib/toast';
 import AdminLayout, { AdminSection, AdminEmptyState } from '../../components/admin/AdminLayout';
 import PermissionGuard from '../../components/admin/PermissionGuard';
-import { AdminRole, ROLE_DISPLAY_NAMES, ROLE_COLORS, ROLE_DESCRIPTIONS } from '../../types/admin';
+import { AdminRole, ROLE_DISPLAY_NAMES, ROLE_COLORS, ROLE_DESCRIPTIONS, ROLE_HIERARCHY } from '../../types/admin';
+import { useAuth } from '../../contexts/AuthContext';
 import { logAdminAction, AUDIT_ACTIONS } from '../../services/auditService';
 
 interface AdminUser {
@@ -17,6 +18,7 @@ interface AdminUser {
 }
 
 export default function AdminManagement() {
+  const { adminRole: currentUserRole } = useAuth();
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,6 +52,12 @@ export default function AdminManagement() {
   const updateAdminRole = async (userId: string, newRole: AdminRole) => {
     const admin = admins.find(a => a.id === userId);
     if (!admin) return;
+
+    // SECURITY: Enforce role hierarchy — can only assign roles lower than your own
+    if (!currentUserRole || ROLE_HIERARCHY[newRole] >= ROLE_HIERARCHY[currentUserRole]) {
+      toast.error('You cannot assign a role equal to or higher than your own');
+      return;
+    }
 
     const oldRole = admin.admin_role;
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { checkRateLimit, recordRateLimitAction } from '../../lib/rateLimiting';
+import { mapAuthError } from '../../utils/authErrors';
 
 export default function SignUp({ onToggle }: { onToggle: () => void }) {
   const [fullName, setFullName] = useState('');
@@ -31,7 +32,7 @@ export default function SignUp({ onToggle }: { onToggle: () => void }) {
 
     const { error, requiresEmailConfirmation } = await signUp(email, password, fullName, '');
     if (error) {
-      setError(error.message);
+      setError(mapAuthError(error.message));
     } else {
       await recordRateLimitAction(null, email.toLowerCase(), 'signup');
       setSuccessMessage(
