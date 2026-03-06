@@ -68,7 +68,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               </button>
             </div>
 
-            {this.state.error && (
+            {this.state.error && import.meta.env.DEV ? (
               <details className="mt-6 text-left">
                 <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
                   Technical details
@@ -77,6 +77,10 @@ export default class ErrorBoundary extends Component<Props, State> {
                   {this.state.error.message}
                 </pre>
               </details>
+            ) : (
+              <p className="mt-6 text-sm text-gray-500">
+                An unexpected error occurred.
+              </p>
             )}
           </div>
         </div>

@@ -44,6 +44,7 @@ export default function AppearanceSettings() {
   }, [profile?.id]);
 
   const loadPreferences = async () => {
+    if (!profile?.id) return;
     try {
       setLoading(true);
       const { data, error: fetchError } = await supabase
@@ -84,6 +85,7 @@ export default function AppearanceSettings() {
   };
 
   const updatePreference = async (key: keyof AppearancePrefs, value: any) => {
+    if (!profile?.id) return;
     try {
       setError('');
 
@@ -91,7 +93,8 @@ export default function AppearanceSettings() {
         .from('user_preferences')
         .upsert(
           {
-            user_id: profile?.id,
+            user_id: profile.id,
+            ...prefs,
             [key]: value
           },
           { onConflict: 'user_id' }
@@ -99,7 +102,7 @@ export default function AppearanceSettings() {
 
       if (updateError) throw updateError;
 
-      setPrefs({ ...prefs, [key]: value });
+      setPrefs(prev => ({ ...prev, [key]: value }));
 
       // Apply theme to DOM
       if (key === 'theme') {
@@ -230,6 +233,9 @@ export default function AppearanceSettings() {
             </div>
             <button
               onClick={() => updatePreference('reduce_motion', !prefs.reduce_motion)}
+              role="switch"
+              aria-checked={prefs.reduce_motion}
+              aria-label="Reduce Motion"
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 prefs.reduce_motion ? 'bg-blue-600' : 'bg-gray-200'
               }`}
@@ -249,6 +255,9 @@ export default function AppearanceSettings() {
             </div>
             <button
               onClick={() => updatePreference('high_contrast', !prefs.high_contrast)}
+              role="switch"
+              aria-checked={prefs.high_contrast}
+              aria-label="High Contrast"
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 prefs.high_contrast ? 'bg-blue-600' : 'bg-gray-200'
               }`}

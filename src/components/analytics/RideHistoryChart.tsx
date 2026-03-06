@@ -25,7 +25,7 @@ export function RideHistoryChart({ months = 6 }: RideHistoryChartProps) {
         if (user) {
             loadData();
         }
-    }, [user, offset]);
+    }, [user, offset, months]);
 
     const loadData = async () => {
         if (!user) return;

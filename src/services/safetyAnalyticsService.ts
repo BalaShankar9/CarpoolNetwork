@@ -30,7 +30,7 @@ export interface SafetyMetrics {
 export interface UserRiskAssessment {
     userId: string;
     riskScore: number; // 0-100, higher = riskier
-    riskLevel: 'low' | 'medium' | 'high' | 'critical';
+    riskLevel: 'low' | 'medium' | 'high' | 'critical' | 'unknown';
     factors: RiskFactor[];
     lastAssessed: Date;
     recommendations: string[];
@@ -121,9 +121,25 @@ export const safetyAnalyticsService = {
         localStorage.setItem(key, JSON.stringify(existing.slice(-1000))); // Keep last 1000
     },
 
+    // TODO: Needs real implementation — should send push notifications to admins, trigger SMS/email for critical incidents, etc.
     async triggerAlerts(incident: SafetyIncident): Promise<void> {
         console.log('Triggering alert for incident:', incident.id, incident.severity);
-        // In production, this would send notifications to admins, trigger SMS, etc.
+
+        // Minimal in-app alert: insert a notification record for the affected user
+        if (incident.userId) {
+            try {
+                await supabase.from('notifications').insert({
+                    user_id: incident.userId,
+                    type: 'safety_alert',
+                    title: `Safety Alert: ${incident.severity} severity ${incident.type.replace(/_/g, ' ')}`,
+                    message: incident.description || `A ${incident.severity} severity safety incident has been recorded.`,
+                    read: false,
+                    created_at: new Date().toISOString(),
+                });
+            } catch (err) {
+                console.error('Failed to insert safety alert notification:', err);
+            }
+        }
     },
 
     // Metrics & Analytics
@@ -208,31 +224,19 @@ export const safetyAnalyticsService = {
         }
     },
 
-    getMockMetrics(): SafetyMetrics {
+    /** Returns zeroed-out metrics — used when real data is unavailable. */
+    getEmptyMetrics(): SafetyMetrics {
         return {
-            totalIncidents: 47,
-            incidentsByType: {
-                sos_alert: 3,
-                safety_report: 18,
-                dispute: 15,
-                ban: 2,
-                suspension: 5,
-                route_deviation: 3,
-                missed_checkin: 1,
-            },
-            incidentsBySeverity: {
-                low: 20,
-                medium: 18,
-                high: 7,
-                critical: 2,
-            },
-            averageResolutionTime: 4.5,
-            activeAlerts: 8,
-            resolvedThisWeek: 39,
+            totalIncidents: 0,
+            incidentsByType: {},
+            incidentsBySeverity: {},
+            averageResolutionTime: 0,
+            activeAlerts: 0,
+            resolvedThisWeek: 0,
             trendsComparison: {
-                current: 47,
-                previous: 52,
-                percentChange: -9.6,
+                current: 0,
+                previous: 0,
+                percentChange: 0,
             },
         };
     },
@@ -359,7 +363,7 @@ export const safetyAnalyticsService = {
             return {
                 userId,
                 riskScore: 0,
-                riskLevel: 'low',
+                riskLevel: 'unknown',
                 factors: [],
                 lastAssessed: new Date(),
                 recommendations: ['Unable to assess - check system status'],
@@ -406,26 +410,8 @@ export const safetyAnalyticsService = {
             return Object.values(byDate);
         } catch (error) {
             console.error('Failed to get safety trends:', error);
-            return this.getMockTrends(days);
+            return [];
         }
-    },
-
-    getMockTrends(days: number): SafetyTrend[] {
-        const trends: SafetyTrend[] = [];
-        const now = new Date();
-
-        for (let i = days - 1; i >= 0; i--) {
-            const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-            trends.push({
-                date: date.toISOString().split('T')[0],
-                incidents: Math.floor(Math.random() * 5) + 1,
-                resolved: Math.floor(Math.random() * 4),
-                sosAlerts: Math.random() > 0.8 ? 1 : 0,
-                reports: Math.floor(Math.random() * 3),
-            });
-        }
-
-        return trends;
     },
 
     // Area Safety Scores

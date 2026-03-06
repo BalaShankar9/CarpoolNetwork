@@ -31,7 +31,7 @@ export interface SmartMatch {
     matchReasons: MatchReason[];
     routeOverlap: number; // percentage
     estimatedDetour: number; // minutes
-    pricePerSeat: number;
+    pricePerSeat: number; // Always 0 — this is a free platform
     preferences: Partial<MatchPreferences>;
 }
 
@@ -121,7 +121,7 @@ class MatchingService {
             .gte('departure_time', minTime.toISOString())
             .lte('departure_time', maxTime.toISOString())
             .gte('available_seats', seatsNeeded)
-            .eq('status', 'scheduled')
+            .eq('status', 'active')
             .neq('driver_id', userId);
 
         if (!rides || rides.length === 0) {
@@ -204,21 +204,12 @@ class MatchingService {
         if (preferences) {
             const prefMatches: string[] = [];
 
-            if (preferences.smokingAllowed === ride.smoking_allowed) {
-                preferenceScore += 5;
-                prefMatches.push('smoking');
-            }
-            if (preferences.petsAllowed === ride.pets_allowed) {
-                preferenceScore += 5;
-                prefMatches.push('pets');
-            }
-            if (preferences.musicPreference === 'any' || preferences.musicPreference === ride.music_preference) {
-                preferenceScore += 5;
-                prefMatches.push('music');
-            }
-            if (!preferences.preferVerifiedDrivers || ride.driver?.is_verified) {
-                preferenceScore += 5;
-            }
+            // smoking_allowed, pets_allowed, music_preference columns don't exist on rides table — neutral score
+            preferenceScore += 5;
+            preferenceScore += 5;
+            preferenceScore += 5;
+            // is_verified is not selected in the query — neutral score
+            preferenceScore += 5;
 
             totalScore += preferenceScore;
             if (prefMatches.length >= 2) {
@@ -287,12 +278,8 @@ class MatchingService {
             matchReasons: reasons,
             routeOverlap: Math.round(routeOverlap * 100),
             estimatedDetour: Math.round((1 - routeOverlap) * 15), // Rough estimate
-            pricePerSeat: ride.price_per_seat || 0,
-            preferences: {
-                smokingAllowed: ride.smoking_allowed,
-                petsAllowed: ride.pets_allowed,
-                musicPreference: ride.music_preference,
-            },
+            pricePerSeat: 0, // Free platform — price_per_seat column was dropped
+            preferences: {},
         };
     }
 
@@ -338,131 +325,44 @@ class MatchingService {
     }
 
     // Get user's match preferences
+    // user_match_preferences table doesn't exist; return sensible defaults
     async getUserPreferences(userId: string): Promise<MatchPreferences | null> {
-        const { data } = await supabase
-            .from('user_match_preferences')
-            .select('*')
-            .eq('user_id', userId)
-            .single();
-
-        if (!data) return null;
-
         return {
-            userId: data.user_id,
-            smokingAllowed: data.smoking_allowed,
-            petsAllowed: data.pets_allowed,
-            musicPreference: data.music_preference,
-            conversationLevel: data.conversation_level,
-            genderPreference: data.gender_preference,
-            maxDetourMinutes: data.max_detour_minutes,
-            preferredDepartureWindow: data.preferred_departure_window,
-            preferVerifiedDrivers: data.prefer_verified_drivers,
-            minDriverRating: data.min_driver_rating,
+            userId,
+            smokingAllowed: false,
+            petsAllowed: false,
+            musicPreference: 'any',
+            conversationLevel: 'some',
+            genderPreference: 'any',
+            maxDetourMinutes: 15,
+            preferredDepartureWindow: 30,
+            preferVerifiedDrivers: false,
+            minDriverRating: 0,
         };
     }
 
     // Save user preferences
-    async saveUserPreferences(preferences: MatchPreferences): Promise<void> {
-        await supabase.from('user_match_preferences').upsert({
-            user_id: preferences.userId,
-            smoking_allowed: preferences.smokingAllowed,
-            pets_allowed: preferences.petsAllowed,
-            music_preference: preferences.musicPreference,
-            conversation_level: preferences.conversationLevel,
-            gender_preference: preferences.genderPreference,
-            max_detour_minutes: preferences.maxDetourMinutes,
-            preferred_departure_window: preferences.preferredDepartureWindow,
-            prefer_verified_drivers: preferences.preferVerifiedDrivers,
-            min_driver_rating: preferences.minDriverRating,
-            updated_at: new Date().toISOString(),
-        });
+    // user_match_preferences table doesn't exist; no-op
+    async saveUserPreferences(_preferences: MatchPreferences): Promise<void> {
+        // Not implemented — user_match_preferences table does not exist
     }
 
-    // Recurring Rides
-    async createRecurringRide(ride: Omit<RecurringRide, 'id' | 'createdAt' | 'matchedRides'>): Promise<RecurringRide> {
-        const { data, error } = await supabase
-            .from('recurring_rides')
-            .insert({
-                user_id: ride.userId,
-                type: ride.type,
-                origin: ride.origin,
-                origin_lat: ride.originLat,
-                origin_lng: ride.originLng,
-                destination: ride.destination,
-                destination_lat: ride.destinationLat,
-                destination_lng: ride.destinationLng,
-                departure_time: ride.departureTime,
-                days_of_week: ride.daysOfWeek,
-                is_active: ride.isActive,
-                auto_book: ride.autoBook,
-                created_at: new Date().toISOString(),
-            })
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        return {
-            id: data.id,
-            userId: data.user_id,
-            type: data.type,
-            origin: data.origin,
-            originLat: data.origin_lat,
-            originLng: data.origin_lng,
-            destination: data.destination,
-            destinationLat: data.destination_lat,
-            destinationLng: data.destination_lng,
-            departureTime: data.departure_time,
-            daysOfWeek: data.days_of_week,
-            isActive: data.is_active,
-            autoBook: data.auto_book,
-            matchedRides: [],
-            createdAt: new Date(data.created_at),
-        };
+    // Recurring Rides — recurring_rides table does not exist
+    async createRecurringRide(_ride: Omit<RecurringRide, 'id' | 'createdAt' | 'matchedRides'>): Promise<RecurringRide> {
+        throw new Error('Not implemented: recurring_rides table does not exist');
     }
 
-    async getUserRecurringRides(userId: string): Promise<RecurringRide[]> {
-        const { data } = await supabase
-            .from('recurring_rides')
-            .select('*')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false });
-
-        return (data || []).map((r) => ({
-            id: r.id,
-            userId: r.user_id,
-            type: r.type,
-            origin: r.origin,
-            originLat: r.origin_lat,
-            originLng: r.origin_lng,
-            destination: r.destination,
-            destinationLat: r.destination_lat,
-            destinationLng: r.destination_lng,
-            departureTime: r.departure_time,
-            daysOfWeek: r.days_of_week,
-            isActive: r.is_active,
-            autoBook: r.auto_book,
-            matchedRides: r.matched_rides || [],
-            createdAt: new Date(r.created_at),
-            lastMatchedAt: r.last_matched_at ? new Date(r.last_matched_at) : undefined,
-        }));
+    async getUserRecurringRides(_userId: string): Promise<RecurringRide[]> {
+        // recurring_rides table does not exist — return empty list
+        return [];
     }
 
-    async updateRecurringRide(id: string, updates: Partial<RecurringRide>): Promise<void> {
-        const updateData: any = {};
-        if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
-        if (updates.autoBook !== undefined) updateData.auto_book = updates.autoBook;
-        if (updates.daysOfWeek) updateData.days_of_week = updates.daysOfWeek;
-        if (updates.departureTime) updateData.departure_time = updates.departureTime;
-
-        await supabase
-            .from('recurring_rides')
-            .update(updateData)
-            .eq('id', id);
+    async updateRecurringRide(_id: string, _updates: Partial<RecurringRide>): Promise<void> {
+        throw new Error('Not implemented: recurring_rides table does not exist');
     }
 
-    async deleteRecurringRide(id: string): Promise<void> {
-        await supabase.from('recurring_rides').delete().eq('id', id);
+    async deleteRecurringRide(_id: string): Promise<void> {
+        throw new Error('Not implemented: recurring_rides table does not exist');
     }
 
     // Wait List
@@ -485,10 +385,6 @@ class MatchingService {
                 user_id: userId,
                 ride_id: rideId,
                 position,
-                notify_on_available: options.notifyOnAvailable ?? true,
-                auto_book: options.autoBook ?? false,
-                expires_at: options.expiresAt?.toISOString(),
-                joined_at: new Date().toISOString(),
             })
             .select()
             .single();
@@ -570,7 +466,7 @@ class MatchingService {
         if (first.notifyOnAvailable) {
             await supabase.from('notifications').insert({
                 user_id: first.userId,
-                type: 'WAITLIST_SEAT_AVAILABLE',
+                type: 'system',
                 title: 'Seat Available!',
                 message: 'A seat is now available for a ride you were waiting for. Book now before it fills up!',
                 data: { ride_id: rideId },

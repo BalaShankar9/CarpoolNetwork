@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     BarChart3,
@@ -441,7 +441,7 @@ export function AnalyticsDashboard() {
                             <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
                                 <Target className="w-8 h-8 text-purple-600 mb-2" />
                                 <p className="text-sm text-purple-800">
-                                    Keep it up! You're on track to save <strong>{(impact.totalCo2Saved * 12 / (new Date().getMonth() + 1)).toFixed(0)} kg</strong> CO₂ this year.
+                                    Keep it up! You've saved <strong>{impact.totalCo2Saved.toFixed(0)} kg</strong> CO₂ so far.
                                 </p>
                             </div>
                         </div>
@@ -505,7 +505,7 @@ function StatCard({
     value,
     color,
 }: {
-    icon: React.ReactNode;
+    icon: ReactNode;
     label: string;
     value: string | number;
     color: 'blue' | 'purple' | 'green' | 'amber';

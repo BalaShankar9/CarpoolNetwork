@@ -242,7 +242,7 @@ class DisputeService {
         if (error) throw error;
 
         // Add system message
-        await this.sendMessage(disputeId, 'system', 'system', `Dispute status changed to: ${status.replace('_', ' ')}`);
+        await this.sendMessage(disputeId, 'system', 'system', `Dispute status changed to: ${status.replaceAll('_', ' ')}`);
 
         // Notify parties
         const dispute = this.mapDispute(data);
@@ -390,6 +390,8 @@ class DisputeService {
             .from('disputes')
             .select('*')
             .in('status', ['open', 'under_review', 'awaiting_response', 'mediation'])
+            // NOTE: Sorting priority alphabetically is incorrect (e.g. 'urgent' < 'low' alphabetically).
+            // A proper fix would require a numeric priority column or client-side sorting.
             .order('priority', { ascending: false })
             .order('created_at', { ascending: true });
 
@@ -466,7 +468,7 @@ class DisputeService {
             user_id: againstUserId,
             type: 'dispute_created',
             title: '⚠️ Dispute Filed Against You',
-            message: `A ${type.replace('_', ' ')} dispute has been filed. Please respond within 48 hours.`,
+            message: `A ${type.replaceAll('_', ' ')} dispute has been filed. Please respond within 48 hours.`,
             data: { dispute_id: disputeId },
             priority: 'high',
         });
@@ -483,7 +485,7 @@ class DisputeService {
                 user_id: mod.id,
                 type: 'new_dispute',
                 title: '🚨 New High-Priority Dispute',
-                message: `A ${type.replace('_', ' ')} dispute requires attention.`,
+                message: `A ${type.replaceAll('_', ' ')} dispute requires attention.`,
                 data: { dispute_id: disputeId },
                 priority: 'high',
             });
@@ -501,7 +503,7 @@ class DisputeService {
                 user_id: notif.userId,
                 type: 'dispute_status_change',
                 title: 'Dispute Status Updated',
-                message: `Your dispute status has been updated to: ${dispute.status.replace('_', ' ')}`,
+                message: `Your dispute status has been updated to: ${dispute.status.replaceAll('_', ' ')}`,
                 data: { dispute_id: dispute.id },
             });
         }

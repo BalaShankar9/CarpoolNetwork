@@ -117,7 +117,7 @@ export class NotificationsService {
                 .from('notifications')
                 .insert({
                     user_id: userId,
-                    type: type.toLowerCase(),
+                    type: type.toLowerCase().replace(/_/g, '-'),
                     title: (data as any)?.title || 'Notification',
                     message: (data as any)?.message || 'You have a new notification',
                     data,

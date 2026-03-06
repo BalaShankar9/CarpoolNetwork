@@ -324,7 +324,7 @@ class ModerationService {
                 user_id: mod.id,
                 type: 'new_report',
                 title: '📋 New Report',
-                message: `A new ${category.replace('_', ' ')} report needs review.`,
+                message: `A new ${category.replaceAll('_', ' ')} report needs review.`,
                 data: { report_id: reportId },
                 priority: 'high',
             });

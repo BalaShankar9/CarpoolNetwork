@@ -94,8 +94,7 @@ export class PreferenceMatchingService {
     const { data: blocked } = await supabase
       .from('blocked_users_preferences')
       .select('*')
-      .or(`user_id.eq.${driverId},user_id.eq.${passengerId}`)
-      .or(`blocked_user_id.eq.${driverId},blocked_user_id.eq.${passengerId}`)
+      .or(`and(user_id.eq.${driverId},blocked_user_id.eq.${passengerId}),and(user_id.eq.${passengerId},blocked_user_id.eq.${driverId})`)
       .maybeSingle();
 
     if (blocked) {
@@ -127,16 +126,9 @@ export class PreferenceMatchingService {
       });
     }
 
-    if (passengerPrefs.service_animal && !driverPrefs.pets_allowed) {
-      blockingIssues.push('service_animal_not_allowed');
-      score -= 40;
-      breakdown.pets = -40;
-      matchDetails.push({
-        category: 'Pets',
-        reason: 'Service animal cannot be accommodated',
-        impact: 'negative'
-      });
-    } else if (driverPrefs.pets_allowed) {
+    // NOTE: `service_animal` column does not exist on user_preferences.
+    // Skipping service-animal check; only evaluate pets_allowed.
+    if (driverPrefs.pets_allowed) {
       breakdown.pets = 5;
       matchDetails.push({
         category: 'Pets',
@@ -320,6 +312,10 @@ export class PreferenceMatchingService {
 
     const preferredIds = preferredDrivers?.map(p => p.preferred_driver_id) || [];
 
+    // TODO: N+1 query issue — each ride triggers calculateDetailedCompatibility
+    // (2 queries) plus another user_preferences fetch = 3 queries per ride.
+    // Pre-fetch all driver preferences in a single batch query before the loop
+    // and pass them into per-ride calculations to eliminate redundant DB calls.
     const filteredRides = await Promise.all(
       ridesWithDrivers
         .filter(ride => !blockedIds.includes(ride.driver_id))

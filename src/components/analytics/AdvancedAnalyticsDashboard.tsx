@@ -4,7 +4,7 @@ import {
   TrendingUp,
   TrendingDown,
   Leaf,
-  DollarSign,
+  PoundSterling,
   Clock,
   MapPin,
   Users,
@@ -70,7 +70,7 @@ export default function AdvancedAnalyticsDashboard() {
       const routeCounts: { [key: string]: number } = {};
       allRides.forEach(ride => {
         if (ride?.origin && ride?.destination) {
-          const route = `${ride.origin}-${ride.destination}`;
+          const route = `${ride.origin}|||${ride.destination}`;
           routeCounts[route] = (routeCounts[route] || 0) + 1;
         }
       });
@@ -78,8 +78,8 @@ export default function AdvancedAnalyticsDashboard() {
       const mostCommonRouteKey = Object.keys(routeCounts).sort((a, b) => routeCounts[b] - routeCounts[a])[0];
       const mostCommonRoute = mostCommonRouteKey
         ? {
-            origin: mostCommonRouteKey.split('-')[0],
-            destination: mostCommonRouteKey.split('-')[1],
+            origin: mostCommonRouteKey.split('|||')[0],
+            destination: mostCommonRouteKey.split('|||')[1],
             count: routeCounts[mostCommonRouteKey],
           }
         : null;
@@ -283,11 +283,11 @@ export default function AdvancedAnalyticsDashboard() {
           className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-6 text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300"
         >
           <div className="flex items-center justify-between mb-2">
-            <DollarSign className="w-8 h-8 opacity-80" />
+            <PoundSterling className="w-8 h-8 opacity-80" />
             <TrendingUp className="w-5 h-5" />
           </div>
           <p className="text-blue-100 text-sm mb-1">Money Saved</p>
-          <p className="text-3xl font-bold">GBP {analytics.totalMoneySaved.toFixed(2)}</p>
+          <p className="text-3xl font-bold">£{analytics.totalMoneySaved.toFixed(2)}</p>
         </div>
 
         <div
@@ -454,7 +454,7 @@ export default function AdvancedAnalyticsDashboard() {
             <p className="text-gray-700 mb-4">
               By carpooling, you've saved <strong>{formatCO2(analytics.totalCO2Saved)}</strong> of CO2 emissions.
               That's equivalent to planting approximately{' '}
-              <strong>{Math.round(analytics.totalCO2Saved / 20)}</strong> trees!
+              <strong>{Math.round(analytics.totalCO2Saved / 21)}</strong> trees!
             </p>
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div className="bg-white rounded-lg p-3">
@@ -463,7 +463,7 @@ export default function AdvancedAnalyticsDashboard() {
               </div>
               <div className="bg-white rounded-lg p-3">
                 <p className="text-sm text-gray-600">Total Savings</p>
-                <p className="text-xl font-bold text-green-600">GBP {analytics.totalMoneySaved.toFixed(2)}</p>
+                <p className="text-xl font-bold text-green-600">£{analytics.totalMoneySaved.toFixed(2)}</p>
               </div>
             </div>
           </div>

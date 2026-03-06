@@ -9,6 +9,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Cookie, X } from 'lucide-react';
+import { analytics } from '../../lib/analytics';
+import { initWebVitals } from '../../lib/analytics/webVitals';
 
 const STORAGE_KEY = 'cookie_consent_v1';
 
@@ -41,6 +43,12 @@ export default function CookieConsent() {
       JSON.stringify({ type, date: new Date().toISOString() })
     );
     setVisible(false);
+
+    // If user accepted all cookies, initialize analytics now (no reload needed)
+    if (type === 'all') {
+      analytics.initialize();
+      initWebVitals();
+    }
   }
 
   if (!visible) return null;

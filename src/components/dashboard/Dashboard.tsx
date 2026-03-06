@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Car, Calendar, Star, Settings, MapPin, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Database } from '../../lib/database.types';
@@ -12,6 +12,7 @@ type Booking = Database['public']['Tables']['ride_bookings']['Row'] & {
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'offered' | 'booked'>('offered');
   const [offeredRides, setOfferedRides] = useState<Ride[]>([]);
   const [bookedRides, setBookedRides] = useState<Booking[]>([]);
@@ -229,7 +230,11 @@ export default function Dashboard() {
                           </span>
                         </div>
                       </div>
-                      <button className="text-gray-600 hover:text-blue-600 transition-colors">
+                      <button
+                        onClick={() => navigate('/settings')}
+                        aria-label="Settings"
+                        className="text-gray-600 hover:text-blue-600 transition-colors"
+                      >
                         <Settings className="w-5 h-5" />
                       </button>
                     </div>
@@ -284,7 +289,10 @@ export default function Dashboard() {
                           </span>
                         </div>
                       </div>
-                      <button className="text-gray-600 hover:text-blue-600 transition-colors">
+                      <button
+                        onClick={() => navigate(`/bookings/${booking.id}`)}
+                        className="text-gray-600 hover:text-blue-600 transition-colors"
+                      >
                         View Details
                       </button>
                     </div>

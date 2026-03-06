@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 
 // Supported languages
-export type SupportedLanguage = 'en' | 'es' | 'fr' | 'de' | 'it' | 'pt' | 'nl' | 'pl';
+export type SupportedLanguage = 'en' | 'es' | 'fr' | 'de';
 
 export interface LanguageInfo {
     code: SupportedLanguage;
@@ -16,10 +16,6 @@ export const SUPPORTED_LANGUAGES: LanguageInfo[] = [
     { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸' },
     { code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷' },
     { code: 'de', name: 'German', nativeName: 'Deutsch', flag: '🇩🇪' },
-    { code: 'it', name: 'Italian', nativeName: 'Italiano', flag: '🇮🇹' },
-    { code: 'pt', name: 'Portuguese', nativeName: 'Português', flag: '🇵🇹' },
-    { code: 'nl', name: 'Dutch', nativeName: 'Nederlands', flag: '🇳🇱' },
-    { code: 'pl', name: 'Polish', nativeName: 'Polski', flag: '🇵🇱' },
 ];
 
 // Translation key type - nested object paths
@@ -45,10 +41,6 @@ const translations: Record<SupportedLanguage, Record<string, any>> = {
     es: {},
     fr: {},
     de: {},
-    it: {},
-    pt: {},
-    nl: {},
-    pl: {},
 };
 
 // Default English translations (inline for immediate availability)
@@ -199,7 +191,7 @@ translations.en = {
         noNotifications: 'No notifications',
         rideReminder: 'Ride Reminder',
         newBooking: 'New Booking',
-        messagReceived: 'Message Received',
+        messageReceived: 'Message Received',
         rideUpdate: 'Ride Update',
     },
     settings: {
@@ -550,6 +542,9 @@ translations.de = {
     },
 };
 
+// Track already-warned missing translation keys (dev only)
+const warnedKeys = new Set<string>();
+
 // Helper to get nested translation
 function getNestedValue(obj: any, path: string): string | undefined {
     return path.split('.').reduce((current, key) => current?.[key], obj);
@@ -577,8 +572,6 @@ export function I18nProvider({ children, defaultLanguage = 'en' }: I18nProviderP
         }
         return defaultLanguage;
     });
-    const [isLoading, setIsLoading] = useState(false);
-
     const setLanguage = useCallback((lang: SupportedLanguage) => {
         setLanguageState(lang);
         localStorage.setItem('language', lang);
@@ -597,7 +590,10 @@ export function I18nProvider({ children, defaultLanguage = 'en' }: I18nProviderP
 
             // Return key if not found
             if (!translation) {
-                console.warn(`Translation missing: ${key}`);
+                if (import.meta.env.DEV && !warnedKeys.has(key)) {
+                    warnedKeys.add(key);
+                    console.warn(`Translation missing: ${key}`);
+                }
                 return key;
             }
 
@@ -673,7 +669,7 @@ export function I18nProvider({ children, defaultLanguage = 'en' }: I18nProviderP
         formatNumber,
         formatCurrency,
         languageInfo,
-        isLoading,
+        isLoading: false,
     };
 
     return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

@@ -70,18 +70,13 @@ export function SOSButton({ rideId, userId, onAlert }: SOSButtonProps) {
     }, [isHolding, showConfirmation]);
 
     const handleTriggerSOS = useCallback(async () => {
-        if (!currentLocation) {
-            alert('Unable to get your location. Please enable GPS.');
-            return;
-        }
-
-        if (!rideId) {
-            alert('No active ride to report. Emergency services have been notified of your location.');
-        }
-
         setIsTriggering(true);
         try {
-            await emergencyService.triggerSOS(rideId || undefined, userId, currentLocation);
+            await emergencyService.triggerSOS(
+                rideId || undefined,
+                userId,
+                currentLocation ?? undefined
+            );
             setAlertSent(true);
             onAlert?.();
 
@@ -307,7 +302,7 @@ export function SOSButton({ rideId, userId, onAlert }: SOSButtonProps) {
 }
 
 // Compact SOS button for header/nav
-export function CompactSOSButton({ rideId, userId }: { rideId: string; userId: string }) {
+export function CompactSOSButton({ rideId, userId }: { rideId?: string; userId: string }) {
     const [showFullButton, setShowFullButton] = useState(false);
 
     return (

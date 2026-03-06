@@ -128,29 +128,42 @@ class EmergencyService {
     // ==================== SOS ALERTS ====================
 
     async triggerSOS(
-        rideId: string | undefined,
-        userId: string,
-        location: { lat: number; lng: number },
+        rideId?: string,
+        userId?: string,
+        location?: { lat: number; lng: number },
         message?: string
     ): Promise<SOSAlert> {
+        if (!userId) throw new Error('userId is required to trigger SOS');
+
+        const insertPayload: Record<string, unknown> = {
+            user_id: userId,
+            alert_type: 'sos',
+            status: 'active',
+            message,
+        };
+
+        if (rideId) {
+            insertPayload.ride_id = rideId;
+        }
+        if (location) {
+            insertPayload.latitude = location.lat;
+            insertPayload.longitude = location.lng;
+        }
+
         const { data, error } = await supabase
             .from('sos_alerts')
-            .insert({
-                ride_id: rideId ?? null,
-                user_id: userId,
-                latitude: location.lat,
-                longitude: location.lng,
-                alert_type: 'sos',
-                status: 'active',
-                message,
-            })
+            .insert(insertPayload)
             .select()
             .single();
 
         if (error) throw error;
 
-        // Notify emergency contacts
-        await this.notifyEmergencyContacts(userId, data.id, location);
+        // Notify emergency contacts (skip location-based operations if no location)
+        if (location) {
+            await this.notifyEmergencyContacts(userId, data.id, location);
+        } else {
+            await this.notifyEmergencyContactsWithoutLocation(userId, data.id);
+        }
 
         // Notify platform admins
         await this.notifyAdmins(data.id);
@@ -255,6 +268,58 @@ class EmergencyService {
             });
 
             // Log notification attempt
+            await supabase.from('emergency_notifications').insert({
+                alert_id: alertId,
+                contact_id: contact.id,
+                method: 'sms',
+                message,
+                status: 'sent',
+            });
+        }
+    }
+
+    private async notifyEmergencyContactsWithoutLocation(
+        userId: string,
+        alertId: string
+    ): Promise<void> {
+        const contacts = await this.getEmergencyContacts(userId);
+        const sosContacts = contacts.filter((c) => c.notifyOnSOS);
+
+        const { data: user } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', userId)
+            .single();
+
+        const message = `EMERGENCY ALERT: ${user?.full_name || 'A user'} has triggered an SOS alert. Location unavailable.`;
+
+        for (const contact of sosContacts) {
+            await supabase.from('notifications').insert({
+                user_id: userId,
+                type: 'emergency_sos',
+                title: 'Emergency SOS Alert',
+                message,
+                data: {
+                    alert_id: alertId,
+                    contact_name: contact.name,
+                    contact_phone: contact.phone,
+                    contact_email: contact.email,
+                },
+                priority: 'critical',
+            });
+
+            await supabase.from('notification_queue').insert({
+                user_id: userId,
+                notification_type: 'sos_alert',
+                title: 'Emergency SOS Alert',
+                message,
+                data: {
+                    contact_phone: contact.phone,
+                    contact_email: contact.email,
+                },
+                priority: 'urgent',
+            });
+
             await supabase.from('emergency_notifications').insert({
                 alert_id: alertId,
                 contact_id: contact.id,
@@ -469,11 +534,12 @@ class EmergencyService {
             .eq('id', checkIn.ride_id)
             .single();
 
-        // Trigger SOS-like alert
+        // Trigger SOS-like alert — only include location if coordinates are available
+        const hasLocation = ride?.current_lat != null && ride?.current_lng != null;
         await this.triggerSOS(
             checkIn.ride_id,
             checkIn.user_id,
-            { lat: ride?.current_lat || 0, lng: ride?.current_lng || 0 },
+            hasLocation ? { lat: ride.current_lat, lng: ride.current_lng } : undefined,
             'Automated alert: Safety check-in was not responded to'
         );
     }

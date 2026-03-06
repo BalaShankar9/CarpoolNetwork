@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Search,
@@ -97,13 +97,14 @@ export default function HelpHub() {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
 
+  const articleSlug = searchParams.get('article');
+
   useEffect(() => {
     loadArticles();
-    const articleSlug = searchParams.get('article');
     if (articleSlug) {
       loadArticleBySlug(articleSlug);
     }
-  }, [searchParams]);
+  }, [articleSlug]);
 
   const loadArticles = async () => {
     try {
@@ -140,13 +141,9 @@ export default function HelpHub() {
     }
   };
 
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query);
-    if (query.length < 2) {
-      setSearchResults([]);
-      return;
-    }
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const executeSearch = useCallback(async (query: string) => {
     setSearching(true);
     try {
       const { data, error } = await supabase.rpc('search_help_articles', {
@@ -173,6 +170,20 @@ export default function HelpHub() {
     } finally {
       setSearching(false);
     }
+  }, [articles]);
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    if (query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      executeSearch(query);
+    }, 300);
   };
 
   const openArticle = (article: HelpArticle) => {
@@ -222,51 +233,79 @@ export default function HelpHub() {
 
           <div className="p-6">
             <div className="prose prose-blue max-w-none">
-              {selectedArticle.content_md.split('\n').map((line, index) => {
-                if (line.startsWith('## ')) {
-                  return (
-                    <h2 key={index} className="text-xl font-bold text-gray-900 mt-6 mb-3">
-                      {line.replace('## ', '')}
-                    </h2>
-                  );
+              {(() => {
+                const lines = selectedArticle.content_md.split('\n');
+                const elements: React.ReactNode[] = [];
+                let i = 0;
+                while (i < lines.length) {
+                  const line = lines[i];
+                  // Collect consecutive unordered list items
+                  if (line.startsWith('- ')) {
+                    const items: { text: string; idx: number }[] = [];
+                    while (i < lines.length && lines[i].startsWith('- ')) {
+                      items.push({ text: lines[i].replace('- ', ''), idx: i });
+                      i++;
+                    }
+                    elements.push(
+                      <ul key={`ul-${items[0].idx}`} className="list-disc ml-4">
+                        {items.map((item) => (
+                          <li key={item.idx} className="text-gray-700">
+                            {item.text}
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                    continue;
+                  }
+                  // Collect consecutive ordered list items
+                  if (line.match(/^\d+\. /)) {
+                    const items: { text: string; idx: number }[] = [];
+                    while (i < lines.length && lines[i].match(/^\d+\. /)) {
+                      items.push({ text: lines[i].replace(/^\d+\. /, ''), idx: i });
+                      i++;
+                    }
+                    elements.push(
+                      <ol key={`ol-${items[0].idx}`} className="list-decimal ml-4">
+                        {items.map((item) => (
+                          <li key={item.idx} className="text-gray-700">
+                            {item.text}
+                          </li>
+                        ))}
+                      </ol>
+                    );
+                    continue;
+                  }
+                  if (line.startsWith('## ')) {
+                    elements.push(
+                      <h2 key={i} className="text-xl font-bold text-gray-900 mt-6 mb-3">
+                        {line.replace('## ', '')}
+                      </h2>
+                    );
+                  } else if (line.startsWith('### ')) {
+                    elements.push(
+                      <h3 key={i} className="text-lg font-semibold text-gray-800 mt-4 mb-2">
+                        {line.replace('### ', '')}
+                      </h3>
+                    );
+                  } else if (line.startsWith('**') && line.endsWith('**')) {
+                    elements.push(
+                      <p key={i} className="font-semibold text-gray-900">
+                        {line.replace(/\*\*/g, '')}
+                      </p>
+                    );
+                  } else if (line.trim() === '') {
+                    elements.push(<br key={i} />);
+                  } else {
+                    elements.push(
+                      <p key={i} className="text-gray-700 mb-2">
+                        {line}
+                      </p>
+                    );
+                  }
+                  i++;
                 }
-                if (line.startsWith('### ')) {
-                  return (
-                    <h3 key={index} className="text-lg font-semibold text-gray-800 mt-4 mb-2">
-                      {line.replace('### ', '')}
-                    </h3>
-                  );
-                }
-                if (line.startsWith('- ')) {
-                  return (
-                    <li key={index} className="text-gray-700 ml-4">
-                      {line.replace('- ', '')}
-                    </li>
-                  );
-                }
-                if (line.match(/^\d+\. /)) {
-                  return (
-                    <li key={index} className="text-gray-700 ml-4 list-decimal">
-                      {line.replace(/^\d+\. /, '')}
-                    </li>
-                  );
-                }
-                if (line.startsWith('**') && line.endsWith('**')) {
-                  return (
-                    <p key={index} className="font-semibold text-gray-900">
-                      {line.replace(/\*\*/g, '')}
-                    </p>
-                  );
-                }
-                if (line.trim() === '') {
-                  return <br key={index} />;
-                }
-                return (
-                  <p key={index} className="text-gray-700 mb-2">
-                    {line}
-                  </p>
-                );
-              })}
+                return elements;
+              })()}
             </div>
 
             {selectedArticle.tags && selectedArticle.tags.length > 0 && (

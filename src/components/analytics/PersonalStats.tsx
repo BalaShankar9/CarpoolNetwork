@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
     TrendingUp,
     TrendingDown,
@@ -143,12 +143,12 @@ export function PersonalStats() {
                 thisMonth: {
                     rides: thisMonthRides.length,
                     distance: thisMonthRides.reduce((sum, r) => sum + ((r as any).distance_km || 0), 0),
-                    savings: thisMonthRides.length * 5, // Estimated savings
+                    savings: thisMonthRides.reduce((sum, r) => sum + ((r as any).distance_km || 0), 0) * 0.15,
                 },
                 lastMonth: {
                     rides: lastMonthRides.length,
                     distance: lastMonthRides.reduce((sum, r) => sum + ((r as any).distance_km || 0), 0),
-                    savings: lastMonthRides.length * 5,
+                    savings: lastMonthRides.reduce((sum, r) => sum + ((r as any).distance_km || 0), 0) * 0.15,
                 },
             });
         } catch (err) {

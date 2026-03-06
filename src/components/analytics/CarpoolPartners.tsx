@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Star, Car, Calendar, MessageCircle, ChevronRight } from 'lucide-react';
+import { Users, Star, Car, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';

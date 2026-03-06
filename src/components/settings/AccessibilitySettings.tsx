@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Accessibility, Eye, Volume2, Hand, Vibrate, Keyboard, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { useAccessibility } from '../../contexts/AccessibilityContext';
 
 interface AccessibilityPrefs {
   screen_reader_enabled: boolean;
@@ -17,18 +16,8 @@ interface AccessibilityPrefs {
   sound_alerts: boolean;
 }
 
-// Map from DB field names to AccessibilityContext setting names
-const dbToContextKey: Record<string, string> = {
-  high_contrast: 'highContrast',
-  reduce_motion: 'reducedMotion',
-  screen_reader_enabled: 'screenReaderOptimized',
-  color_blind_mode: 'colorBlindMode',
-  large_text: 'fontSize',
-};
-
 export default function AccessibilitySettings() {
   const { profile } = useAuth();
-  const { updateSetting } = useAccessibility();
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -57,6 +46,7 @@ export default function AccessibilitySettings() {
   }, [profile?.id]);
 
   const loadPreferences = async () => {
+    if (!profile?.id) return;
     try {
       setLoading(true);
       const { data, error: fetchError } = await supabase
@@ -89,6 +79,7 @@ export default function AccessibilitySettings() {
   };
 
   const updatePreference = async (key: keyof AccessibilityPrefs, value: any) => {
+    if (!profile?.id) return;
     try {
       setError('');
 
@@ -96,7 +87,8 @@ export default function AccessibilitySettings() {
         .from('user_preferences')
         .upsert(
           {
-            user_id: profile?.id,
+            user_id: profile.id,
+            ...prefs,
             [key]: value
           },
           { onConflict: 'user_id' }
@@ -104,18 +96,7 @@ export default function AccessibilitySettings() {
 
       if (updateError) throw updateError;
 
-      setPrefs({ ...prefs, [key]: value });
-
-      // Apply setting via AccessibilityContext so it takes effect on the DOM
-      const contextKey = dbToContextKey[key];
-      if (contextKey) {
-        if (key === 'large_text') {
-          // Map large_text boolean to fontSize setting
-          updateSetting('fontSize', value ? 'large' : 'medium');
-        } else {
-          updateSetting(contextKey as any, value);
-        }
-      }
+      setPrefs(prev => ({ ...prev, [key]: value }));
 
       setSuccess('Accessibility settings updated');
     } catch (err: any) {
@@ -173,6 +154,9 @@ export default function AccessibilitySettings() {
             </div>
             <button
               onClick={() => updatePreference('screen_reader_enabled', !prefs.screen_reader_enabled)}
+              role="switch"
+              aria-checked={prefs.screen_reader_enabled}
+              aria-label="Screen Reader Support"
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 prefs.screen_reader_enabled ? 'bg-blue-600' : 'bg-gray-200'
               }`}
@@ -192,6 +176,9 @@ export default function AccessibilitySettings() {
             </div>
             <button
               onClick={() => updatePreference('large_text', !prefs.large_text)}
+              role="switch"
+              aria-checked={prefs.large_text}
+              aria-label="Large Text"
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 prefs.large_text ? 'bg-blue-600' : 'bg-gray-200'
               }`}
@@ -211,6 +198,9 @@ export default function AccessibilitySettings() {
             </div>
             <button
               onClick={() => updatePreference('high_contrast', !prefs.high_contrast)}
+              role="switch"
+              aria-checked={prefs.high_contrast}
+              aria-label="High Contrast Mode"
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 prefs.high_contrast ? 'bg-blue-600' : 'bg-gray-200'
               }`}
@@ -230,6 +220,9 @@ export default function AccessibilitySettings() {
             </div>
             <button
               onClick={() => updatePreference('reduce_motion', !prefs.reduce_motion)}
+              role="switch"
+              aria-checked={prefs.reduce_motion}
+              aria-label="Reduce Motion"
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 prefs.reduce_motion ? 'bg-blue-600' : 'bg-gray-200'
               }`}
@@ -275,6 +268,9 @@ export default function AccessibilitySettings() {
             </div>
             <button
               onClick={() => updatePreference('sound_alerts', !prefs.sound_alerts)}
+              role="switch"
+              aria-checked={prefs.sound_alerts}
+              aria-label="Sound Alerts"
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 prefs.sound_alerts ? 'bg-blue-600' : 'bg-gray-200'
               }`}
@@ -294,6 +290,9 @@ export default function AccessibilitySettings() {
             </div>
             <button
               onClick={() => updatePreference('captions_enabled', !prefs.captions_enabled)}
+              role="switch"
+              aria-checked={prefs.captions_enabled}
+              aria-label="Captions"
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 prefs.captions_enabled ? 'bg-blue-600' : 'bg-gray-200'
               }`}
@@ -313,6 +312,9 @@ export default function AccessibilitySettings() {
             </div>
             <button
               onClick={() => updatePreference('voice_commands', !prefs.voice_commands)}
+              role="switch"
+              aria-checked={prefs.voice_commands}
+              aria-label="Voice Commands"
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 prefs.voice_commands ? 'bg-blue-600' : 'bg-gray-200'
               }`}
@@ -341,6 +343,9 @@ export default function AccessibilitySettings() {
             </div>
             <button
               onClick={() => updatePreference('haptic_feedback', !prefs.haptic_feedback)}
+              role="switch"
+              aria-checked={prefs.haptic_feedback}
+              aria-label="Haptic Feedback"
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 prefs.haptic_feedback ? 'bg-blue-600' : 'bg-gray-200'
               }`}
@@ -360,6 +365,9 @@ export default function AccessibilitySettings() {
             </div>
             <button
               onClick={() => updatePreference('keyboard_navigation', !prefs.keyboard_navigation)}
+              role="switch"
+              aria-checked={prefs.keyboard_navigation}
+              aria-label="Keyboard Navigation"
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 prefs.keyboard_navigation ? 'bg-blue-600' : 'bg-gray-200'
               }`}

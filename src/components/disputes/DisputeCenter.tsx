@@ -83,8 +83,8 @@ export function DisputeCenter({ userId }: DisputeCenterProps) {
 
     const getTypeIcon = (type: DisputeType) => {
         switch (type) {
-            case 'payment':
-                return '💰';
+            case 'communication':
+                return '💬';
             case 'no_show':
                 return '👻';
             case 'safety':
@@ -240,7 +240,7 @@ function CreateDisputeForm({ userId, onClose, onCreated }: CreateDisputeFormProp
         icon: string;
         description: string;
     }> = [
-            { value: 'payment', label: 'Payment Issue', icon: '💰', description: 'Issues with ride costs or payments' },
+            { value: 'communication', label: 'Communication Issue', icon: '💬', description: 'Issues with communication between riders' },
             { value: 'no_show', label: 'No Show', icon: '👻', description: 'Driver or passenger didn\'t appear' },
             { value: 'safety', label: 'Safety Concern', icon: '🚨', description: 'Felt unsafe during the ride' },
             { value: 'behavior', label: 'Inappropriate Behavior', icon: '😤', description: 'Rude or inappropriate conduct' },

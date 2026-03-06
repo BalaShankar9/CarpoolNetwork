@@ -126,7 +126,8 @@ export async function createRecommendations(userId: string) {
     const { data: preferences } = await supabase
       .from('user_preferences')
       .select('*')
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .maybeSingle();
 
     const { data: recentSearches } = await supabase
       .from('search_queries')
@@ -158,24 +159,22 @@ export async function createRecommendations(userId: string) {
       const reasoning: Record<string, any> = {};
 
       if (preferences) {
-        preferences.forEach((pref: any) => {
-          const rideMetadata = ride.metadata || {};
+        const rideMetadata = ride.metadata || {};
 
-          if (pref.preference_key === 'smoking' && pref.preference_value === rideMetadata.smoking_allowed) {
-            score += 15;
-            reasoning.smoking_match = true;
-          }
+        if (preferences.smoking_policy != null && preferences.smoking_policy === rideMetadata.smoking_allowed) {
+          score += 15;
+          reasoning.smoking_match = true;
+        }
 
-          if (pref.preference_key === 'pets' && pref.preference_value === rideMetadata.pets_allowed) {
-            score += 15;
-            reasoning.pets_match = true;
-          }
+        if (preferences.pets_allowed != null && preferences.pets_allowed === rideMetadata.pets_allowed) {
+          score += 15;
+          reasoning.pets_match = true;
+        }
 
-          if (pref.preference_key === 'music' && pref.preference_value === rideMetadata.music_allowed) {
-            score += 10;
-            reasoning.music_match = true;
-          }
-        });
+        if (preferences.music_preference != null && preferences.music_preference === rideMetadata.music_allowed) {
+          score += 10;
+          reasoning.music_match = true;
+        }
       }
 
       if (ride.driver && ride.driver.trust_score) {
@@ -212,9 +211,7 @@ export async function createRecommendations(userId: string) {
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);
 
-    for (const rec of topRecommendations) {
-      await supabase.from('user_recommendations').insert(rec);
-    }
+    await supabase.from('user_recommendations').insert(topRecommendations);
 
     return topRecommendations;
   } catch (error) {

@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { Car, Cookie } from 'lucide-react';
 import Seo from '../../components/shared/Seo';
 import Logo from '../../components/shared/Logo';
+import { useAuth } from '../../contexts/AuthContext';
 
 const cookieTypes = [
   {
@@ -41,6 +42,7 @@ const cookieTypes = [
 ];
 
 export default function CookiesPolicy() {
+  const { user } = useAuth();
   return (
     <>
       <Seo
@@ -59,8 +61,14 @@ export default function CookiesPolicy() {
             <div className="flex items-center gap-6">
               <Link to="/terms" className="text-gray-600 hover:text-gray-900 hidden sm:inline text-sm font-medium">Terms</Link>
               <Link to="/privacy" className="text-gray-600 hover:text-gray-900 hidden sm:inline text-sm font-medium">Privacy</Link>
-              <Link to="/signin" className="px-4 py-2 text-red-600 hover:text-red-700 font-medium text-sm">Sign In</Link>
-              <Link to="/signup" className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg font-medium text-sm hover:from-red-600 hover:to-orange-600 transition-all">Get Started</Link>
+              {user ? (
+                <Link to="/dashboard" className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg font-medium text-sm hover:from-red-600 hover:to-orange-600 transition-all">Dashboard</Link>
+              ) : (
+                <>
+                  <Link to="/signin" className="px-4 py-2 text-red-600 hover:text-red-700 font-medium text-sm">Sign In</Link>
+                  <Link to="/signup" className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg font-medium text-sm hover:from-red-600 hover:to-orange-600 transition-all">Get Started</Link>
+                </>
+              )}
             </div>
           </div>
         </nav>

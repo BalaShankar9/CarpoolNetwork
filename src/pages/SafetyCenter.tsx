@@ -33,6 +33,15 @@ import {
 
 type Tab = 'overview' | 'contacts' | 'badges' | 'tips' | 'disputes' | 'analytics';
 
+/**
+ * Returns the emergency phone number for the user's locale.
+ * TODO: Make this locale-aware (e.g. 911 for US/CA, 112 for EU, 000 for AU).
+ * Currently defaults to 999 (UK).
+ */
+function getEmergencyNumber(): string {
+    return '999';
+}
+
 export default function SafetyCenter() {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -217,7 +226,7 @@ export default function SafetyCenter() {
                             </button>
 
                             <a
-                                href="tel:999"
+                                href={`tel:${getEmergencyNumber()}`}
                                 className="bg-white rounded-xl border p-4 flex items-center gap-4
                          hover:shadow-md transition-all text-left"
                             >
@@ -226,7 +235,7 @@ export default function SafetyCenter() {
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="font-medium text-gray-900">Emergency Services</h3>
-                                    <p className="text-sm text-gray-500">Call 999</p>
+                                    <p className="text-sm text-gray-500">Call {getEmergencyNumber()}</p>
                                 </div>
                                 <ChevronRight className="h-5 w-5 text-gray-400" />
                             </a>

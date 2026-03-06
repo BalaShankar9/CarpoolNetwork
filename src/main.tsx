@@ -6,6 +6,7 @@ import { supabaseInitError, isSupabaseInitialized } from './lib/supabase.ts';
 import { initSentry } from './lib/sentry.ts';
 import { analytics } from './lib/analytics';
 import { initWebVitals } from './lib/analytics/webVitals';
+import { hasAnalyticsConsent } from './components/shared/CookieConsent';
 import './index.css';
 
 // =============================================================================
@@ -29,15 +30,16 @@ if (!isSupabaseInitialized()) {
 // Initialize error tracking first (safe to call even without Supabase)
 initSentry();
 
-// Initialize analytics (GA4 + GTM) - safe to call without Supabase
-// WHY: Analytics must initialize early but after DOM is ready
-// to capture the full user journey including initial page load
-analytics.initialize();
+// Initialize analytics (GA4 + GTM) only if user has consented (PECR/GDPR)
+// WHY: Analytics must not run until the user explicitly accepts all cookies
+if (hasAnalyticsConsent()) {
+  analytics.initialize();
 
-// Initialize Core Web Vitals tracking
-// WHY: Web Vitals measurement should start after analytics
-// to ensure metrics are reported correctly
-initWebVitals();
+  // Initialize Core Web Vitals tracking
+  // WHY: Web Vitals measurement should start after analytics
+  // to ensure metrics are reported correctly
+  initWebVitals();
+}
 
 // =============================================================================
 // Render Application

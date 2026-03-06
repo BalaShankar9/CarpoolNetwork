@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { X, CheckCircle2, MessageCircle, UserPlus, MessageSquare, AlertTriangle } from 'lucide-react';
+import { X, CheckCircle2, MessageCircle, UserPlus, MessageSquare, AlertTriangle, Car, Calendar, Star, Shield, Bell } from 'lucide-react';
 import { useNotifications } from '../../hooks/useNotifications';
 import { Notification, NotificationType } from '../../types/notifications';
 import { useNavigate } from 'react-router-dom';
@@ -20,8 +20,22 @@ const getNotificationIcon = (type: NotificationType) => {
         case 'FORUM_REPLY':
         case 'FORUM_MENTION':
             return <MessageSquare className="h-5 w-5 text-purple-500" />;
+        case 'RIDE_MATCH':
+            return <Car className="h-5 w-5 text-blue-600" />;
+        case 'BOOKING_REQUEST':
+            return <Calendar className="h-5 w-5 text-orange-500" />;
+        case 'BOOKING_CONFIRMED':
+            return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+        case 'BOOKING_CANCELLED':
+            return <AlertTriangle className="h-5 w-5 text-red-500" />;
+        case 'REVIEW':
+            return <Star className="h-5 w-5 text-yellow-500" />;
+        case 'SAFETY_ALERT':
+            return <Shield className="h-5 w-5 text-red-500" />;
+        case 'SYSTEM':
+            return <Bell className="h-5 w-5 text-gray-600" />;
         default:
-            return <AlertTriangle className="h-5 w-5 text-gray-500" />;
+            return <Bell className="h-5 w-5 text-gray-500" />;
     }
 };
 

@@ -12,15 +12,19 @@ export default function FeedbackButton() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [showTooltip, setShowTooltip] = useState(false);
+  const [pulse, setPulse] = useState(false);
 
   useEffect(() => {
     const tooltipSeen = localStorage.getItem('bug-report-tooltip-seen');
     if (!tooltipSeen) {
       setShowTooltip(true);
-      setTimeout(() => {
+      setPulse(true);
+      const timer = setTimeout(() => {
         setShowTooltip(false);
+        setPulse(false);
         localStorage.setItem('bug-report-tooltip-seen', 'true');
       }, 5000);
+      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -85,7 +89,7 @@ export default function FeedbackButton() {
               setIsOpen(true);
             }
           }}
-          className="bg-red-600 text-white p-3 md:p-4 rounded-full shadow-lg hover:bg-red-700 transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+          className={`bg-red-600 text-white p-3 md:p-4 rounded-full shadow-lg hover:bg-red-700 transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2${pulse ? ' motion-safe:animate-pulse' : ''}`}
           title="Report a problem"
           aria-label="Report a problem or bug"
           tabIndex={0}
@@ -125,10 +129,11 @@ export default function FeedbackButton() {
               <form onSubmit={handleSubmit} className="p-4 space-y-4">
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="feedback-summary" className="block text-sm font-medium text-gray-700 mb-2">
                       Summary
                     </label>
                     <input
+                      id="feedback-summary"
                       value={summary}
                       onChange={(e) => setSummary(e.target.value)}
                       placeholder="Crash while posting a ride"
@@ -136,10 +141,11 @@ export default function FeedbackButton() {
                       required
                     />
                   </div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="feedback-details" className="block text-sm font-medium text-gray-700 mb-2">
                     Describe the problem
                   </label>
                   <textarea
+                    id="feedback-details"
                     value={details}
                     onChange={(e) => setDetails(e.target.value)}
                     placeholder="Describe what went wrong, steps to reproduce, expected behavior..."
