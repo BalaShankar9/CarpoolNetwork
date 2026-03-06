@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WifiOff, Wifi, CloudOff, RefreshCw } from 'lucide-react';
 import pwaService from '@/services/pwaService';
@@ -7,6 +7,8 @@ export function OfflineIndicator() {
     const [isOnline, setIsOnline] = useState(pwaService.isOnline());
     const [showBanner, setShowBanner] = useState(false);
     const [syncedData, setSyncedData] = useState<any>(null);
+    const bannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const syncedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         const cleanupOnline = pwaService.onOnlineChange((online) => {
@@ -15,13 +17,15 @@ export function OfflineIndicator() {
 
             // Auto-hide banner after 5 seconds when back online
             if (online) {
-                setTimeout(() => setShowBanner(false), 5000);
+                if (bannerTimeoutRef.current) clearTimeout(bannerTimeoutRef.current);
+                bannerTimeoutRef.current = setTimeout(() => setShowBanner(false), 5000);
             }
         });
 
         const cleanupSynced = pwaService.onSynced((data) => {
             setSyncedData(data);
-            setTimeout(() => setSyncedData(null), 3000);
+            if (syncedTimeoutRef.current) clearTimeout(syncedTimeoutRef.current);
+            syncedTimeoutRef.current = setTimeout(() => setSyncedData(null), 3000);
         });
 
         // Show banner initially if offline
@@ -32,6 +36,8 @@ export function OfflineIndicator() {
         return () => {
             cleanupOnline();
             cleanupSynced();
+            if (bannerTimeoutRef.current) clearTimeout(bannerTimeoutRef.current);
+            if (syncedTimeoutRef.current) clearTimeout(syncedTimeoutRef.current);
         };
     }, []);
 

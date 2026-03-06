@@ -240,7 +240,7 @@ class EmergencyService {
             // Insert into notifications table for in-app delivery
             await supabase.from('notifications').insert({
                 user_id: userId,
-                type: 'emergency_sos',
+                type: 'SAFETY_ALERT',
                 title: '🚨 Emergency SOS Alert',
                 message,
                 data: {
@@ -249,6 +249,7 @@ class EmergencyService {
                     contact_phone: contact.phone,
                     contact_email: contact.email,
                     location_url: locationUrl,
+                    original_type: 'emergency_sos',
                 },
                 priority: 'critical',
             });
@@ -296,7 +297,7 @@ class EmergencyService {
         for (const contact of sosContacts) {
             await supabase.from('notifications').insert({
                 user_id: userId,
-                type: 'emergency_sos',
+                type: 'SAFETY_ALERT',
                 title: 'Emergency SOS Alert',
                 message,
                 data: {
@@ -304,6 +305,7 @@ class EmergencyService {
                     contact_name: contact.name,
                     contact_phone: contact.phone,
                     contact_email: contact.email,
+                    original_type: 'emergency_sos',
                 },
                 priority: 'critical',
             });
@@ -341,10 +343,10 @@ class EmergencyService {
         for (const admin of admins || []) {
             await supabase.from('notifications').insert({
                 user_id: admin.id,
-                type: 'sos_alert',
+                type: 'SAFETY_ALERT',
                 title: '🚨 SOS Alert Triggered',
                 message: 'A user has triggered an emergency SOS. Immediate attention required.',
-                data: { alert_id: alertId },
+                data: { alert_id: alertId, original_type: 'sos_alert' },
                 priority: 'critical',
             });
         }

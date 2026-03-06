@@ -125,10 +125,10 @@ export default function RideDetailAdmin() {
         try {
             const { error } = await supabase.from('notifications').insert({
                 user_id: ride.driver_id,
-                type: 'ride_reminder',
+                type: 'SYSTEM',
                 title: 'Ride Reminder from Admin',
                 body: `Reminder: you have a ride from ${ride.origin} to ${ride.destination} on ${new Date(ride.departure_time).toLocaleString()}.`,
-                data: { ride_id: rideId, sent_by: user?.id || 'admin' },
+                data: { ride_id: rideId, sent_by: user?.id || 'admin', original_type: 'ride_reminder' },
                 read: false,
             });
             if (error) throw error;

@@ -46,7 +46,7 @@ interface OnlineFriend {
 
 export default function Home() {
   const { profile } = useAuth();
-  const { unreadMessagesCount } = useRealtime();
+  const { unreadMessages } = useRealtime();
   const navigate = useNavigate();
   const [stats, setStats] = useState<Stats>({
     totalRidesOffered: 0,
@@ -185,7 +185,7 @@ export default function Home() {
         totalRidesTaken: profile?.total_rides_taken || 0,
         upcomingRides: activeRidesCount || 0,
         activeRides: activeRidesCount || 0,
-        unreadMessages: unreadMessagesCount || 0,
+        unreadMessages: unreadMessages || 0,
         friendsCount,
       });
 
@@ -308,12 +308,12 @@ export default function Home() {
           <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mb-3">
             <MessageCircle className="w-5 h-5 text-indigo-600" />
           </div>
-          {(unreadMessagesCount || stats.unreadMessages) > 0 && (
+          {(unreadMessages || stats.unreadMessages) > 0 && (
             <span className="absolute top-3 right-3 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-              {unreadMessagesCount || stats.unreadMessages}
+              {unreadMessages || stats.unreadMessages}
             </span>
           )}
-          <p className="text-2xl font-bold text-gray-900">{unreadMessagesCount || stats.unreadMessages}</p>
+          <p className="text-2xl font-bold text-gray-900">{unreadMessages || stats.unreadMessages}</p>
           <p className="text-xs text-gray-600 mt-1">Unread Messages</p>
         </button>
 

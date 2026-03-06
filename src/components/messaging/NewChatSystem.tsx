@@ -281,8 +281,16 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
   const conversationChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const overviewChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const retryTimeoutRef = useRef<number | null>(null);
+  const retryCountRef = useRef(0);
   const queueItemsRef = useRef<QueueItem[]>(queueItems);
   const resolvingAttachmentsRef = useRef(false);
+
+  // Clean up recording interval on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingIntervalRef.current) window.clearInterval(recordingIntervalRef.current);
+    };
+  }, []);
 
   // Keep queueItemsRef in sync with queueItems state
   useEffect(() => {
@@ -1035,13 +1043,18 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
       )
       .subscribe(async (status, err) => {
         if (status === 'SUBSCRIBED') {
+          retryCountRef.current = 0;
           await channel.track({ user_id: user.id, last_active: new Date().toISOString() });
         } else if (status === 'CHANNEL_ERROR') {
           console.error('[Realtime] Channel error:', err);
-          toast.error('Connection lost. Retrying...');
-          // Retry after 3 seconds (store timeout ID for cleanup)
-          if (retryTimeoutRef.current) window.clearTimeout(retryTimeoutRef.current);
-          retryTimeoutRef.current = window.setTimeout(() => setupConversationChannel(conversationId), 3000);
+          retryCountRef.current += 1;
+          if (retryCountRef.current <= 5) {
+            toast.error('Connection lost. Retrying...');
+            if (retryTimeoutRef.current) window.clearTimeout(retryTimeoutRef.current);
+            retryTimeoutRef.current = window.setTimeout(() => setupConversationChannel(conversationId), 3000);
+          } else {
+            toast.error('Unable to connect to chat. Please refresh the page.');
+          }
         } else if (status === 'TIMED_OUT') {
           console.error('[Realtime] Subscription timeout');
           toast.warning('Slow connection detected');

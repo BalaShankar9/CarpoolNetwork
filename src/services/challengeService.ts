@@ -271,10 +271,10 @@ class ChallengeService {
                 // Send notification
                 await supabase.from('notifications').insert({
                     user_id: userId,
-                    type: 'milestone_reached',
+                    type: 'SYSTEM',
                     title: 'Milestone Reached! 🎯',
                     message: `You've reached "${milestone.title}" in the challenge!`,
-                    data: { challenge_id: challengeId, milestone_id: milestone.id },
+                    data: { challenge_id: challengeId, milestone_id: milestone.id, original_type: 'milestone_reached' },
                 });
             }
         }

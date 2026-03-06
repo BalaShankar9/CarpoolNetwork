@@ -344,10 +344,10 @@ class DisputeService {
             // Notify affected user
             await supabase.from('notifications').insert({
                 user_id: action.targetUserId,
-                type: 'dispute_action',
+                type: 'SYSTEM',
                 title: 'Dispute Resolution Action',
                 message: action.details,
-                data: { dispute_id: disputeId, action_type: action.type },
+                data: { dispute_id: disputeId, action_type: action.type, original_type: 'dispute_action' },
                 priority: 'high',
             });
         }
@@ -466,10 +466,10 @@ class DisputeService {
     ): Promise<void> {
         await supabase.from('notifications').insert({
             user_id: againstUserId,
-            type: 'dispute_created',
+            type: 'SYSTEM',
             title: '⚠️ Dispute Filed Against You',
             message: `A ${type.replaceAll('_', ' ')} dispute has been filed. Please respond within 48 hours.`,
-            data: { dispute_id: disputeId },
+            data: { dispute_id: disputeId, original_type: 'dispute_created' },
             priority: 'high',
         });
     }
@@ -483,10 +483,10 @@ class DisputeService {
         for (const mod of moderators || []) {
             await supabase.from('notifications').insert({
                 user_id: mod.id,
-                type: 'new_dispute',
+                type: 'SYSTEM',
                 title: '🚨 New High-Priority Dispute',
                 message: `A ${type.replaceAll('_', ' ')} dispute requires attention.`,
-                data: { dispute_id: disputeId },
+                data: { dispute_id: disputeId, original_type: 'new_dispute' },
                 priority: 'high',
             });
         }
@@ -501,10 +501,10 @@ class DisputeService {
         for (const notif of notifications) {
             await supabase.from('notifications').insert({
                 user_id: notif.userId,
-                type: 'dispute_status_change',
+                type: 'SYSTEM',
                 title: 'Dispute Status Updated',
                 message: `Your dispute status has been updated to: ${dispute.status.replaceAll('_', ' ')}`,
-                data: { dispute_id: dispute.id },
+                data: { dispute_id: dispute.id, original_type: 'dispute_status_change' },
             });
         }
     }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     AlertTriangle,
     CheckCircle,
@@ -74,15 +74,19 @@ export function SafetyCheckIn({
         return () => clearInterval(interval);
     }, [checkInInterval]);
 
+    // Use ref so the countdown interval always calls the latest handleNoResponse
+    const handleNoResponseRef = useRef(handleNoResponse);
+    useEffect(() => { handleNoResponseRef.current = handleNoResponse; }, [handleNoResponse]);
+
     // Countdown timer when check-in is shown
     useEffect(() => {
-        if (!showCheckIn || countdown <= 0) return;
+        if (!showCheckIn) return;
 
         const timer = setInterval(() => {
             setCountdown(prev => {
                 if (prev <= 1) {
                     // Time's up - auto-escalate
-                    handleNoResponse();
+                    handleNoResponseRef.current();
                     return 0;
                 }
                 return prev - 1;
@@ -90,7 +94,7 @@ export function SafetyCheckIn({
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [showCheckIn, countdown]);
+    }, [showCheckIn]);
 
     const handleCheckIn = async (checkInStatus: 'ok' | 'help_needed') => {
         if (!user) return;

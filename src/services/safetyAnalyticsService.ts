@@ -130,7 +130,7 @@ export const safetyAnalyticsService = {
             try {
                 await supabase.from('notifications').insert({
                     user_id: incident.userId,
-                    type: 'safety_alert',
+                    type: 'SAFETY_ALERT',
                     title: `Safety Alert: ${incident.severity} severity ${incident.type.replace(/_/g, ' ')}`,
                     message: incident.description || `A ${incident.severity} severity safety incident has been recorded.`,
                     read: false,

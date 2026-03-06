@@ -485,13 +485,13 @@ export default function PostRide() {
                     type="button"
                     onClick={() => setRideType(type.value)}
                     className={`p-4 rounded-xl border-2 text-left transition-all ${rideType === type.value
-                        ? `border-blue-500 ${type.bgColor} ring-2 ring-blue-200`
+                        ? `border-blue-500 ${type.color} ring-2 ring-blue-200`
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                       }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xl">{type.icon}</span>
-                      <span className={`font-medium ${rideType === type.value ? type.color : 'text-gray-900'}`}>
+                      <span className={`font-medium ${rideType === type.value ? type.textColor : 'text-gray-900'}`}>
                         {type.label}
                       </span>
                     </div>

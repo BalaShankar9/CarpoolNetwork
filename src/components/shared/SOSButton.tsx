@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { AlertTriangle, Phone, MapPin, X, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -16,6 +16,14 @@ export default function SOSButton({ rideId, location, compact = false }: SOSButt
   const [activating, setActivating] = useState(false);
   const [sosActive, setSosActive] = useState(false);
   const [countdown, setCountdown] = useState(5);
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Clean up countdown timer on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+    };
+  }, []);
 
   const activateSOS = async () => {
     try {
@@ -93,11 +101,13 @@ export default function SOSButton({ rideId, location, compact = false }: SOSButt
       let count = 5;
       setCountdown(count);
 
-      const timer = setInterval(() => {
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = setInterval(() => {
         count--;
         setCountdown(count);
         if (count === 0) {
-          clearInterval(timer);
+          clearInterval(countdownTimerRef.current!);
+          countdownTimerRef.current = null;
         }
       }, 1000);
     }

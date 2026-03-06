@@ -86,22 +86,36 @@ export default function LiveActivityMonitor() {
   const activityChannelRef = useRef<RealtimeChannel | null>(null);
   const alertChannelRef = useRef<RealtimeChannel | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isPausedRef = useRef(isPaused);
+  const soundEnabledRef = useRef(soundEnabled);
+  const autoRefreshRef = useRef(autoRefresh);
 
+  // Keep refs in sync with state
+  useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
+  useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
+  useEffect(() => { autoRefreshRef.current = autoRefresh; }, [autoRefresh]);
+
+  // Load initial data once
   useEffect(() => {
     loadInitialData();
-    setupRealtimeSubscriptions();
+  }, []);
 
+  // Realtime subscriptions — run once, read state from refs
+  useEffect(() => {
+    setupRealtimeSubscriptions();
+    return () => { cleanupSubscriptions(); };
+  }, []);
+
+  // Metrics polling — reads from refs so no deps needed
+  useEffect(() => {
     const metricsInterval = setInterval(() => {
-      if (autoRefresh && !isPaused) {
+      if (autoRefreshRef.current && !isPausedRef.current) {
         loadMetrics();
       }
     }, 10000);
 
-    return () => {
-      clearInterval(metricsInterval);
-      cleanupSubscriptions();
-    };
-  }, [isPaused, autoRefresh]);
+    return () => { clearInterval(metricsInterval); };
+  }, []);
 
   const loadInitialData = async () => {
     setLoading(true);
@@ -161,11 +175,11 @@ export default function LiveActivityMonitor() {
           table: 'activity_logs',
         },
         (payload) => {
-          if (!isPaused) {
+          if (!isPausedRef.current) {
             const newActivity = payload.new as ActivityLog;
             setActivities((prev) => [newActivity, ...prev.slice(0, 99)]);
 
-            if (soundEnabled && (newActivity.severity === 'critical' || newActivity.severity === 'error')) {
+            if (soundEnabledRef.current && (newActivity.severity === 'critical' || newActivity.severity === 'error')) {
               playNotificationSound();
             }
 
@@ -188,7 +202,7 @@ export default function LiveActivityMonitor() {
           if (payload.eventType === 'INSERT') {
             const newAlert = payload.new as CriticalAlert;
             setCriticalAlerts((prev) => [newAlert, ...prev]);
-            if (soundEnabled) {
+            if (soundEnabledRef.current) {
               playNotificationSound();
             }
           } else if (payload.eventType === 'UPDATE') {

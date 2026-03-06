@@ -116,7 +116,7 @@ export function NotificationsPanel({ isOpen, onClose }: NotificationsPanelProps)
     if (!isOpen) return null;
 
     return (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-40 max-h-96 overflow-hidden md:max-h-[calc(100vh-120px)] max-h-[calc(100vh-var(--app-bottom-nav-height)-120px)]">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-40 max-h-[calc(100vh-var(--app-bottom-nav-height,0px)-120px)] overflow-hidden md:max-h-96">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>

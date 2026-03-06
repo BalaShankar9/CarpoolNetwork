@@ -304,10 +304,10 @@ class ModerationService {
         for (const admin of admins || []) {
             await supabase.from('notifications').insert({
                 user_id: admin.id,
-                type: 'escalated_report',
+                type: 'SYSTEM',
                 title: '⚠️ Escalated Report',
                 message: 'A report has been escalated and requires immediate attention.',
-                data: { report_id: reportId },
+                data: { report_id: reportId, original_type: 'escalated_report' },
                 priority: 'critical',
             });
         }
@@ -322,10 +322,10 @@ class ModerationService {
         for (const mod of moderators || []) {
             await supabase.from('notifications').insert({
                 user_id: mod.id,
-                type: 'new_report',
+                type: 'SYSTEM',
                 title: '📋 New Report',
                 message: `A new ${category.replaceAll('_', ' ')} report needs review.`,
-                data: { report_id: reportId },
+                data: { report_id: reportId, original_type: 'new_report' },
                 priority: 'high',
             });
         }
@@ -371,10 +371,10 @@ class ModerationService {
         // Notify the user
         await supabase.from('notifications').insert({
             user_id: userId,
-            type: 'warning_issued',
+            type: 'SYSTEM',
             title: '⚠️ Account Warning',
             message: data.message,
-            data: { warning_id: warning.id },
+            data: { warning_id: warning.id, original_type: 'warning_issued' },
             priority: 'high',
         });
 
@@ -434,9 +434,10 @@ class ModerationService {
         // Notify user
         await supabase.from('notifications').insert({
             user_id: userId,
-            type: 'account_suspended',
+            type: 'SYSTEM',
             title: '🚫 Account Suspended',
             message: `Your account has been suspended for ${days} days. Reason: ${reason}`,
+            data: { original_type: 'account_suspended' },
             priority: 'critical',
         });
     }
