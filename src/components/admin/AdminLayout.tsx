@@ -24,11 +24,11 @@ export function AdminStatCard({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+          <p className="text-sm font-medium text-gray-500 dark:text-slate-400">{title}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-slate-50 mt-1">{value}</p>
           {change && (
             <span className={`inline-block mt-2 px-2 py-0.5 text-xs font-medium rounded-full ${changeColors[changeType]}`}>
               {change}
@@ -58,12 +58,12 @@ export function AdminSection({
   children: ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
       {(title || actions) && (
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
           <div>
-            {title && <h2 className="text-lg font-semibold text-gray-900">{title}</h2>}
-            {description && <p className="text-sm text-gray-500 mt-0.5">{description}</p>}
+            {title && <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-50">{title}</h2>}
+            {description && <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">{description}</p>}
           </div>
           {actions}
         </div>
@@ -90,13 +90,13 @@ export function AdminEmptyState({
   return (
     <div className="text-center py-12">
       {icon && (
-        <div className="w-12 h-12 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
+        <div className="w-12 h-12 mx-auto mb-4 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center text-gray-400 dark:text-slate-400">
           {icon}
         </div>
       )}
-      <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+      <h3 className="text-lg font-medium text-gray-900 dark:text-slate-50">{title}</h3>
       {description && (
-        <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">{description}</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">{description}</p>
       )}
       {action && <div className="mt-4">{action}</div>}
     </div>
