@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { RealtimeProvider } from './contexts/RealtimeContext';
+import { SocialProvider } from './contexts/SocialContext';
 import { PremiumProvider } from './contexts/PremiumContext';
 import Layout from './components/layout/Layout';
 import { AppErrorBoundary } from './components/shared/ProductionErrorBoundary';
@@ -77,6 +78,7 @@ const Challenges = lazy(() => import('./pages/Challenges'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Friends = lazy(() => import('./pages/Friends'));
 const GroupDetail = lazy(() => import('./pages/GroupDetail'));
+const SocialHub = lazy(() => import('./pages/SocialHub'));
 const HelpHub = lazy(() => import('./pages/HelpHub'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const SafetyCenter = lazy(() => import('./pages/SafetyCenter'));
@@ -100,6 +102,11 @@ const NotificationTemplates = lazy(() => import('./pages/admin/NotificationTempl
 const UserDetailAdmin = lazy(() => import('./pages/admin/UserDetailAdmin'));
 const PlatformSettings = lazy(() => import('./pages/admin/PlatformSettings'));
 const SystemHealth = lazy(() => import('./pages/admin/SystemHealth'));
+const IncidentQueue = lazy(() => import('./pages/admin/IncidentQueue'));
+const PlatformHealthScore = lazy(() => import('./pages/admin/PlatformHealthScore'));
+const IncidentAnalytics = lazy(() => import('./pages/admin/IncidentAnalytics'));
+const StatusPageManager = lazy(() => import('./pages/admin/StatusPageManager'));
+const StatusPage = lazy(() => import('./pages/Status'));
 
 const LoadingScreen = () => (
   <div className="min-h-screen bg-white flex items-center justify-center">
@@ -207,7 +214,7 @@ function PublicRoute({ children }: { children: ReactNode }) {
  * - Unauthenticated users: show public landing page
  */
 function HomeRoute() {
-  const { user, loading, isEmailVerified } = useAuth();
+  const { user, loading, isEmailVerified, isProfileComplete } = useAuth();
 
   if (loading) {
     return <LoadingScreen />;
@@ -219,6 +226,10 @@ function HomeRoute() {
 
   if (!isEmailVerified) {
     return <Navigate to="/verify-email" replace />;
+  }
+
+  if (!isProfileComplete) {
+    return <Navigate to="/onboarding/profile" replace />;
   }
 
   return (
@@ -308,6 +319,62 @@ function AppContent() {
             </Layout>
           </ProtectedRoute>
         } />
+        {/* Social Hub - unified social dashboard */}
+        <Route path="/social" element={
+          <ProtectedRoute>
+            <Layout>
+              <SocialProvider>
+                <SocialHub />
+              </SocialProvider>
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/social/feed" element={
+          <ProtectedRoute>
+            <Layout>
+              <SocialProvider>
+                <SocialHub />
+              </SocialProvider>
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/social/friends" element={
+          <ProtectedRoute>
+            <Layout>
+              <Friends />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/social/community" element={
+          <ProtectedRoute>
+            <Layout>
+              <Community />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/social/community/:postId" element={
+          <ProtectedRoute>
+            <Layout>
+              <CommunityPost />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/social/challenges" element={
+          <ProtectedRoute>
+            <Layout>
+              <Challenges />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/social/leaderboards" element={
+          <ProtectedRoute>
+            <Layout>
+              <Leaderboards />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        {/* Legacy community routes (still functional) */}
         <Route path="/community" element={
           <ProtectedRoute>
             <Layout>
@@ -365,12 +432,16 @@ function AppContent() {
         } />
         <Route path="/leaderboards" element={
           <ProtectedRoute>
-            <Leaderboards />
+            <Layout>
+              <Leaderboards />
+            </Layout>
           </ProtectedRoute>
         } />
         <Route path="/challenges" element={
           <ProtectedRoute>
-            <Challenges />
+            <Layout>
+              <Challenges />
+            </Layout>
           </ProtectedRoute>
         } />
         <Route path="/rides/:rideId" element={
@@ -387,13 +458,8 @@ function AppContent() {
             </Layout>
           </ProtectedRoute>
         } />
-        <Route path="/friends" element={
-          <ProtectedRoute>
-            <Layout>
-              <Friends />
-            </Layout>
-          </ProtectedRoute>
-        } />
+        {/* Redirect old /friends to Social Hub */}
+        <Route path="/friends" element={<Navigate to="/social?section=friends" replace />} />
         <Route path="/social/groups/:groupId" element={
           <ProtectedRoute>
             <Layout>
@@ -630,6 +696,29 @@ function AppContent() {
             <NotificationTemplates />
           </AdminRoute>
         } />
+        <Route path="/admin/incidents" element={
+          <AdminRoute>
+            <IncidentQueue />
+          </AdminRoute>
+        } />
+        <Route path="/admin/health-score" element={
+          <AdminRoute>
+            <PlatformHealthScore />
+          </AdminRoute>
+        } />
+        <Route path="/admin/incident-analytics" element={
+          <AdminRoute>
+            <IncidentAnalytics />
+          </AdminRoute>
+        } />
+        <Route path="/admin/status-manager" element={
+          <AdminRoute>
+            <StatusPageManager />
+          </AdminRoute>
+        } />
+
+        {/* Public status page - no auth required */}
+        <Route path="/status" element={<StatusPage />} />
 
         {/* 404 catch-all route */}
         <Route path="*" element={
