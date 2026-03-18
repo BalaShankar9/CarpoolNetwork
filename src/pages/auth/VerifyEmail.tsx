@@ -1,13 +1,24 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Mail, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
 import Logo from '../../components/shared/Logo';
 
 export default function VerifyEmail() {
-  const { user, resendVerificationEmail, signOut } = useAuth();
+  const { user, isEmailVerified, resendVerificationEmail, signOut } = useAuth();
   const [resending, setResending] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  // If not logged in, redirect to sign in
+  if (!user) {
+    return <Navigate to="/signin" replace />;
+  }
+
+  // If already verified (including phone-verified users), redirect to home
+  if (isEmailVerified) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleResend = async () => {
     setResending(true);

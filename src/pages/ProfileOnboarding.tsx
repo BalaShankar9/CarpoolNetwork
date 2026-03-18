@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import {
   Camera,
   CheckCircle,
@@ -246,10 +246,10 @@ export default function ProfileOnboarding() {
     occupation: '',
   });
   const [preferencesForm, setPreferencesForm] = useState({
-    smoking_policy: 'no-smoking' as 'no-smoking' | 'smoking-allowed' | 'e-cigarettes-only',
+    smoking_policy: 'no-smoking' as 'no-smoking' | 'smoking-allowed' | 'ask-first',
     pets_allowed: false,
-    music_preference: 'any' as 'any' | 'quiet' | 'background' | 'no-preference',
-    conversation_level: 'chatty' as 'quiet' | 'small-talk' | 'chatty' | 'no-preference',
+    music_preference: 'any' as 'any' | 'quiet' | 'radio' | 'podcasts',
+    conversation_level: 'chatty' as 'quiet' | 'some-chat' | 'chatty',
     luggage_size: 'medium' as 'small' | 'medium' | 'large',
   });
   const [detailsForm, setDetailsForm] = useState({
@@ -264,35 +264,41 @@ export default function ProfileOnboarding() {
 
   const returnTo = (location.state as { from?: string } | null)?.from || '/';
 
+  const formPopulatedRef = useRef(false);
+
   useEffect(() => {
     if (!profile) return;
-    setBasicForm({
-      full_name: profile.full_name || '',
-      country: profile.country || '',
-      nationality: (profile as any).nationality || '',
-      city: profile.city || '',
-      date_of_birth: profile.date_of_birth || '',
-      gender: profile.gender || '',
-      occupation: (profile as any).occupation || '',
-    });
-    setPreferencesForm({
-      smoking_policy: (profile as any).smoking_policy || 'no-smoking',
-      pets_allowed: (profile as any).pets_allowed || false,
-      music_preference: (profile as any).music_preference || 'any',
-      conversation_level: (profile as any).conversation_level || 'chatty',
-      luggage_size: (profile as any).luggage_size || 'medium',
-    });
-    setDetailsForm({
-      bio: profile.bio || '',
-      languages: (profile.languages || []).join(', '),
-      whatsapp_e164: profile.whatsapp_e164 || profile.whatsapp_number || '',
-      phone_visibility: profile.phone_visibility || 'ride_only',
-      whatsapp_visibility: profile.whatsapp_visibility || 'friends',
-      emergency_contact_name: (profile as any).emergency_contact_name || '',
-      emergency_contact_phone: (profile as any).emergency_contact_phone || '',
-    });
-    if (profile.avatar_url) {
-      setPhotoPreview(profile.avatar_url);
+    // Only populate form state from profile once to avoid overwriting user edits
+    if (!formPopulatedRef.current) {
+      formPopulatedRef.current = true;
+      setBasicForm({
+        full_name: profile.full_name || '',
+        country: profile.country || '',
+        nationality: (profile as any).nationality || '',
+        city: profile.city || '',
+        date_of_birth: profile.date_of_birth || '',
+        gender: profile.gender || '',
+        occupation: (profile as any).occupation || '',
+      });
+      setPreferencesForm({
+        smoking_policy: (profile as any).smoking_policy || 'no-smoking',
+        pets_allowed: (profile as any).pets_allowed || false,
+        music_preference: (profile as any).music_preference || 'any',
+        conversation_level: (profile as any).conversation_level || 'chatty',
+        luggage_size: (profile as any).luggage_size || 'medium',
+      });
+      setDetailsForm({
+        bio: profile.bio || '',
+        languages: (profile.languages || []).join(', '),
+        whatsapp_e164: profile.whatsapp_e164 || profile.whatsapp_number || '',
+        phone_visibility: profile.phone_visibility || 'ride_only',
+        whatsapp_visibility: profile.whatsapp_visibility || 'friends',
+        emergency_contact_name: (profile as any).emergency_contact_name || '',
+        emergency_contact_phone: (profile as any).emergency_contact_phone || '',
+      });
+      if (profile.avatar_url) {
+        setPhotoPreview(profile.avatar_url);
+      }
     }
 
     // Auto-detect location if not already set
@@ -315,7 +321,9 @@ export default function ProfileOnboarding() {
   const initialStep = useMemo(() => {
     if (!profile) return 0;
     const missing = getProfileMissingFields(profile);
-    if (missing.includes('full_name') || missing.includes('country')) {
+    if (missing.includes('full_name') || missing.includes('country') ||
+        missing.includes('nationality') || missing.includes('date_of_birth') ||
+        missing.includes('gender')) {
       return 1;
     }
     if (missing.includes('avatar')) {
@@ -339,8 +347,7 @@ export default function ProfileOnboarding() {
   }, [initialStep, initialized]);
 
   if (!user) {
-    navigate('/login');
-    return null;
+    return <Navigate to="/signin" replace />;
   }
 
   const handleBasicsSave = async () => {
@@ -487,6 +494,7 @@ export default function ProfileOnboarding() {
       return;
     }
 
+    await refreshProfile();
     setCurrentStep(4); // Go to preferences step
   };
 
@@ -1122,7 +1130,7 @@ export default function ProfileOnboarding() {
                       <div className="grid grid-cols-3 gap-3">
                         {[
                           { value: 'no-smoking', label: 'No smoking', emoji: '🚭' },
-                          { value: 'e-cigarettes-only', label: 'E-cigs only', emoji: '❓' },
+                          { value: 'ask-first', label: 'Ask first', emoji: '❓' },
                           { value: 'smoking-allowed', label: 'Allowed', emoji: '🚬' },
                         ].map((option) => (
                           <button
@@ -1179,7 +1187,8 @@ export default function ProfileOnboarding() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {[
                           { value: 'quiet', label: 'Quiet', emoji: '🔇' },
-                          { value: 'background', label: 'Background', emoji: '📻' },
+                          { value: 'radio', label: 'Radio', emoji: '📻' },
+                          { value: 'podcasts', label: 'Podcasts', emoji: '🎙️' },
                           { value: 'any', label: 'Anything', emoji: '🎵' },
                         ].map((option) => (
                           <button
@@ -1211,7 +1220,7 @@ export default function ProfileOnboarding() {
                       <div className="grid grid-cols-3 gap-3">
                         {[
                           { value: 'quiet', label: 'Quiet ride', emoji: '🤫', desc: 'Prefer silence' },
-                          { value: 'small-talk', label: 'Small talk', emoji: '💬', desc: 'Occasional talk' },
+                          { value: 'some-chat', label: 'Some chat', emoji: '💬', desc: 'Occasional talk' },
                           { value: 'chatty', label: 'Chatty', emoji: '🗣️', desc: 'Love to talk!' },
                         ].map((option) => (
                           <button
@@ -1483,7 +1492,7 @@ export default function ProfileOnboarding() {
               <div className="max-w-2xl mx-auto flex gap-4">
                 <button
                   type="button"
-                  onClick={() => setCurrentStep(Math.max(currentStep - 1, 0))}
+                  onClick={() => { setError(''); setCurrentStep(Math.max(currentStep - 1, 0)); }}
                   disabled={currentStep === 0}
                   className="flex-1 px-6 py-4 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >

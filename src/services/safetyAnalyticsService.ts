@@ -121,11 +121,12 @@ export const safetyAnalyticsService = {
         localStorage.setItem(key, JSON.stringify(existing.slice(-1000))); // Keep last 1000
     },
 
-    // TODO: Needs real implementation — should send push notifications to admins, trigger SMS/email for critical incidents, etc.
+    // V1: In-app notification to affected user + admin notification via safety_alerts table.
+    // Future: push notifications to admins, SMS/email for critical incidents.
     async triggerAlerts(incident: SafetyIncident): Promise<void> {
         console.log('Triggering alert for incident:', incident.id, incident.severity);
 
-        // Minimal in-app alert: insert a notification record for the affected user
+        // Notify the affected user
         if (incident.userId) {
             try {
                 await supabase.from('notifications').insert({
@@ -138,6 +139,30 @@ export const safetyAnalyticsService = {
                 });
             } catch (err) {
                 console.error('Failed to insert safety alert notification:', err);
+            }
+        }
+
+        // For critical/high severity, also notify all admin users
+        if (incident.severity === 'critical' || incident.severity === 'high') {
+            try {
+                const { data: admins } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('is_admin', true);
+
+                if (admins && admins.length > 0) {
+                    const adminNotifications = admins.map((admin) => ({
+                        user_id: admin.id,
+                        type: 'ADMIN_SAFETY_ALERT',
+                        title: `[ADMIN] ${incident.severity.toUpperCase()} Safety Incident`,
+                        message: `Incident ${incident.id}: ${incident.type.replace(/_/g, ' ')} — ${incident.description || 'No description'}`,
+                        read: false,
+                        created_at: new Date().toISOString(),
+                    }));
+                    await supabase.from('notifications').insert(adminNotifications);
+                }
+            } catch (err) {
+                console.error('Failed to notify admins of safety incident:', err);
             }
         }
     },

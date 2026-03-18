@@ -117,6 +117,8 @@ export default function OtpVerifyForm({
               onKeyDown={(e) => handleKeyDown(index, e)}
               onPaste={handlePaste}
               disabled={disabled || loading}
+              autoComplete="one-time-code"
+              aria-label={`Digit ${index + 1} of 6`}
               className="w-12 h-14 text-center text-xl font-semibold border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
             />
           ))}

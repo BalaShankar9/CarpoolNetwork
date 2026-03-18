@@ -1,11 +1,12 @@
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
+import { securityHeaders, corsPreflightResponse } from './_shared/headers';
 
 type UserRole = 'guest' | 'user' | 'admin';
 
 const json = (statusCode: number, data: any) => ({
   statusCode,
-  headers: { 'Content-Type': 'application/json' },
+  headers: securityHeaders(),
   body: JSON.stringify(data),
 });
 

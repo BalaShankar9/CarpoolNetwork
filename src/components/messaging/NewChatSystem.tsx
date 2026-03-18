@@ -732,7 +732,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
       if (import.meta.env.DEV) {
         console.log('[DEV] loadMessages - Query:', {
           table: 'chat_messages',
-          select: '*, sender:profiles(...), reply_to:chat_messages(...), reactions:message_reactions(...)',
+          select: '*, sender:profiles!sender_id_fkey(...), reactions:message_reactions(...)',
           filters: {
             conversation_id: conversationId,
             order: 'created_at DESC',
@@ -744,7 +744,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
       let query = supabase
         .from('chat_messages')
         .select(
-          '*, sender:profiles(id, full_name, avatar_url, profile_photo_url), reply_to:chat_messages(id, body, sender_id, message_type, attachments, metadata, deleted_at), reactions:message_reactions(id, user_id, emoji, created_at)'
+          '*, sender:profiles!chat_messages_sender_id_fkey(id, full_name, avatar_url, profile_photo_url), reactions:message_reactions(id, user_id, emoji, created_at)'
         )
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: false })
@@ -1233,7 +1233,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
         reply_to_id: replyToId || null,
       })
       .select(
-        '*, sender:profiles(id, full_name, avatar_url, profile_photo_url), reply_to:chat_messages(id, body, sender_id, message_type, attachments, metadata, deleted_at), reactions:message_reactions(id, user_id, emoji, created_at)'
+        '*, sender:profiles!chat_messages_sender_id_fkey(id, full_name, avatar_url, profile_photo_url), reactions:message_reactions(id, user_id, emoji, created_at)'
       )
       .single();
 
@@ -1242,7 +1242,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
         const { data: existing } = await supabase
           .from('chat_messages')
           .select(
-            '*, sender:profiles(id, full_name, avatar_url, profile_photo_url), reply_to:chat_messages(id, body, sender_id, message_type, attachments, metadata, deleted_at), reactions:message_reactions(id, user_id, emoji, created_at)'
+            '*, sender:profiles!chat_messages_sender_id_fkey(id, full_name, avatar_url, profile_photo_url), reactions:message_reactions(id, user_id, emoji, created_at)'
           )
           .eq('client_generated_id', clientGeneratedId)
           .maybeSingle();
@@ -1517,7 +1517,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
         .from('chat_messages')
         .update({ body: editDraft.trim(), edited_at: new Date().toISOString() })
         .eq('id', editingMessageId)
-        .select('*, sender:profiles(id, full_name, avatar_url, profile_photo_url), reactions:message_reactions(id, user_id, emoji, created_at)')
+        .select('*, sender:profiles!chat_messages_sender_id_fkey(id, full_name, avatar_url, profile_photo_url), reactions:message_reactions(id, user_id, emoji, created_at)')
         .single();
       if (error) throw error;
       upsertMessage({ ...(data as ChatMessage) });
@@ -1535,7 +1535,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
         .from('chat_messages')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', message.id)
-        .select('*, sender:profiles(id, full_name, avatar_url, profile_photo_url), reactions:message_reactions(id, user_id, emoji, created_at)')
+        .select('*, sender:profiles!chat_messages_sender_id_fkey(id, full_name, avatar_url, profile_photo_url), reactions:message_reactions(id, user_id, emoji, created_at)')
         .single();
       if (error) throw error;
       upsertMessage(data as ChatMessage);
@@ -1935,54 +1935,59 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 to-gray-100">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-[3px] border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-sm text-slate-400 font-medium">Loading messages...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-gray-50">
-      <div className={`w-full md:w-96 bg-white border-r border-gray-200 flex flex-col ${selectedConversationId ? 'hidden md:flex' : 'flex'}`}>
-        <div className="p-4 bg-green-600 text-white">
-          <h2 className="text-xl font-semibold mb-3">Messages</h2>
+    <div className="flex h-[calc(100vh-64px)] bg-gradient-to-br from-slate-50 to-gray-100">
+      <div className={`w-full md:w-[380px] bg-white flex flex-col shadow-[1px_0_0_0_rgba(0,0,0,0.06)] ${selectedConversationId ? 'hidden md:flex' : 'flex'}`}>
+        <div className="px-5 pt-5 pb-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Messages</h2>
+            <button
+              type="button"
+              onClick={() => setShowArchived((prev) => !prev)}
+              className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${showArchived ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+            >
+              {showArchived ? 'Hide archived' : 'Archived'}
+            </button>
+          </div>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               placeholder="Search conversations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-300"
+              className="w-full pl-9 pr-4 py-2.5 bg-slate-100 text-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400/40 focus:bg-white transition-colors placeholder:text-slate-400"
             />
           </div>
-          <button
-            type="button"
-            onClick={() => setShowArchived((prev) => !prev)}
-            className="mt-3 text-xs font-semibold bg-white/20 px-3 py-1 rounded-full"
-          >
-            {showArchived ? 'Hide archived' : 'Show archived'}
-          </button>
         </div>
 
-        <div className="px-4 py-3 border-b border-gray-100">
+        <div className="px-4 pb-2">
           <div className="flex items-center gap-2">
             <input
               value={messageQuery}
               onChange={(e) => setMessageQuery(e.target.value)}
               placeholder="Search all messages"
-              className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"
+              className="flex-1 px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/40 focus:bg-white transition-colors placeholder:text-slate-400"
             />
             <button
               type="button"
               onClick={handleSearchMessages}
-              className="px-3 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg"
+              className="px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors"
             >
               Search
             </button>
           </div>
           {messageResults.length > 0 && (
-            <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
+            <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
               {messageResults.map((result) => (
                 <button
                   key={result.id}
@@ -1990,7 +1995,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                     setSelectedConversationId(result.conversation_id);
                     setMessageResults([]);
                   }}
-                  className="w-full text-left text-xs text-gray-700 bg-gray-50 px-2 py-1 rounded"
+                  className="w-full text-left text-xs text-slate-700 bg-slate-50 px-3 py-2 rounded-lg hover:bg-indigo-50 transition-colors"
                 >
                   {result.body}
                 </button>
@@ -2002,28 +2007,30 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
         <div className="flex-1 overflow-y-auto" data-testid="conversationList">
           {/* Schema cache updating banner */}
           {schemaCacheError && conversations.length > 0 && (
-            <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-amber-800 text-sm flex items-center gap-2">
-              <Loader className="w-4 h-4 animate-spin" />
+            <div className="mx-4 mt-2 px-3 py-2 bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-xl flex items-center gap-2">
+              <Loader className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
               <span>System updating... Some features may be limited</span>
             </div>
           )}
 
           {conversationsError && conversations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-700 p-6">
-              <XCircle className="w-16 h-16 mb-4 text-red-400" />
-              <p className="text-center font-semibold mb-2">
-                {fallbackFailed 
-                  ? 'Messaging Unavailable' 
-                  : schemaCacheError 
-                    ? 'System Updating' 
+            <div className="flex flex-col items-center justify-center h-full text-slate-700 p-8">
+              <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
+                <XCircle className="w-8 h-8 text-red-400" />
+              </div>
+              <p className="text-center font-semibold mb-1 text-slate-800">
+                {fallbackFailed
+                  ? 'Messaging Unavailable'
+                  : schemaCacheError
+                    ? 'System Updating'
                     : 'Failed to Load Messages'}
               </p>
-              <p className="text-sm text-gray-500 text-center mb-4 max-w-xs">
-                {fallbackFailed 
-                  ? 'The messaging system is currently experiencing issues. This may be due to a database update in progress. Please try again in a few minutes.'
-                  : schemaCacheError 
-                    ? 'Messages are temporarily unavailable while the system updates. This usually takes less than a minute.' 
-                    : 'We couldn\'t load your conversations. Please check your connection and try again.'}
+              <p className="text-sm text-slate-500 text-center mb-5 max-w-xs leading-relaxed">
+                {fallbackFailed
+                  ? 'The messaging system is experiencing issues. Please try again in a few minutes.'
+                  : schemaCacheError
+                    ? 'Messages are temporarily unavailable while the system updates.'
+                    : 'We couldn\'t load your conversations. Please check your connection.'}
               </p>
               <div className="flex flex-col gap-2 w-full max-w-xs">
                 {retryCount < 3 ? (
@@ -2032,21 +2039,21 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                       setLoading(true);
                       loadConversations(true);
                     }}
-                    className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium"
+                    className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium text-sm"
                   >
                     Retry {retryCount > 0 ? `(${3 - retryCount} attempts left)` : ''}
                   </button>
                 ) : (
                   <button
                     onClick={() => window.location.reload()}
-                    className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                    className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium text-sm"
                   >
                     Refresh Page
                   </button>
                 )}
                 <button
                   onClick={() => window.location.href = '/find-rides'}
-                  className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="w-full px-4 py-2.5 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors text-sm"
                 >
                   Browse Rides Instead
                 </button>
@@ -2135,24 +2142,24 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
               )}
             </div>
           ) : filteredConversations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-500 p-6">
-              <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                <Search className="w-10 h-10 text-gray-300" />
+            <div className="flex flex-col items-center justify-center h-full text-slate-500 p-8">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-50 to-slate-100 flex items-center justify-center mb-5">
+                <Search className="w-9 h-9 text-indigo-300" />
               </div>
-              <p className="text-center font-medium text-gray-700 mb-1">No conversations yet</p>
-              <p className="text-sm text-gray-400 text-center mb-6 max-w-xs">
-                Start chatting with drivers or passengers by requesting or offering a ride
+              <p className="text-center font-semibold text-slate-800 mb-1">No conversations yet</p>
+              <p className="text-sm text-slate-400 text-center mb-6 max-w-[240px] leading-relaxed">
+                Start chatting with drivers or passengers by finding a ride
               </p>
-              <div className="flex flex-col sm:flex-row gap-2 w-full max-w-xs">
+              <div className="flex flex-col gap-2 w-full max-w-[240px]">
                 <button
                   onClick={() => window.location.href = '/find-rides'}
-                  className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
+                  className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors text-sm font-medium"
                 >
                   Find a Ride
                 </button>
                 <button
                   onClick={() => window.location.href = '/post-ride'}
-                  className="flex-1 px-4 py-2 border border-green-500 text-green-600 rounded-lg hover:bg-green-50 transition-colors text-sm font-medium"
+                  className="w-full px-4 py-2.5 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors text-sm font-medium"
                 >
                   Offer a Ride
                 </button>
@@ -2166,45 +2173,55 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                 <button
                   key={conv.id}
                   onClick={() => setSelectedConversationId(conv.id)}
-                  className={`w-full p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors text-left ${
-                    selectedConversationId === conv.id ? 'bg-green-50' : ''
+                  className={`w-full px-4 py-3 transition-all text-left mx-1 rounded-xl my-0.5 ${
+                    selectedConversationId === conv.id
+                      ? 'bg-indigo-50 shadow-sm'
+                      : 'hover:bg-slate-50'
                   }`}
                   data-testid="conversationRow"
                   data-conversation-id={conv.id}
+                  style={{ width: 'calc(100% - 8px)' }}
                 >
                   <div className="flex items-center gap-3">
                     {other ? (
-                      <ClickableUserProfile user={other.profile} size="sm" />
+                      <div className="relative flex-shrink-0">
+                        <ClickableUserProfile user={other.profile} size="sm" />
+                        {presenceMap[other.user_id] && (
+                          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-white"></div>
+                        )}
+                      </div>
                     ) : (
-                      <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold text-lg">
+                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white font-semibold text-base flex-shrink-0">
                         {title.charAt(0)}
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-gray-900 truncate">{title}</h3>
+                        <h3 className={`text-[15px] truncate ${conv.unread_count > 0 ? 'font-bold text-slate-900' : 'font-semibold text-slate-800'}`}>{title}</h3>
                         {conv.last_message_at && (
-                          <span className="text-xs text-gray-500 ml-2">
+                          <span className={`text-[11px] ml-2 flex-shrink-0 ${conv.unread_count > 0 ? 'text-indigo-600 font-semibold' : 'text-slate-400'}`}>
                             {formatTime(conv.last_message_at)}
                           </span>
                         )}
                       </div>
-                      <p
-                        className={`text-sm truncate ${
-                          conv.unread_count > 0 ? 'font-semibold text-gray-900' : 'text-gray-600'
-                        }`}
-                      >
-                        {conv.last_message_preview || 'Start the conversation'}
-                      </p>
-                    </div>
-                    {conv.unread_count > 0 && (
-                      <div
-                        className="ml-2 px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-full"
-                        data-testid="unreadBadge"
-                      >
-                        {conv.unread_count}
+                      <div className="flex items-center justify-between mt-0.5">
+                        <p
+                          className={`text-[13px] truncate ${
+                            conv.unread_count > 0 ? 'font-medium text-slate-700' : 'text-slate-400'
+                          }`}
+                        >
+                          {conv.last_message_preview || 'Start the conversation'}
+                        </p>
+                        {conv.unread_count > 0 && (
+                          <div
+                            className="ml-2 min-w-[20px] h-5 px-1.5 bg-indigo-600 text-white text-[11px] font-bold rounded-full flex items-center justify-center flex-shrink-0"
+                            data-testid="unreadBadge"
+                          >
+                            {conv.unread_count}
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
                 </button>
               );
@@ -2213,16 +2230,16 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
         </div>
       </div>
 
-      <div className={`flex-1 flex flex-col bg-gray-50 ${!selectedConversationId ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`flex-1 flex flex-col ${!selectedConversationId ? 'hidden md:flex' : 'flex'}`}>
         {selectedConversation ? (
           <>
-            <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between shadow-sm">
+            <div className="bg-white/80 backdrop-blur-lg border-b border-slate-200/60 px-5 py-3 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setSelectedConversationId(null)}
-                  className="md:hidden p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="md:hidden p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
                 >
-                  <XCircle className="w-5 h-5 text-gray-600" />
+                  <XCircle className="w-5 h-5 text-slate-500" />
                 </button>
                 {otherMembers[0] ? (
                   <ClickableUserProfile
@@ -2239,36 +2256,36 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                   />
                 ) : (
                   <div>
-                    <h3 className="font-semibold text-gray-900">{conversationTitle}</h3>
-                    <p className="text-xs text-gray-500">Conversation</p>
+                    <h3 className="font-semibold text-slate-900">{conversationTitle}</h3>
+                    <p className="text-xs text-slate-400">Conversation</p>
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => toggleConversationSetting('pinned', !selectedConversation.pinned)}
-                  className={`p-2 rounded-full ${selectedConversation.pinned ? 'bg-green-100 text-green-600' : 'text-gray-600 hover:bg-gray-100'}`}
+                  className={`p-2 rounded-lg transition-colors ${selectedConversation.pinned ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
                   title="Pin"
                 >
                   <Pin className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => toggleConversationSetting('muted', !selectedConversation.muted)}
-                  className={`p-2 rounded-full ${selectedConversation.muted ? 'bg-amber-100 text-amber-600' : 'text-gray-600 hover:bg-gray-100'}`}
+                  className={`p-2 rounded-lg transition-colors ${selectedConversation.muted ? 'bg-amber-50 text-amber-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
                   title="Mute"
                 >
                   <VolumeX className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => toggleConversationSetting('archived', !selectedConversation.archived)}
-                  className="p-2 rounded-full text-gray-600 hover:bg-gray-100"
+                  className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
                   title="Archive"
                 >
                   <Archive className="w-4 h-4" />
                 </button>
                 <button
                   onClick={toggleBlock}
-                  className={`p-2 rounded-full ${blockedState.blocked ? 'bg-red-100 text-red-600' : 'text-gray-600 hover:bg-gray-100'}`}
+                  className={`p-2 rounded-lg transition-colors ${blockedState.blocked ? 'bg-red-50 text-red-500' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
                   title={blockedState.blocked ? 'Unblock' : 'Block'}
                 >
                   <UserX className="w-4 h-4" />
@@ -2276,31 +2293,33 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto" ref={messagesContainerRef} data-testid="messageList">
+            <div className="flex-1 overflow-y-auto bg-gradient-to-b from-slate-50/50 to-white/30" ref={messagesContainerRef} data-testid="messageList">
               {messagesError ? (
-                <div className="flex flex-col items-center justify-center h-full text-gray-700 p-6">
-                  <XCircle className="w-16 h-16 mb-4 text-red-400" />
-                  <p className="text-center font-semibold mb-2">Failed to Load Messages</p>
-                  <p className="text-sm text-gray-500 text-center mb-4 max-w-md">{messagesError}</p>
+                <div className="flex flex-col items-center justify-center h-full text-slate-700 p-8">
+                  <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
+                    <XCircle className="w-7 h-7 text-red-400" />
+                  </div>
+                  <p className="text-center font-semibold mb-1 text-slate-800">Failed to Load Messages</p>
+                  <p className="text-sm text-slate-500 text-center mb-5 max-w-md">{messagesError}</p>
                   <button
                     onClick={() => {
                       if (selectedConversationId) {
                         loadMessages(selectedConversationId, true);
                       }
                     }}
-                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                    className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium text-sm"
                   >
                     Retry
                   </button>
                   {import.meta.env.DEV && (
-                    <p className="text-xs text-gray-400 mt-4 font-mono">
+                    <p className="text-xs text-slate-400 mt-4 font-mono">
                       Check console for detailed error logs
                     </p>
                   )}
                 </div>
               ) : messagesLoading && messages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
-                  <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-8 h-8 border-[3px] border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
                 </div>
               ) : (
                 <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
@@ -2321,8 +2340,8 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                       }}
                     >
                       {item.type === 'date' ? (
-                        <div className="flex justify-center py-4 text-xs text-gray-500">
-                          <span className="px-3 py-1 bg-gray-100 rounded-full">{item.date}</span>
+                        <div className="flex justify-center py-3 text-[11px] text-slate-400 font-medium">
+                          <span className="px-3 py-1 bg-white/80 backdrop-blur-sm rounded-full shadow-sm border border-slate-100">{item.date}</span>
                         </div>
                       ) : item.message ? (
                         <MessageBubble
@@ -2376,43 +2395,48 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
             </div>
 
             {Object.keys(typingUsers).length > 0 && (
-              <div className="px-4 py-2 text-sm text-gray-500" data-testid="typingIndicator">
+              <div className="px-5 py-1.5 text-xs text-slate-400 flex items-center gap-1.5" data-testid="typingIndicator">
+                <span className="flex gap-0.5">
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                </span>
                 {Object.values(typingUsers).join(', ')} typing...
               </div>
             )}
 
             {sendError && (
-              <div className="mx-4 mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <div className="mx-4 mb-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
                 {sendError}
               </div>
             )}
 
             {blockedState.blockedBy && (
-              <div className="mx-4 mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+              <div className="mx-4 mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-600">
                 You cannot message this user. They have blocked you.
               </div>
             )}
 
-            <div className="bg-white border-t border-gray-200 p-4">
+            <div className="bg-white/80 backdrop-blur-lg border-t border-slate-200/60 px-4 py-3">
               {!isEmailVerified && (
-                <div className="flex items-center gap-2 text-amber-600 text-sm mb-3 bg-amber-50 px-3 py-2 rounded-lg">
+                <div className="flex items-center gap-2 text-amber-600 text-sm mb-3 bg-amber-50 px-3 py-2 rounded-xl">
                   <AlertTriangle className="w-4 h-4" />
                   <span>Verify your email to send messages</span>
                 </div>
               )}
 
               {editingMessageId && (
-                <div className="mb-3 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-                  <Edit className="w-4 h-4 text-gray-500" />
+                <div className="mb-3 flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-2">
+                  <Edit className="w-4 h-4 text-indigo-500 flex-shrink-0" />
                   <input
                     value={editDraft}
                     onChange={(e) => setEditDraft(e.target.value)}
-                    className="flex-1 bg-transparent text-sm focus:outline-none"
+                    className="flex-1 bg-transparent text-sm focus:outline-none text-slate-800"
                   />
                   <button
                     type="button"
                     onClick={handleEditMessage}
-                    className="text-xs font-semibold text-green-700"
+                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
                   >
                     Save
                   </button>
@@ -2422,7 +2446,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                       setEditingMessageId(null);
                       setEditDraft('');
                     }}
-                    className="text-xs font-semibold text-gray-500"
+                    className="text-xs font-semibold text-slate-400 hover:text-slate-600"
                   >
                     Cancel
                   </button>
@@ -2430,12 +2454,12 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
               )}
 
               {replyTo && (
-                <div className="mb-3 flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600">
-                  <span className="truncate">Replying to: {replyTo.body || replyTo.message_type}</span>
+                <div className="mb-3 flex items-center justify-between bg-slate-50 border-l-2 border-l-indigo-400 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-600">
+                  <span className="truncate">{replyTo.body || replyTo.message_type}</span>
                   <button
                     type="button"
                     onClick={() => setReplyTo(null)}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-slate-400 hover:text-slate-600 flex-shrink-0 ml-2"
                   >
                     <XCircle className="w-4 h-4" />
                   </button>
@@ -2461,7 +2485,7 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                 <div className="mb-2 text-sm text-red-600">Recording... {recordingSeconds}s</div>
               )}
 
-              <form onSubmit={handleSendMessage} className="flex items-center gap-2" data-testid="messageComposer">
+              <form onSubmit={handleSendMessage} className="flex items-center gap-1.5" data-testid="messageComposer">
                 <input
                   ref={voiceInputRef}
                   type="file"
@@ -2478,6 +2502,20 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                     }
                   }}
                 />
+                <div className="flex items-center gap-0.5">
+                  <label className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors" data-testid="attachmentButton" title="Attach file">
+                    <Paperclip className="w-[18px] h-[18px]" />
+                    <input type="file" multiple hidden onChange={(e) => handleUploadAttachment(e.target.files)} />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={recording ? stopRecording : startRecording}
+                    className={`p-2 rounded-lg transition-colors ${recording ? 'bg-red-50 text-red-500' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                    title={recording ? 'Stop recording' : 'Voice message'}
+                  >
+                    <Mic className="w-[18px] h-[18px]" />
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={newMessage}
@@ -2487,61 +2525,36 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
                   }}
                   placeholder={blockedState.blocked || blockedState.blockedBy ? 'Messaging blocked' : 'Type a message...'}
                   disabled={!isEmailVerified || blockedState.blocked || blockedState.blockedBy}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100"
-                  style={{ fontSize: '16px' }}
+                  className="flex-1 px-4 py-2.5 bg-slate-100 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-400/40 focus:bg-white disabled:bg-slate-100 disabled:text-slate-400 transition-colors placeholder:text-slate-400"
+                  style={{ fontSize: '15px' }}
                   data-testid="messageInput"
                 />
-                <label className="p-3 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 cursor-pointer" data-testid="attachmentButton">
-                  <Paperclip className="w-5 h-5" />
-                  <input type="file" multiple hidden onChange={(e) => handleUploadAttachment(e.target.files)} />
-                </label>
-                <button
-                  type="button"
-                  onClick={handleShareLocation}
-                  className="p-3 bg-gray-100 text-gray-700 rounded-full"
-                  title="Share location"
-                >
-                  <MapPin className="w-5 h-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleShareRide}
-                  className="p-3 bg-gray-100 text-gray-700 rounded-full"
-                  title="Share ride"
-                >
-                  <Calendar className="w-5 h-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleShareBooking}
-                  className="p-3 bg-gray-100 text-gray-700 rounded-full"
-                  title="Share booking"
-                >
-                  <FileText className="w-5 h-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={recording ? stopRecording : startRecording}
-                  className={`p-3 rounded-full ${recording ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-700'}`}
-                >
-                  <Mic className="w-5 h-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setScheduledAt(toLocalInputValue(new Date(Date.now() + 10 * 60 * 1000)))}
-                  className="p-3 bg-gray-100 text-gray-700 rounded-full"
-                  title="Send later"
-                >
-                  <Clock className="w-5 h-5" />
-                </button>
-                <button
-                  type="submit"
-                  disabled={(!newMessage.trim() && composerAttachments.length === 0) || !isEmailVerified || blockedState.blocked || blockedState.blockedBy}
-                  className="p-3 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                  data-testid="sendButton"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={handleShareLocation}
+                    className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors hidden sm:block"
+                    title="Share location"
+                  >
+                    <MapPin className="w-[18px] h-[18px]" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScheduledAt(toLocalInputValue(new Date(Date.now() + 10 * 60 * 1000)))}
+                    className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors hidden sm:block"
+                    title="Send later"
+                  >
+                    <Clock className="w-[18px] h-[18px]" />
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={(!newMessage.trim() && composerAttachments.length === 0) || !isEmailVerified || blockedState.blocked || blockedState.blockedBy}
+                    className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors ml-0.5"
+                    data-testid="sendButton"
+                  >
+                    <Send className="w-[18px] h-[18px]" />
+                  </button>
+                </div>
               </form>
 
               {scheduledAt && (
@@ -2558,11 +2571,13 @@ export default function NewChatSystem({ initialConversationId }: NewChatSystemPr
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
+          <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <Search className="w-24 h-24 mx-auto mb-4 text-gray-300" />
-              <h3 className="text-xl font-semibold mb-2">Select a conversation</h3>
-              <p className="text-gray-400">Choose a conversation from the list to start messaging</p>
+              <div className="w-24 h-24 mx-auto mb-5 rounded-3xl bg-gradient-to-br from-indigo-100 to-slate-100 flex items-center justify-center">
+                <Send className="w-10 h-10 text-indigo-400 -rotate-12" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800 mb-2">Your messages</h3>
+              <p className="text-slate-400 text-sm max-w-[260px] mx-auto leading-relaxed">Select a conversation to start chatting, or find a ride to connect with someone new</p>
             </div>
           </div>
         )}
@@ -2672,21 +2687,23 @@ function MessageBubble({
   };
 
   return (
-    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-4`} data-testid="messageItem">
+    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-5 py-0.5 group`} data-testid="messageItem">
       <div
-        className={`max-w-[75%] rounded-2xl px-4 py-2 relative ${
-          isOwn ? 'bg-green-500 text-white' : 'bg-white text-gray-900 shadow-sm'
+        className={`max-w-[70%] px-4 py-2.5 relative ${
+          isOwn
+            ? 'bg-indigo-600 text-white rounded-2xl rounded-br-md'
+            : 'bg-white text-slate-900 rounded-2xl rounded-bl-md shadow-sm border border-slate-100'
         } ${effectiveStatus === 'sending' ? 'opacity-60' : 'opacity-100'}`}
         data-testid="messageBubble"
         data-message-id={message.id}
       >
         {message.deleted_at ? (
-          <p className="text-sm italic text-gray-200">Message removed</p>
+          <p className="text-sm italic text-slate-300">Message removed</p>
         ) : (
           <>
             {message.reply_to && (
-              <div className={`mb-2 text-xs ${isOwn ? 'text-white/80' : 'text-gray-500'}`}>
-                Replying to: {message.reply_to.body || message.reply_to.message_type}
+              <div className={`mb-2 text-xs px-2.5 py-1.5 rounded-lg border-l-2 ${isOwn ? 'bg-white/10 text-white/80 border-white/30' : 'bg-slate-50 text-slate-500 border-slate-300'}`}>
+                {message.reply_to.body || message.reply_to.message_type}
               </div>
             )}
             {message.attachments && message.attachments.length > 0 && (
@@ -2721,82 +2738,85 @@ function MessageBubble({
                 ))}
               </div>
             )}
-            {message.body && <p className="break-words text-sm">{message.body}</p>}
+            {message.body && <p className="break-words text-[14px] leading-relaxed">{message.body}</p>}
             {message.metadata?.link_preview && (
-              <div className={`mt-2 p-2 rounded-lg ${isOwn ? 'bg-white/20' : 'bg-gray-50'}`}>
-                <a href={message.metadata.link_preview.url} className="text-xs font-semibold" target="_blank" rel="noreferrer">
+              <div className={`mt-2 p-2.5 rounded-xl ${isOwn ? 'bg-white/15' : 'bg-slate-50 border border-slate-100'}`}>
+                <a href={message.metadata.link_preview.url} className="text-xs font-semibold hover:underline" target="_blank" rel="noreferrer">
                   {message.metadata.link_preview.title || message.metadata.link_preview.url}
                 </a>
                 {message.metadata.link_preview.description && (
-                  <p className="text-xs text-gray-500">{message.metadata.link_preview.description}</p>
+                  <p className={`text-xs mt-0.5 ${isOwn ? 'text-white/60' : 'text-slate-400'}`}>{message.metadata.link_preview.description}</p>
                 )}
               </div>
             )}
             {message.metadata?.location && (
-              <div className={`mt-2 p-2 rounded-lg ${isOwn ? 'bg-white/20' : 'bg-gray-50'}`}>
+              <div className={`mt-2 p-2.5 rounded-xl flex items-center gap-2 ${isOwn ? 'bg-white/15' : 'bg-slate-50 border border-slate-100'}`}>
+                <MapPin className="w-4 h-4 flex-shrink-0" />
                 <a
                   href={`https://www.google.com/maps?q=${message.metadata.location.lat},${message.metadata.location.lng}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs font-semibold underline"
+                  className="text-xs font-medium hover:underline"
                 >
                   View shared location
                 </a>
               </div>
             )}
             {message.message_type === 'RIDE_CARD' && message.metadata?.ride_id && (
-              <div className={`mt-2 p-2 rounded-lg ${isOwn ? 'bg-white/20' : 'bg-gray-50'}`}>
-                <a href={`/rides/${message.metadata.ride_id}`} className="text-xs font-semibold underline">
+              <div className={`mt-2 p-2.5 rounded-xl flex items-center gap-2 ${isOwn ? 'bg-white/15' : 'bg-slate-50 border border-slate-100'}`}>
+                <Calendar className="w-4 h-4 flex-shrink-0" />
+                <a href={`/rides/${message.metadata.ride_id}`} className="text-xs font-medium hover:underline">
                   View shared ride
                 </a>
               </div>
             )}
             {message.message_type === 'BOOKING_CARD' && message.metadata?.booking_id && (
-              <div className={`mt-2 p-2 rounded-lg ${isOwn ? 'bg-white/20' : 'bg-gray-50'}`}>
-                <a href={`/bookings/${message.metadata.booking_id}`} className="text-xs font-semibold underline">
+              <div className={`mt-2 p-2.5 rounded-xl flex items-center gap-2 ${isOwn ? 'bg-white/15' : 'bg-slate-50 border border-slate-100'}`}>
+                <FileText className="w-4 h-4 flex-shrink-0" />
+                <a href={`/bookings/${message.metadata.booking_id}`} className="text-xs font-medium hover:underline">
                   View shared booking
                 </a>
               </div>
             )}
           </>
         )}
-        <div className={`flex items-center gap-2 text-[10px] mt-1 ${isOwn ? 'text-white/70' : 'text-gray-500'}`}>
+        <div className={`flex items-center gap-1.5 text-[10px] mt-1.5 ${isOwn ? 'text-white/50' : 'text-slate-400'}`}>
           <span>{formatTime(message.created_at)}</span>
-          {message.edited_at && <span>(edited)</span>}
+          {message.edited_at && <span className="italic">(edited)</span>}
           {isOwn && statusIcon()}
         </div>
         {queueItem && queueItem.status === 'failed' && (
           <button
             type="button"
             onClick={() => onRetry(queueItem)}
-            className="mt-2 text-[10px] text-red-200 underline"
+            className="mt-1.5 text-[11px] text-red-300 hover:text-red-200 underline"
           >
             Retry send
           </button>
         )}
 
-        <div className="absolute -top-2 right-2 flex gap-2">
+        <div className="absolute -top-3 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             type="button"
-            className="p-1 bg-white rounded-full shadow"
+            className="p-1 bg-white rounded-lg shadow-sm border border-slate-100 hover:bg-slate-50 transition-colors"
             onClick={() => setReactionsOpenFor(reactionsOpenFor === message.id ? null : message.id)}
             data-testid="reactionButton"
           >
-            <Smile className="w-3 h-3 text-gray-600" />
+            <Smile className="w-3.5 h-3.5 text-slate-500" />
           </button>
           <button
             type="button"
-            className="p-1 bg-white rounded-full shadow"
+            className="p-1 bg-white rounded-lg shadow-sm border border-slate-100 hover:bg-slate-50 transition-colors"
             onClick={() => setMenuOpenFor(menuOpenFor === message.id ? null : message.id)}
           >
-            <MoreVertical className="w-3 h-3 text-gray-600" />
+            <MoreVertical className="w-3.5 h-3.5 text-slate-500" />
           </button>
         </div>
 
         {reactionsOpenFor === message.id && (
-          <div className="absolute -top-10 right-0 bg-white rounded-full shadow px-2 py-1 flex gap-2">
+          <div className="absolute -top-11 right-0 bg-white rounded-xl shadow-lg border border-slate-100 px-2 py-1.5 flex gap-1 z-10">
             {emojiOptions.map((emoji) => (
-              <button key={emoji} onClick={() => onReact(message, emoji)}>
+              <button key={emoji} onClick={() => onReact(message, emoji)} className="text-base hover:scale-125 transition-transform px-0.5">
                 {emoji}
               </button>
             ))}
@@ -2804,62 +2824,62 @@ function MessageBubble({
         )}
 
         {menuOpenFor === message.id && (
-          <div className="absolute -top-20 right-0 bg-white rounded-lg shadow text-xs text-gray-700">
+          <div className="absolute -top-2 right-10 bg-white rounded-xl shadow-lg border border-slate-100 text-xs text-slate-700 overflow-hidden z-10 min-w-[160px]">
             <button
-              className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 w-full"
+              className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 w-full transition-colors"
               onClick={() => {
                 onReply(message);
                 setMenuOpenFor(null);
               }}
             >
-              <Reply className="w-3 h-3" /> Reply
+              <Reply className="w-3.5 h-3.5 text-slate-400" /> Reply
             </button>
             {!isOwn && (
               <button
-                className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 w-full"
+                className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 w-full transition-colors"
                 onClick={() => onReport(message)}
               >
-                <Flag className="w-3 h-3" /> Report message
+                <Flag className="w-3.5 h-3.5 text-slate-400" /> Report
               </button>
             )}
             {isOwn && isEditable && (
               <button
-                className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 w-full"
+                className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 w-full transition-colors"
                 onClick={() => {
                   onEdit(message);
                   setMenuOpenFor(null);
                 }}
               >
-                <Edit className="w-3 h-3" /> Edit
+                <Edit className="w-3.5 h-3.5 text-slate-400" /> Edit
               </button>
             )}
             {isOwn && isEditable && (
               <button
-                className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 w-full"
+                className="flex items-center gap-2 px-3 py-2.5 hover:bg-red-50 text-red-600 w-full transition-colors"
                 onClick={() => {
                   onDeleteForEveryone(message);
                   setMenuOpenFor(null);
                 }}
               >
-                <Trash2 className="w-3 h-3" /> Delete for everyone
+                <Trash2 className="w-3.5 h-3.5" /> Delete for everyone
               </button>
             )}
             <button
-              className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 w-full"
+              className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 w-full transition-colors border-t border-slate-100"
               onClick={() => {
                 onDeleteForMe(message);
                 setMenuOpenFor(null);
               }}
             >
-              <Trash2 className="w-3 h-3" /> Delete for me
+              <Trash2 className="w-3.5 h-3.5 text-slate-400" /> Delete for me
             </button>
           </div>
         )}
 
         {message.reactions && message.reactions.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1 text-xs">
+          <div className="absolute -bottom-3 left-2 flex gap-0.5">
             {message.reactions.map((reaction) => (
-              <span key={reaction.id} className="px-2 py-1 bg-gray-100 rounded-full">
+              <span key={reaction.id} className="px-1.5 py-0.5 bg-white rounded-full shadow-sm border border-slate-100 text-xs">
                 {reaction.emoji}
               </span>
             ))}

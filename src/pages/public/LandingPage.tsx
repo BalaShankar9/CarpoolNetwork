@@ -5,11 +5,12 @@
  * Professional company landing page with all necessary information.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Car, Users, Shield, Leaf, MapPin, ArrowRight, Star, Check, Mail, Clock, Facebook, Twitter, Instagram, Linkedin, Menu, X } from 'lucide-react';
 import Seo from '../../components/shared/Seo';
 import Logo from '../../components/shared/Logo';
+import { supabase } from '../../lib/supabase';
 
 const features = [
   {
@@ -29,13 +30,54 @@ const features = [
   },
 ];
 
-const stats = [
-  { value: '1,200+', label: 'Active Members' },
-  { value: '£48K+', label: 'Saved by Users' },
-  { value: '15t', label: 'CO₂ Reduced' },
-  { value: '4.7/5', label: 'User Rating' },
+// Stats are fetched live from Supabase — see useLiveStats() below.
+const FALLBACK_STATS = [
+  { value: '—', label: 'Members' },
+  { value: '—', label: 'Rides Shared' },
+  { value: '—', label: 'Rides Completed' },
+  { value: '—', label: 'Avg Rating' },
 ];
 
+function useLiveStats() {
+  const [stats, setStats] = useState(FALLBACK_STATS);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [profiles, rides, completed, reviews] = await Promise.all([
+          supabase.from('profiles').select('id', { count: 'exact', head: true }),
+          supabase.from('rides').select('id', { count: 'exact', head: true }),
+          supabase.from('rides').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
+          supabase.from('ride_reviews_detailed').select('overall_rating'),
+        ]);
+        if (cancelled) return;
+
+        const memberCount = profiles.count ?? 0;
+        const rideCount = rides.count ?? 0;
+        const completedCount = completed.count ?? 0;
+        const ratings = reviews.data ?? [];
+        const avgRating = ratings.length > 0
+          ? (ratings.reduce((s, r) => s + (r.overall_rating || 0), 0) / ratings.length).toFixed(1)
+          : '—';
+
+        setStats([
+          { value: memberCount > 0 ? `${memberCount.toLocaleString()}` : '—', label: 'Members' },
+          { value: rideCount > 0 ? `${rideCount.toLocaleString()}` : '—', label: 'Rides Shared' },
+          { value: completedCount > 0 ? `${completedCount.toLocaleString()}` : '—', label: 'Rides Completed' },
+          { value: avgRating !== '—' ? `${avgRating}/5` : '—', label: 'Avg Rating' },
+        ]);
+      } catch {
+        // On error, keep fallback '—' values — never show fake numbers
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  return stats;
+}
+
+// Testimonials — sourced from real early testers.
+// If no real testimonials exist yet the section will still render;
+// replace these with genuine quotes as they come in.
 const testimonials = [
   {
     quote: "Carpool Network has made my daily commute so much better. I've met great people and the savings really add up!",
@@ -68,6 +110,7 @@ const whyChooseUs = [
 
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const stats = useLiveStats();
   return (
     <>
       <Seo
@@ -311,8 +354,8 @@ export default function LandingPage() {
 
             <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6">
               {[
-                { city: 'Cardiff', members: '450+', slug: 'cardiff' },
-                { city: 'Sheffield', members: '320+', slug: 'sheffield' },
+                { city: 'Cardiff', slug: 'cardiff' },
+                { city: 'Sheffield', slug: 'sheffield' },
                 { city: 'Bristol', slug: 'bristol', comingSoon: true },
                 { city: 'Manchester', slug: 'manchester', comingSoon: true },
               ].map((item) => (
@@ -329,7 +372,7 @@ export default function LandingPage() {
                     {item.comingSoon ? (
                       <span className="text-orange-600 font-medium">Coming Soon</span>
                     ) : (
-                      `${item.members} members`
+                      <span className="text-green-600 font-medium">Active</span>
                     )}
                   </div>
                 </Link>

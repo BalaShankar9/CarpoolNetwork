@@ -72,6 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       // Only reload profile on meaningful auth events, not token refreshes
       if (event === 'TOKEN_REFRESHED') return;
+      // Redirect to reset-password page on recovery event
+      if (event === 'PASSWORD_RECOVERY') {
+        window.location.href = '/reset-password';
+        return;
+      }
       if (session?.user) {
         loadProfile(session.user);
       } else {
@@ -103,14 +108,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           user.user_metadata?.name ||
           'New User';
 
+        const fallbackAvatar =
+          user.user_metadata?.avatar_url ||
+          user.user_metadata?.picture ||
+          null;
+        const fallbackPhone = user.phone || user.user_metadata?.phone || null;
+
         const { data: createdProfile, error: createError } = await supabase
           .from('profiles')
           .insert([{
             id: user.id,
             email: fallbackEmail,
             full_name: fallbackName,
-            phone_e164: user.phone || null,
-            phone: user.phone || null,
+            avatar_url: fallbackAvatar,
+            phone_e164: fallbackPhone,
+            phone: fallbackPhone,
           }])
           .select()
           .single();
@@ -182,6 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             full_name: fullName,
             phone: phone,
           },
+          emailRedirectTo: `${window.location.origin}/`,
         },
       });
 
@@ -197,31 +210,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      return { error };
+    } catch (err) {
+      return { error: err as AuthError };
+    }
   };
 
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/`,
-      },
-    });
-    return { error };
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      });
+      return { error };
+    } catch (err) {
+      return { error: err as AuthError };
+    }
   };
 
   const signInWithGitHub = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: {
-        redirectTo: `${window.location.origin}/`,
-      },
-    });
-    return { error };
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${window.location.origin}/`,
+          scopes: 'read:user user:email',
+        },
+      });
+      return { error };
+    } catch (err) {
+      return { error: err as AuthError };
+    }
   };
 
   const signInWithOTP = async (emailOrPhone: string, isPhone = false) => {
@@ -274,15 +300,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
     setAdminRole(null);
     setPermissions([]);
-    const { error } = await supabase.auth.signOut();
-    return { error };
+    try {
+      const { error } = await supabase.auth.signOut();
+      return { error };
+    } catch (err) {
+      return { error: err as AuthError };
+    }
   };
 
   const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    return { error };
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      return { error };
+    } catch (err) {
+      return { error: err as AuthError };
+    }
   };
 
   const updateProfile = async (updates: Partial<Profile>) => {
@@ -306,16 +340,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const resendVerificationEmail = async () => {
     if (!user?.email) return { error: new AuthError('No email address') };
 
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email: user.email,
-    });
-    return { error };
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: user.email,
+      });
+      return { error };
+    } catch (err) {
+      return { error: err as AuthError };
+    }
   };
 
   // Skip email verification ONLY in development mode
   const skipEmailVerification = import.meta.env.DEV && import.meta.env.VITE_SKIP_EMAIL_VERIFICATION === 'true';
-  const isEmailVerified = skipEmailVerification || !!user?.email_confirmed_at;
+  const isEmailVerified = skipEmailVerification || !!user?.email_confirmed_at || !!user?.phone_confirmed_at;
   // Admin check: only use admin_role (standardized)
   const isAdmin = adminRole !== null;
   const profileMissingFields = getProfileMissingFields(profile);

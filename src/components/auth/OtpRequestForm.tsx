@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Mail, Phone, Loader2 } from 'lucide-react';
 import { getRuntimeConfig } from '../../lib/runtimeConfig';
 import { normalizePhoneNumber } from '../../utils/phone';
@@ -223,6 +223,7 @@ export default function OtpRequestForm({ onSendOTP, disabled = false }: OtpReque
     }
 
     setLoading(true);
+    setError('');
     try {
       const payload = isPhone ? normalizedPhone : trimmedIdentifier;
       await onSendOTP(payload, isPhone);
@@ -238,6 +239,8 @@ export default function OtpRequestForm({ onSendOTP, disabled = false }: OtpReque
           return prev - 1;
         });
       }, 1000);
+    } catch {
+      setError('Failed to send code. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -303,7 +306,7 @@ export default function OtpRequestForm({ onSendOTP, disabled = false }: OtpReque
           </p>
         )}
         {error && (
-          <p className="mt-1 text-xs text-red-600">{error}</p>
+          <p className="mt-1 text-xs text-red-600" role="alert">{error}</p>
         )}
       </div>
 

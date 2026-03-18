@@ -42,21 +42,25 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
     if (!email || email.length < 3) {
       setEmailValid(null);
       setEmailError('');
+      setEmailValidating(false);
       return;
     }
 
+    let cancelled = false;
     const timeoutId = setTimeout(async () => {
       setEmailValidating(true);
       setEmailError('');
       const result = await validateEmail(email);
-      setEmailValid(result.valid);
-      if (!result.valid && result.error) {
-        setEmailError(result.error);
+      if (!cancelled) {
+        setEmailValid(result.valid);
+        if (!result.valid && result.error) {
+          setEmailError(result.error);
+        }
+        setEmailValidating(false);
       }
-      setEmailValidating(false);
     }, 800);
 
-    return () => clearTimeout(timeoutId);
+    return () => { clearTimeout(timeoutId); cancelled = true; };
   }, [email]);
 
   // Close dropdown on outside click
@@ -124,7 +128,7 @@ export default function PasswordSignupForm({ onSubmit, disabled = false }: Passw
     try {
       await onSubmit(email, password, fullName, fullPhoneNumber);
     } catch (err: any) {
-      setError('Failed to create account. Please try again.');
+      setError(err?.message ? err.message : 'Failed to create account. Please try again.');
     } finally {
       setLoading(false);
     }

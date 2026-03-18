@@ -11,6 +11,7 @@
 import type { Handler } from '@netlify/functions';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { securityHeaders, corsPreflightResponse } from './_shared/headers';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2025-04-30.acacia',
@@ -22,8 +23,9 @@ const supabase = createClient(
 );
 
 export const handler: Handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') return corsPreflightResponse();
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+    return { statusCode: 405, headers: securityHeaders(), body: 'Method Not Allowed' };
   }
 
   try {

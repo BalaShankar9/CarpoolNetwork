@@ -6,7 +6,7 @@ interface AuthLayoutProps {
 
 export default function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 auth-bg overflow-hidden relative">
+    <div className="min-h-screen flex items-center justify-center p-4 auth-bg overflow-x-hidden overflow-y-auto relative">
       <style>{`
         @keyframes float {
           0%, 100% { transform: translate(0, 0) rotate(0deg); }

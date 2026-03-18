@@ -55,18 +55,20 @@
   [headers.values]
     Cache-Control = "no-cache, no-store, must-revalidate"
 
-# Static SEO files - moderate cache, allow revalidation
+# Static SEO files - moderate cache, allow revalidation, prevent MIME sniffing
 [[headers]]
   for = "/robots.txt"
   [headers.values]
     Cache-Control = "public, max-age=86400"
     Content-Type = "text/plain; charset=utf-8"
+    X-Content-Type-Options = "nosniff"
 
 [[headers]]
   for = "/sitemap.xml"
   [headers.values]
     Cache-Control = "public, max-age=86400"
     Content-Type = "application/xml; charset=utf-8"
+    X-Content-Type-Options = "nosniff"
 
 # ==========================================================
 # SECURITY HEADERS: Applied to all routes
@@ -86,17 +88,59 @@
     # XSS Protection (legacy browsers)
     X-XSS-Protection = "1; mode=block"
     
-    # HSTS: Force HTTPS for 1 year
-    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    # HSTS: Force HTTPS for 2 years + preload
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
     
     # Permissions Policy: Disable unnecessary browser features
-    Permissions-Policy = "geolocation=(self), camera=(), microphone=(), payment=(), usb=(), bluetooth=()"
+    Permissions-Policy = "geolocation=(self), camera=(), microphone=(), payment=(), usb=(), bluetooth=(), magnetometer=(), gyroscope=(), accelerometer=()"
 
-    # Content Security Policy
-    # NOTE: 'unsafe-inline' for script-src is required by Vite module preload polyfill.
-    # style-src 'unsafe-inline' is required by Tailwind and Framer Motion runtime styles.
-    # TODO: Phase 6 — migrate to nonce-based CSP to eliminate unsafe-inline for scripts.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com https://browser.sentry-cdn.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://maps.googleapis.com https://maps.gstatic.com https://*.googleusercontent.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://sentry.io https://*.sentry.io https://maps.googleapis.com https://o*.ingest.sentry.io https://api.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+    # Cross-Origin policies
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Resource-Policy = "same-origin"
+
+    # Content Security Policy — strict, no unsafe-inline for scripts
+    # style-src 'unsafe-inline' is still required by Tailwind CSS and Framer Motion runtime styles.
+    # img-src data: is required for inline base64 images (avatars, maps tiles).
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://browser.sentry-cdn.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://maps.googleapis.com https://maps.gstatic.com https://*.googleusercontent.com https://avatars.githubusercontent.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com https://api.github.com https://sentry.io https://*.sentry.io https://maps.googleapis.com https://o*.ingest.sentry.io https://api.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com https://accounts.google.com https://github.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https://*.supabase.co https://accounts.google.com https://github.com; frame-ancestors 'none'; upgrade-insecure-requests"
+
+    # CORS: Only allow requests from our own origin
+    Access-Control-Allow-Origin = "https://carpoolnetwork.co.uk"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+    Access-Control-Max-Age = "86400"
+
+# ==========================================================
+# SECURITY HEADERS: Service worker — prevent caching, restrict scope
+# ==========================================================
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Content-Type = "application/javascript; charset=utf-8"
+    Service-Worker-Allowed = "/"
+    X-Content-Type-Options = "nosniff"
+    X-Robots-Tag = "noindex, nofollow"
+
+# ==========================================================
+# SECURITY HEADERS: SW cleanup script — no cache
+# ==========================================================
+[[headers]]
+  for = "/sw-cleanup.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Content-Type = "application/javascript; charset=utf-8"
+    X-Content-Type-Options = "nosniff"
+
+# ==========================================================
+# SECURITY HEADERS: Manifest — restrict to same-origin, prevent indexing
+# ==========================================================
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+    Content-Type = "application/manifest+json; charset=utf-8"
+    X-Content-Type-Options = "nosniff"
+    X-Robots-Tag = "noindex"
 
 # ==========================================================
 # NETLIFY FUNCTIONS: Configuration

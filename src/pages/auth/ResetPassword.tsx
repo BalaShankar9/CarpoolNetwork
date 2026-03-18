@@ -224,7 +224,7 @@ export default function ResetPassword() {
                   required
                   disabled={loading}
                   className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed transition-all ${
-                    confirmPassword && (passwordsMatch ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50')
+                    confirmPassword ? (passwordsMatch ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50') : 'border-gray-300'
                   }`}
                 />
                 <button

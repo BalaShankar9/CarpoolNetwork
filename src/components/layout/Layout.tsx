@@ -1,9 +1,8 @@
-import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Search, PlusCircle, Calendar, MessageSquare, User, LogOut, MessageCircle, LayoutDashboard, UserCheck, Activity, Bug, MapPin, Settings, Users, Bell, UserPlus, HelpCircle } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import { Home, Search, PlusCircle, Calendar, MessageSquare, User, LogOut, LayoutDashboard, UserCheck, Bug, MapPin, Settings, Users, Bell, HelpCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import Logo from '../shared/Logo';
-import AiAssistantWidget from '../shared/AIChatbot';
 import EnvironmentBanner from '../shared/EnvironmentBanner';
 import OfflineBanner from '../shared/OfflineBanner';
 import FeedbackButton from '../shared/FeedbackButton';
@@ -13,11 +12,9 @@ import ToastContainer from '../shared/ToastContainer';
 import { NotificationsBell } from '../notifications/NotificationsBell';
 import { NotificationsPanel } from '../notifications/NotificationsPanel';
 import { useRealtime } from '../../contexts/RealtimeContext';
-import DevDiagnosticsPanel from '../shared/DevDiagnosticsPanel';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut, isAdmin } = useAuth();
-  const navigate = useNavigate();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { unreadNotifications, unreadMessages } = useRealtime();
   const displayName = profile?.full_name || 'Account';
@@ -44,7 +41,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: '/request-ride', icon: MapPin, label: 'Request Ride' },
     { to: '/my-rides', icon: Calendar, label: 'My Rides' },
     { to: '/messages', icon: MessageSquare, label: 'Messages' },
-    { to: '/friends', icon: UserPlus, label: 'Friends' },
     { to: '/community', icon: Users, label: 'Community' },
     { to: '/help', icon: HelpCircle, label: 'Help' },
     { to: '/profile', icon: User, label: 'Profile' },
@@ -53,9 +49,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const adminItems = [
     { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/admin/diagnostics', icon: Activity, label: 'Diagnostics' },
     { to: '/admin/users', icon: UserCheck, label: 'Users' },
-    { to: '/admin/feedback', icon: MessageCircle, label: 'Feedback' },
     { to: '/admin/bugs', icon: Bug, label: 'Bug Reports' },
   ];
 
@@ -83,14 +77,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   onClose={() => setNotificationsOpen(false)}
                 />
               </div>
-              <button
-                onClick={() => navigate('/community')}
-                aria-label="Community"
-                title="Community"
-                className="p-2 text-gray-600 hover:text-blue-600 transition-colors"
-              >
-                <Users className="w-5 h-5" />
-              </button>
               <button
                 onClick={handleSignOut}
                 aria-label="Sign Out"
@@ -189,7 +175,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      <AiAssistantWidget />
       <FeedbackButton />
 
       <nav
@@ -200,7 +185,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {[
             { to: '/', icon: Home, label: 'Home' },
             { to: '/find-rides', icon: Search, label: 'Find' },
-            { to: '/post-ride', icon: PlusCircle, label: 'Post' },
+            { to: '/community', icon: Users, label: 'Community' },
             { to: '/messages', icon: MessageSquare, label: 'Chat', badge: unreadMessages },
             { to: '/profile', icon: User, label: 'Profile' },
           ].map((item) => (
@@ -239,9 +224,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           ))}
         </div>
       </nav>
-      
-      {/* Dev-only diagnostics panel */}
-      <DevDiagnosticsPanel />
     </div>
   );
 }

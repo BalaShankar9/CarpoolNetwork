@@ -1,4 +1,4 @@
-import { Car, Users, Star, TrendingUp, Award } from 'lucide-react';
+import { Car, Users, Star, TrendingUp, Award, Calendar } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function StatisticsDashboard() {

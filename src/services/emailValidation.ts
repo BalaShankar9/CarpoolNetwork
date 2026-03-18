@@ -19,8 +19,11 @@ export async function validateEmail(email: string): Promise<EmailValidationResul
       body: JSON.stringify({ email }),
     });
 
+    if (!response.ok) {
+      return { valid: false, error: 'Email validation service unavailable. Please try again.' };
+    }
     const data = await response.json();
-    return data;
+    return { valid: !!data.valid, error: data.error };
   } catch (error) {
     console.error('Error validating email:', error);
     return {

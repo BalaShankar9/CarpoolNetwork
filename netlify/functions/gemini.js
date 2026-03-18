@@ -4,16 +4,37 @@
 const GEMINI_MODEL = "gemini-1.5-flash";
 const OPENAI_MODEL = "gpt-4.1-mini";
 
+const ALLOWED_ORIGIN = process.env.URL || "https://carpoolnetwork.co.uk";
+
+function secHeaders(extra) {
+  return Object.assign(
+    {
+      "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Content-Type": "application/json",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+    },
+    extra || {}
+  );
+}
+
 function json(statusCode, data) {
   return {
     statusCode,
-    headers: { "Content-Type": "application/json" },
+    headers: secHeaders(),
     body: JSON.stringify(data),
   };
 }
 
 exports.handler = async function (event, context) {
   try {
+    if (event.httpMethod === "OPTIONS") {
+      return { statusCode: 204, headers: secHeaders(), body: "" };
+    }
+
     if (event.httpMethod !== "POST") {
       return json(405, { error: "Method not allowed" });
     }

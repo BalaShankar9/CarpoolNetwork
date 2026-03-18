@@ -3,6 +3,7 @@
 
 User-agent: *
 Allow: /
+Crawl-delay: 2
 
 # Public marketing pages
 Allow: /how-it-works
@@ -50,6 +51,24 @@ Disallow: /leaderboards
 Disallow: /challenges
 Disallow: /unauthorized
 Disallow: /social/
+
+# Block sensitive static files from indexing
+Disallow: /sw.js
+Disallow: /sw-cleanup.js
+Disallow: /manifest.json
+
+# Block aggressive scrapers
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
 
 # Sitemap location
 Sitemap: https://carpoolnetwork.co.uk/sitemap.xml

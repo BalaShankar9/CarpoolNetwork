@@ -13,7 +13,7 @@ export default function ProfileStep({ onNext }: ProfileStepProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
-    phone_number: '',
+    phone_e164: '',
     city: '',
     bio: ''
   });
@@ -28,14 +28,14 @@ export default function ProfileStep({ onNext }: ProfileStepProps) {
     try {
       const { data } = await supabase
         .from('profiles')
-        .select('full_name, phone_number, city, bio')
+        .select('full_name, phone_e164, city, bio')
         .eq('id', user.id)
         .single();
 
       if (data) {
         setFormData({
           full_name: data.full_name || '',
-          phone_number: data.phone_number || '',
+          phone_e164: data.phone_e164 || '',
           city: data.city || '',
           bio: data.bio || ''
         });
@@ -107,8 +107,8 @@ export default function ProfileStep({ onNext }: ProfileStepProps) {
             <input
               type="tel"
               required
-              value={formData.phone_number}
-              onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+              value={formData.phone_e164}
+              onChange={(e) => setFormData({ ...formData, phone_e164: e.target.value })}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="+44 7XXX XXXXXX"
             />

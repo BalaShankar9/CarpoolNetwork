@@ -212,30 +212,29 @@ class TrustVerificationService {
     }
 
     private async calculateResponseScore(userId: string): Promise<number> {
-        // Calculate based on message response time
-        const { data: conversations } = await supabase
-            .from('messages')
-            .select('created_at, read_at')
-            .eq('recipient_id', userId)
-            .not('read_at', 'is', null)
+        // Calculate based on message read times from the chat_messages + message_reads tables.
+        // The old `messages` table no longer exists; the current schema uses:
+        //   chat_messages (id, sender_id, conversation_id, created_at, ...)
+        //   message_reads (conversation_id, user_id, last_read_at)
+        // We approximate response score from how quickly the user reads messages.
+        const { data: readRecords } = await supabase
+            .from('message_reads')
+            .select('last_read_at, conversation_id')
+            .eq('user_id', userId)
+            .not('last_read_at', 'is', null)
             .limit(50);
 
-        if (!conversations || conversations.length === 0) return 70;
+        if (!readRecords || readRecords.length === 0) return 70;
 
-        const responseTimes = conversations.map((c) => {
-            const created = new Date(c.created_at).getTime();
-            const read = new Date(c.read_at).getTime();
-            return (read - created) / (1000 * 60); // minutes
-        });
-
-        const avgResponseTime = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
-
-        // Score based on response time (faster = better)
-        if (avgResponseTime < 15) return 100;
-        if (avgResponseTime < 30) return 90;
-        if (avgResponseTime < 60) return 80;
-        if (avgResponseTime < 120) return 70;
-        if (avgResponseTime < 240) return 60;
+        // For each conversation, compare last_read_at to the latest message in that conversation
+        // As a simplified heuristic, we score based on how many conversations have been read at all.
+        // A more precise calculation would need per-message read tracking which is expensive.
+        const readCount = readRecords.length;
+        if (readCount >= 40) return 100;
+        if (readCount >= 30) return 90;
+        if (readCount >= 20) return 80;
+        if (readCount >= 10) return 70;
+        if (readCount >= 5) return 60;
         return 50;
     }
 

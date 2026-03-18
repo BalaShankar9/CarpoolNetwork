@@ -19,7 +19,8 @@ export default function SocialAuthButtons({
     setLoadingGoogle(true);
     try {
       await onGoogleSignIn();
-    } finally {
+      // Don't reset loading — browser is navigating to OAuth provider
+    } catch {
       setLoadingGoogle(false);
     }
   };
@@ -29,7 +30,8 @@ export default function SocialAuthButtons({
     setLoadingGitHub(true);
     try {
       await onGitHubSignIn();
-    } finally {
+      // Don't reset loading — browser is navigating to OAuth provider
+    } catch {
       setLoadingGitHub(false);
     }
   };

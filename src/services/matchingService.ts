@@ -347,9 +347,27 @@ class MatchingService {
         // Not implemented — user_match_preferences table does not exist
     }
 
-    // Recurring Rides — recurring_rides table does not exist
-    async createRecurringRide(_ride: Omit<RecurringRide, 'id' | 'createdAt' | 'matchedRides'>): Promise<RecurringRide> {
-        throw new Error('Not implemented: recurring_rides table does not exist');
+    // Recurring Rides — recurring_rides table does not exist yet.
+    // Return safe defaults so the UI doesn't crash.
+    async createRecurringRide(ride: Omit<RecurringRide, 'id' | 'createdAt' | 'matchedRides'>): Promise<RecurringRide> {
+        console.warn('[matchingService] createRecurringRide: recurring_rides table does not exist yet — returning stub.');
+        return {
+            id: crypto.randomUUID(),
+            userId: ride.userId,
+            type: ride.type,
+            origin: ride.origin,
+            originLat: ride.originLat,
+            originLng: ride.originLng,
+            destination: ride.destination,
+            destinationLat: ride.destinationLat,
+            destinationLng: ride.destinationLng,
+            departureTime: ride.departureTime,
+            daysOfWeek: ride.daysOfWeek,
+            isActive: false,
+            autoBook: ride.autoBook,
+            matchedRides: [],
+            createdAt: new Date(),
+        };
     }
 
     async getUserRecurringRides(_userId: string): Promise<RecurringRide[]> {
@@ -358,11 +376,11 @@ class MatchingService {
     }
 
     async updateRecurringRide(_id: string, _updates: Partial<RecurringRide>): Promise<void> {
-        throw new Error('Not implemented: recurring_rides table does not exist');
+        console.warn('[matchingService] updateRecurringRide: recurring_rides table does not exist yet — no-op.');
     }
 
     async deleteRecurringRide(_id: string): Promise<void> {
-        throw new Error('Not implemented: recurring_rides table does not exist');
+        console.warn('[matchingService] deleteRecurringRide: recurring_rides table does not exist yet — no-op.');
     }
 
     // Wait List

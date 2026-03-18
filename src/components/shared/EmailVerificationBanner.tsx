@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Mail, AlertTriangle, CheckCircle, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { mapAuthError } from '../../utils/authErrors';
 
 interface Props {
   action?: string;
@@ -18,13 +19,18 @@ export default function EmailVerificationBanner({ action = 'perform this action'
   const handleResend = async () => {
     setSending(true);
     setError('');
-    const { error } = await resendVerificationEmail();
-    if (error) {
-      setError(error.message);
-    } else {
-      setSent(true);
+    try {
+      const { error: resendError } = await resendVerificationEmail();
+      if (resendError) {
+        setError(mapAuthError(resendError.message));
+      } else {
+        setSent(true);
+      }
+    } catch {
+      setError('Failed to resend verification email. Please try again.');
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   };
 
   return (

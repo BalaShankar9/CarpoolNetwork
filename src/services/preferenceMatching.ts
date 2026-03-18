@@ -312,13 +312,18 @@ export class PreferenceMatchingService {
 
     const preferredIds = preferredDrivers?.map(p => p.preferred_driver_id) || [];
 
-    // TODO: N+1 query issue — each ride triggers calculateDetailedCompatibility
-    // (2 queries) plus another user_preferences fetch = 3 queries per ride.
-    // Pre-fetch all driver preferences in a single batch query before the loop
-    // and pass them into per-ride calculations to eliminate redundant DB calls.
+    // Batch-fetch all driver preferences in a single query to eliminate N+1 issue.
+    const eligibleRides = ridesWithDrivers.filter(ride => !blockedIds.includes(ride.driver_id));
+    const driverIds = [...new Set(eligibleRides.map(r => r.driver_id))];
+    const { data: allDriverPrefs } = await supabase
+      .from('user_preferences')
+      .select('*')
+      .in('user_id', driverIds.length > 0 ? driverIds : ['__none__']);
+    const driverPrefsMap: Record<string, any> = {};
+    (allDriverPrefs || []).forEach(p => { driverPrefsMap[p.user_id] = p; });
+
     const filteredRides = await Promise.all(
-      ridesWithDrivers
-        .filter(ride => !blockedIds.includes(ride.driver_id))
+      eligibleRides
         .map(async (ride) => {
           const compatibility = await this.calculateDetailedCompatibility(
             ride.driver_id,
@@ -326,11 +331,7 @@ export class PreferenceMatchingService {
             ride.id
           );
 
-          const { data: driverPrefs } = await supabase
-            .from('user_preferences')
-            .select('*')
-            .eq('user_id', ride.driver_id)
-            .maybeSingle();
+          const driverPrefs = driverPrefsMap[ride.driver_id] || null;
 
           return {
             ...ride,

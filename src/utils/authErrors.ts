@@ -8,7 +8,9 @@ const ERROR_MAP: Record<string, string> = {
   'Email not confirmed': 'Please check your email and confirm your account before signing in.',
   'invalid claim: missing sub claim': 'Your session has expired. Please sign in again.',
   'User already registered': 'An account with this email already exists. Try signing in instead.',
-  'Password should be at least 6 characters': 'Password must be at least 6 characters long.',
+  'Password should be at least 6 characters': 'Password must be at least 8 characters long.',
+  'Password should be at least 8 characters': 'Password must be at least 8 characters long.',
+  'Password is too weak': 'Please choose a stronger password with a mix of letters, numbers, and symbols.',
   'Signups not allowed for this instance': 'New registrations are temporarily disabled. Please try again later.',
   'Email rate limit exceeded': 'Too many attempts. Please wait a few minutes before trying again.',
   'For security purposes, you can only request this after': 'Please wait a moment before trying again.',
@@ -18,9 +20,15 @@ const ERROR_MAP: Record<string, string> = {
   'User not found': 'Incorrect email or password. Please try again.',
   'Invalid otp': 'The code you entered is incorrect. Please check and try again.',
   'OTP has expired': 'This code has expired. Please request a new one.',
+  'Unable to verify beta access. Please try again.': 'Unable to verify beta access. Please try again.',
+  'This email is not on the beta allowlist.': 'This email is not on the beta allowlist. Please request access.',
+  'User creation failed': 'Account creation failed. Please try again.',
+  'access_denied': 'You declined the sign-in request. You can try again when ready.',
 };
 
 export function mapAuthError(rawMessage: string): string {
+  if (!rawMessage) return 'Something went wrong. Please try again.';
+
   // Direct match
   if (ERROR_MAP[rawMessage]) return ERROR_MAP[rawMessage];
 

@@ -26,6 +26,8 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const verifyInFlightRef = useRef(false);
+  const sentPhoneRef = useRef('');
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -78,6 +80,7 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
         const friendlyMessage = getOtpErrorMessage(otpError, allowOtpSignups);
         setError(friendlyMessage || 'Failed to send verification code. Please try again.');
       } else {
+        sentPhoneRef.current = fullPhoneNumber;
         setOtpSent(true);
         setCooldown(60);
         setOtp(['', '', '', '', '', '']);
@@ -103,8 +106,8 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
       otpInputRefs.current[index + 1]?.focus();
     }
 
-    // Auto-verify when all digits entered
-    if (newOtp.every(digit => digit !== '') && newOtp.join('').length === 6) {
+    // Auto-verify when all digits entered (guard against concurrent calls)
+    if (!verifyInFlightRef.current && newOtp.every(digit => digit !== '') && newOtp.join('').length === 6) {
       verifyOTP(newOtp.join(''));
     }
   };
@@ -118,7 +121,7 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    if (pastedData.length === 6) {
+    if (pastedData.length === 6 && !verifyInFlightRef.current) {
       const newOtp = pastedData.split('');
       setOtp(newOtp);
       verifyOTP(pastedData);
@@ -126,12 +129,16 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
   };
 
   const verifyOTP = async (code: string) => {
+    if (verifyInFlightRef.current) return;
+    verifyInFlightRef.current = true;
     setVerifying(true);
     setError('');
 
+    const phoneToVerify = sentPhoneRef.current || fullPhoneNumber;
+
     try {
       const { error: verifyError } = await supabase.auth.verifyOtp({
-        phone: fullPhoneNumber,
+        phone: phoneToVerify,
         token: code,
         type: 'sms',
       });
@@ -142,11 +149,12 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
         otpInputRefs.current[0]?.focus();
       } else {
         setVerified(true);
-        onVerified(fullPhoneNumber);
+        onVerified(phoneToVerify);
       }
     } catch (err) {
       setError('Verification failed. Please try again.');
     } finally {
+      verifyInFlightRef.current = false;
       setVerifying(false);
     }
   };
@@ -318,6 +326,7 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
                 onKeyDown={(e) => handleOtpKeyDown(index, e)}
                 onPaste={handleOtpPaste}
                 disabled={disabled || verifying}
+                autoComplete="one-time-code"
                 aria-label={`Verification code digit ${index + 1} of 6`}
                 className={`w-11 h-12 text-center text-xl font-semibold border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:bg-gray-100 ${
                   error ? 'border-red-300 bg-red-50' : 'border-gray-300'
@@ -359,7 +368,7 @@ export default function PhoneInputWithOTP({ onVerified, disabled = false }: Phon
 
       {/* Error Message */}
       {error && (
-        <div className="flex items-center gap-2 text-sm text-red-600">
+        <div className="flex items-center gap-2 text-sm text-red-600" role="alert">
           <XCircle className="w-4 h-4 flex-shrink-0" />
           {error}
         </div>

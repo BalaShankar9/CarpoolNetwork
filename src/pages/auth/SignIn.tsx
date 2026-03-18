@@ -46,24 +46,27 @@ export default function SignIn() {
 
   const handlePasswordLogin = async (identifier: string, password: string) => {
     setError('');
+    let errorSet = false;
     try {
       const isEmail = identifier.includes('@');
 
       if (!isEmail) {
         setError('Please use your email address for password login, or switch to OTP for phone login.');
+        errorSet = true;
         return;
       }
 
       const { error: authError } = await signIn(identifier, password);
       if (authError) {
         setError(mapAuthError(authError.message));
+        errorSet = true;
         throw new Error('Login failed');
       } else {
         const from = location.state?.from?.pathname || '/';
         navigate(from, { replace: true });
       }
     } catch (err) {
-      if (!error) setError('Login failed');
+      if (!errorSet) setError('An unexpected error occurred');
       throw err;
     }
   };
@@ -74,7 +77,8 @@ export default function SignIn() {
       const { error: otpError } = await signInWithOTP(identifier, isPhone);
       if (otpError) {
         const friendlyMessage = getOtpErrorMessage(otpError, allowOtpSignups);
-        setError(friendlyMessage || error.message);
+        setError(friendlyMessage || mapAuthError(otpError.message));
+        throw new Error('OTP send failed');
       } else {
         navigate('/verify-otp', {
           state: {

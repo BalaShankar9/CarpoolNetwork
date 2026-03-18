@@ -30,6 +30,7 @@ export default defineConfig({
   },
   build: {
     sourcemap: 'hidden', // Source maps uploaded to Sentry via CI, not served to users
+    modulePreload: { polyfill: false }, // Disable inline polyfill to allow strict CSP (no unsafe-inline)
     rollupOptions: {
       output: {
         manualChunks: {

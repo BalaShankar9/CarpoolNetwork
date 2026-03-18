@@ -1,144 +1,151 @@
 # CarpoolNetwork
 
-## Supabase OTP prerequisites
-- To allow OTP signups: turn OFF "Disable signups" in Supabase Auth settings and enable Phone provider + SMS provider (and Email provider for email OTP).
-- To disable signups (private beta): keep signups disabled and set `VITE_AUTH_ALLOW_OTP_SIGNUPS=false`. OTP will work only for existing users created/admin-invited.
+> **Trusted community ride-sharing for the UK**
+> Your community already shares rides. Now do it properly.
 
-## Admin: create OTP users (private beta)
-Server-side only (never in the browser). Requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
-
-```bash
-node scripts/create-user.mjs --email user@example.com --password TempPass123!
-node scripts/create-user.mjs --phone +447700900000
-```
-
-## Messaging RPC notes
-- If you see `PGRST202` for `get_conversations_overview`, apply the latest Supabase migrations and refresh the API schema cache in the Supabase dashboard.
+[![CI](https://github.com/carpoolnetwork/carpoolnetwork/actions/workflows/ci.yml/badge.svg)](https://github.com/carpoolnetwork/carpoolnetwork/actions)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/placeholder/deploy-status)](https://carpoolnetwork.co.uk)
 
 ---
 
-## Analytics Architecture
+## What is CarpoolNetwork?
 
-### Overview
-The admin analytics dashboard provides real-time KPIs, charts, and drilldown views for platform metrics. All analytics queries use **secure server-side aggregation** to ensure no personal user data is exposed.
+CarpoolNetwork is a ride coordination platform for communities who already trust each other. It replaces chaotic WhatsApp ride-sharing threads with a structured ride board — post rides, find rides, book seats, coordinate pickup.
 
-### Routes
-| Route | Description |
-|-------|-------------|
-| `/admin/analytics/summary` | Main dashboard with KPI cards and trend charts |
-| `/admin/analytics/users` | User growth, segmentation, and retention metrics |
-| `/admin/analytics/rides` | Ride trends, types, peak hours, and booking funnel |
-| `/admin/analytics/geo` | Geographic distribution and top routes |
-| `/admin/analytics/ops` | Operational health, system events, and errors |
+**Who it's for:**
+- Existing WhatsApp ride-sharing groups
+- Language-based communities (Telugu, Punjabi, Polish, etc.)
+- Location-based communities (neighbourhood, workplace, school)
+- Recurring commuters sharing routes
 
-### Metrics Definitions
+**What it's not:**
+- Not a ride-hailing app (no Uber-style dispatch)
+- Not a stranger-matching marketplace (community-first)
+- Not a social network (no feeds, leaderboards, stories)
 
-#### KPI Cards
-| Metric | Definition |
-|--------|------------|
-| **Active Users** | Unique users who posted or booked a ride in the selected period |
-| **New Users** | Users who registered during the selected period |
-| **Rides Posted** | Total rides created by drivers |
-| **Bookings Created** | Total booking requests made by passengers |
-| **Completion Rate** | % of rides that reached completed status |
-| **Cancellation Rate** | % of rides cancelled before completion |
-| **Fill Rate** | Average % of available seats that were booked |
-| **Messages Sent** | Total chat messages exchanged |
+## Tech Stack
 
-#### Delta Calculation
-Deltas compare the current period to the previous period of equal length:
-```
-delta = ((current - previous) / previous) * 100
-```
-- Positive delta → green indicator (↑)
-- Negative delta → red indicator (↓)
-- Zero delta → gray indicator (–)
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18 · TypeScript · Vite 7 · Tailwind CSS |
+| Backend | Supabase (Auth + PostgreSQL + Realtime + Storage) |
+| Functions | Netlify Functions (serverless) |
+| Maps | Google Maps Platform |
+| Monitoring | Sentry |
+| Mobile | Capacitor (iOS/Android shells) |
+| Hosting | Netlify · carpoolnetwork.co.uk |
+| CI/CD | GitHub Actions |
 
-### Security Model
+## Quick Start
 
-#### Admin-Only Access
-- All analytics routes are protected by `AdminRoute` component
-- Checks `profile.is_admin === true` OR `admin_roles` table membership
-- Non-admin users are redirected to `/unauthorized`
+### Prerequisites
 
-#### Secure RPCs
-Analytics data is fetched via PostgreSQL RPC functions with `SECURITY DEFINER`:
+- Node.js 20+
+- npm
+- Supabase project (with URL and anon key)
+- Google Maps API key
 
-| RPC Function | Description |
-|--------------|-------------|
-| `admin_kpi_summary` | Returns aggregated KPI values and deltas |
-| `admin_timeseries` | Returns daily metric counts for charts |
-| `admin_top_routes` | Returns popular routes with ride counts |
-| `admin_geo_distribution` | Returns area-level activity breakdown |
-| `admin_ops_health` | Returns system event counts and status |
-| `admin_user_segments` | Returns user role distribution |
+### Setup
 
-Each RPC:
-1. Calls `is_admin_user()` to verify admin status
-2. Returns **aggregate counts only** - no PII (names, emails, phone numbers)
-3. Raises exception if called by non-admin
-
-#### Migration Required
-Apply the migration to create RPCs:
 ```bash
-supabase migration up --include 20260113120000_admin_analytics_rpcs.sql
+# Clone the repo
+git clone <repo-url>
+cd CarpoolNetwork
+
+# Install dependencies
+npm ci
+
+# Set up environment
+cp .env.example .env
+# Edit .env with your Supabase and Google Maps credentials
+
+# Run database migrations
+# (via Supabase CLI or dashboard)
+
+# Start development server
+npm run dev
 ```
 
-### Frontend Components
+### Available Scripts
 
-#### Chart Components (`/src/components/admin/analytics/`)
-- `KpiCard.tsx` - KPI card with value, delta, and optional sparkline
-- `AnalyticsCharts.tsx` - Chart wrappers (Line, Bar, Pie, HeatMap) using Recharts
-- `DataTable.tsx` - Sortable, paginated data table with CSV export
-- `AnalyticsFilters.tsx` - Global filter bar (date range, community, segment)
-- `exportUtils.ts` - CSV and PDF export utilities
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run preview` | Preview production build |
+| `npm run typecheck` | TypeScript type checking |
+| `npm run lint` | ESLint |
+| `npm run test:unit` | Run unit tests (Vitest) |
+| `npm run test:e2e` | Run E2E tests (Playwright) |
 
-#### Analytics Service (`/src/services/adminAnalyticsService.ts`)
-- Tries secure RPC first, falls back to direct queries
-- In-memory cache with 60-second TTL
-- Type-safe with `AnalyticsFilters` and response types
+## Project Structure
 
-### Caching Strategy
-```typescript
-const CACHE_TTL_MS = 60 * 1000; // 60 seconds
 ```
-- Cache key includes filters hash
-- `clearAdminAnalyticsCache()` to force refresh
-- Refresh button clears cache and reloads
+src/
+├── pages/           # Route-level page components
+│   ├── auth/        # Sign in, sign up, verification
+│   ├── admin/       # Admin panel pages
+│   └── public/      # Public marketing pages
+├── components/      # Reusable UI components
+│   ├── rides/       # Ride cards, search, maps
+│   ├── messaging/   # Chat system
+│   ├── community/   # Community features
+│   ├── layout/      # App shell, navigation
+│   ├── shared/      # Common UI components
+│   └── ...
+├── services/        # API/business logic layer
+├── contexts/        # React context providers
+├── hooks/           # Custom React hooks
+├── lib/             # Core utilities (Supabase, analytics, lifecycle)
+├── types/           # TypeScript type definitions
+└── utils/           # Helper functions
 
-### Export Formats
+supabase/
+├── migrations/      # SQL migrations (112 files)
+└── functions/       # Supabase Edge Functions
 
-#### CSV Export
-- Downloads as `filename-YYYY-MM-DD.csv`
-- Headers from column definitions or object keys
-- Properly escapes quotes and commas
-
-#### PDF Export
-- Opens print dialog with formatted HTML
-- Includes report title, date range, and sections
-- Suitable for printing or saving as PDF
-
-### Testing
-
-#### Unit Tests
-```bash
-npm run test -- tests/adminAnalyticsService.spec.ts
+netlify/
+└── functions/       # Netlify serverless functions
 ```
-Tests cover:
-- RPC call construction
-- Delta calculations
-- Filter serialization
-- Cache behavior
-- Error handling
 
-#### E2E Tests
-```bash
-npx playwright test e2e/admin-analytics.spec.ts
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [STATUS.md](STATUS.md) | Current project status |
+| [ROADMAP.md](ROADMAP.md) | Development roadmap |
+| [PRODUCT_SCOPE_V1.md](PRODUCT_SCOPE_V1.md) | V1 product definition |
+| [ENGINEERING_PRIORITIES.md](ENGINEERING_PRIORITIES.md) | Prioritised task list |
+| [GAP_ANALYSIS_PRIVATE_BETA.md](GAP_ANALYSIS_PRIVATE_BETA.md) | Beta readiness gaps |
+
+### Ops & Setup
+
+See `docs/ops/` for deployment runbooks, environment setup, and operational guides.
+
+### Architecture
+
+See `docs/engineering/` for system design, data flow, and invariants.
+
+## Environment Variables
+
+Copy `.env.example` and fill in your values:
+
 ```
-Tests cover:
-- Admin access to all analytics routes
-- Non-admin blocked from analytics routes
-- Charts render correctly
-- Date range filter updates data
-- Export functionality
-- Mobile responsiveness
+VITE_SUPABASE_URL=         # Supabase project URL
+VITE_SUPABASE_ANON_KEY=    # Supabase anon/public key
+VITE_GOOGLE_MAPS_API_KEY=  # Google Maps API key
+VITE_SENTRY_DSN=           # Sentry error tracking DSN
+VITE_APP_ENV=              # development | staging | production
+```
+
+## Deployment
+
+The app deploys to Netlify on push to main. Configuration is in `netlify.toml`.
+
+- **Domain:** carpoolnetwork.co.uk
+- **Build:** `npm ci && npm run build`
+- **Output:** `dist/`
+
+## License
+
+Private. All rights reserved.

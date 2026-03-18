@@ -30,7 +30,7 @@ export default function VerifyOtp() {
       if (verifyError) {
         setError(mapAuthError(verifyError.message));
       } else {
-        navigate('/');
+        navigate('/', { replace: true });
       }
     } catch {
       setError('An unexpected error occurred');
@@ -43,7 +43,7 @@ export default function VerifyOtp() {
       const { error: resendError } = await signInWithOTP(identifier, isPhone);
       if (resendError) {
         const friendlyMessage = getOtpErrorMessage(resendError, allowOtpSignups);
-        setError(friendlyMessage || resendError.message);
+        setError(friendlyMessage || mapAuthError(resendError.message));
       }
     } catch {
       setError('Failed to resend code');

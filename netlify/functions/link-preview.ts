@@ -1,4 +1,5 @@
 import type { Handler } from '@netlify/functions';
+import { securityHeaders, corsPreflightResponse } from './_shared/headers';
 
 type LinkPreview = {
   url: string;
@@ -22,6 +23,8 @@ const extractTitle = (html: string) => {
 };
 
 export const handler: Handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') return corsPreflightResponse();
+
   try {
     const url = event.queryStringParameters?.url || '';
     if (!url) {
@@ -66,7 +69,7 @@ export const handler: Handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: securityHeaders(),
       body: JSON.stringify(preview),
     };
   } catch (error) {

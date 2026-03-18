@@ -23,8 +23,8 @@ export default function PasswordLoginForm({ onSubmit, disabled = false }: Passwo
       setFailedAttempts(0);
     } catch {
       setFailedAttempts(prev => prev + 1);
-    } finally {
       setPassword('');
+    } finally {
       setLoading(false);
     }
   };
@@ -41,7 +41,7 @@ export default function PasswordLoginForm({ onSubmit, disabled = false }: Passwo
       )}
 
       {isLocked && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700" role="alert">
           Too many failed attempts. Please try again in a few minutes or use the forgot password option.
         </div>
       )}
