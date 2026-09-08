@@ -1,3 +1,9 @@
+![CarpoolNetwork — Make shared journeys easier to coordinate.](.github/showcase/banner.svg)
+
+**[Project guide](docs/SHOWCASE.md)** · [Source](https://github.com/BalaShankar9/CarpoolNetwork) · [Issues](https://github.com/BalaShankar9/CarpoolNetwork/issues) · [Bala's work](https://github.com/BalaShankar9)
+
+> **Current stage:** Application code · beta validation pending. [See the evidence and next release checklist](docs/SHOWCASE.md).
+
 # CarpoolNetwork
 
 > **Community-first ride sharing for the UK**
@@ -8,9 +14,9 @@ CarpoolNetwork is a full-stack ride coordination platform built for communities 
 
 ## Screenshots
 
-| Ride Board | Messaging | Admin Dashboard |
-|:---:|:---:|:---:|
-| Search & book rides | Real-time chat with riders | Platform health & monitoring |
+![CarpoolNetwork public landing page](.github/showcase/carpool-home.png)
+
+*Existing interface capture from the portfolio repository; this illustrates the design and is not a fresh production verification.*
 
 ---
 
