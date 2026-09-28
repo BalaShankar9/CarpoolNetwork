@@ -30,3 +30,10 @@ test('service worker never intercepts private APIs or writes; cached shell is av
   w.events.fetch({request:{url:'https://carpool.example/?view=me',method:'GET',mode:'navigate'},respondWith:p=>result=p,waitUntil:()=>{}});
   assert.equal(await (await result).text(),'cached shell');assert.equal(w.writes.length,0);
 });
+test('visiting the guide cannot overwrite the offline application shell',async()=>{
+  const response=new Response('getting started guide');Object.defineProperty(response,'type',{value:'basic'});
+  const w=worker({fetchImpl:async()=>response});let result,pending;
+  const request={url:'https://carpool.example/welcome',method:'GET',mode:'navigate'};
+  w.events.fetch({request,respondWith:p=>result=p,waitUntil:p=>pending=p});await result;await pending;
+  assert.equal(w.writes.length,1);assert.equal(w.writes[0][0],request);assert.notEqual(w.writes[0][0],'/');
+});

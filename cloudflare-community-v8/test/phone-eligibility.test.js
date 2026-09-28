@@ -56,9 +56,10 @@ test('one verified number cannot be claimed by two accounts, including racing ap
 });
 test('Twilio requests use the exact HTTPS service and bind approved results to number and verification SID',async()=>{
   const f=setup();let expectedAction='send';
-  const fetcher=async(url,options)=>{assert.ok(url.startsWith('https://verify.twilio.com/v2/Services/'+f.env.TWILIO_VERIFY_SERVICE_SID+'/'));assert.equal(options.redirect,'error');assert.ok(!url.includes(phone));const body=new URLSearchParams(options.body);assert.equal(body.get(expectedAction==='send'?'To':'VerificationSid'),expectedAction==='send'?phone:sid);return Response.json({sid,service_sid:f.env.TWILIO_VERIFY_SERVICE_SID,to:phone,channel:'sms',status:expectedAction==='send'?'pending':'approved',valid:true});};
+  const fetcher=async(url,options)=>{assert.ok(url.startsWith('https://verify.twilio.com/v2/Services/'+f.env.TWILIO_VERIFY_SERVICE_SID+'/'));assert.equal(options.redirect,'manual');assert.ok(!url.includes(phone));const body=new URLSearchParams(options.body);assert.equal(body.get(expectedAction==='send'?'To':'VerificationSid'),expectedAction==='send'?phone:sid);return Response.json({sid,service_sid:f.env.TWILIO_VERIFY_SERVICE_SID,to:phone,channel:'sms',status:expectedAction==='send'?'pending':'approved',valid:true});};
   assert.equal((await twilioVerify(f.env,'send',{number:phone},fetcher)).pending,true);expectedAction='check';assert.equal((await twilioVerify(f.env,'check',{number:phone,sid,code:'123456'},fetcher)).approved,true);
   await assert.rejects(()=>twilioVerify(f.env,'check',{number:phone,sid,code:'123456'},async()=>Response.json({sid,service_sid:f.env.TWILIO_VERIFY_SERVICE_SID,to:'+12025550124',channel:'sms',status:'approved',valid:true})),{status:503});
+  await assert.rejects(()=>twilioVerify(f.env,'send',{number:phone},async()=>new Response('',{status:302,headers:{location:'https://untrusted.invalid/'}})),{status:503});
   await assert.rejects(()=>twilioVerify(f.env,'send',{number:phone},async()=>new Response('',{status:429})),{status:429});f.db.close();
 });
 test('phone, approved photograph and current dated vehicle records are enforced independently',async()=>{

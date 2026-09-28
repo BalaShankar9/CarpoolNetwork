@@ -1,5 +1,5 @@
 export function createProfilePhotos(h){
-  const {api,esc,openSheet,closeSheet,showToast}=h;
+  const {api,esc,openSheet,closeSheet,showToast,onSaved=async()=>{}}=h;
   async function edit(){try{
     const d=await api('/api/profile-photo');
     openSheet(`<h2>Your profile photo</h2><p>Choose a clear photo of yourself, with one visible face. No identity recognition is performed. Photos are reviewed before publication.</p>${d.photo?`<p>Status: ${esc(d.photo.status)}. ${esc(d.photo.reviewNote)}</p>`:''}<form id="profilePhotoForm" class="simple-form"><label>Choose a photo<input name="photo" type="file" accept="image/jpeg,image/png,image/webp" required ${d.available?'':'disabled'}></label><p>We crop to a square thumbnail and remove image metadata. Your approved photo appears on your public profile and ride listings.</p><label class="location-check"><input name="publicProfile" type="checkbox" required> This is my photo and I agree to show it on my Carpool Network profile.</label><p id="photoStatus" role="status"></p><button class="primary-btn" ${d.available?'':'disabled'}>Submit for review</button></form>`);
@@ -12,7 +12,7 @@ export function createProfilePhotos(h){
         if('FaceDetector' in window){try{const faces=await new FaceDetector({maxDetectedFaces:2,fastMode:true}).detect(image);faceNote=faces.length===1?'One face found. A moderator will review the photo.':'Automatic face detection was inconclusive. A moderator will review the photo.';}catch{/* Manual review remains required. */}}
         const canvas=document.createElement('canvas');canvas.width=canvas.height=384;const ctx=canvas.getContext('2d');const size=Math.min(image.width,image.height);ctx.drawImage(image,(image.width-size)/2,(image.height-size)/2,size,size,0,0,384,384);image.close();
         const jpeg=canvas.toDataURL('image/jpeg',0.78).split(',')[1];if(jpeg.length>180000)throw Error('This photo is too large. Try a simpler head-and-shoulders photo.');
-        await api('/api/profile-photo',{method:'POST',body:JSON.stringify({jpeg,publicProfile:form.publicProfile.checked})});status.textContent=faceNote+' You can check the review status here.';button.textContent='Submitted';
+        await api('/api/profile-photo',{method:'POST',body:JSON.stringify({jpeg,publicProfile:form.publicProfile.checked})});status.textContent=faceNote+' You can check the review status here.';button.textContent='Submitted';await onSaved();
       }catch(error){status.textContent=error.message;button.disabled=false;}
     };
   }catch(e){showToast(e.message,'error');}}

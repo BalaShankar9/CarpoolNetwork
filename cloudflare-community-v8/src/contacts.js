@@ -9,6 +9,11 @@ export function whatsappLink(number,name=''){
 export async function hasContact(env,userId){
   return !!await env.DB.prepare('SELECT user_id FROM member_contacts WHERE user_id=? AND share_bookings=1').bind(userId).first();
 }
+export async function ownContact(env,user){
+  const saved=await env.DB.prepare('SELECT whatsapp_number,share_bookings,confirmed_at FROM member_contacts WHERE user_id=?').bind(user.id).first();
+  let existing='';try{existing=whatsappNumber(user.phone);}catch{}
+  return {number:saved?.whatsapp_number||'',existingNumber:existing,shareBookings:saved?.share_bookings===1,confirmedAt:saved?.confirmed_at||null,required:env.REQUIRE_WHATSAPP==='true',phone:await phoneState(env,user.id)};
+}
 export async function connectedContact(env,viewerId,otherId,bookingId){
   if(viewerId===otherId)return null;
   if(env.REQUIRE_PHONE_VERIFICATION==='true'&&(!await hasVerifiedPhone(env,viewerId)||!await hasVerifiedPhone(env,otherId)))return null;
@@ -34,9 +39,7 @@ export async function contactRoutes(request,env,h){
   }
   if(path!=='/api/contact-details')return h.fail('Not found.',404);
   if(request.method==='GET'){
-    const saved=await env.DB.prepare('SELECT whatsapp_number,confirmed_at FROM member_contacts WHERE user_id=?').bind(auth.user.id).first();
-    let existing='';try{existing=whatsappNumber(auth.user.phone);}catch{}
-    return h.json({ok:true,number:saved?.whatsapp_number||'',existingNumber:existing,confirmedAt:saved?.confirmed_at||null,required:env.REQUIRE_WHATSAPP==='true',phone:await phoneState(env,auth.user.id)});
+    return h.json({ok:true,...await ownContact(env,auth.user)});
   }
   if(request.method==='POST'){
     if(!await h.verified(env,auth.user.id))return h.fail('Verify your email before adding a contact number.',403);
@@ -50,7 +53,7 @@ export async function contactRoutes(request,env,h){
     }
     await env.DB.prepare(`INSERT INTO member_contacts(user_id,whatsapp_number,share_bookings) VALUES(?,?,1)
       ON CONFLICT(user_id) DO UPDATE SET whatsapp_number=excluded.whatsapp_number,share_bookings=1,confirmed_at=CURRENT_TIMESTAMP`).bind(auth.user.id,number).run();
-    return h.json({ok:true,number,verified:false});
+    return h.json({ok:true,...await ownContact(env,auth.user)});
   }
   return h.fail('Not found.',404);
 }

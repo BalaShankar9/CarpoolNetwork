@@ -23,7 +23,7 @@ export async function twilioVerify(env,action,data,requestFetch=fetch){
   let response;
   try{response=await requestFetch(`https://verify.twilio.com/v2/Services/${env.TWILIO_VERIFY_SERVICE_SID}/${endpoint}`,{
     method:'POST',headers:{authorization:'Basic '+btoa(env.TWILIO_API_KEY_SID+':'+env.TWILIO_API_KEY_SECRET),'content-type':'application/x-www-form-urlencoded'},
-    body:new URLSearchParams(payload).toString(),redirect:'error',signal:AbortSignal.timeout(12000)
+    body:new URLSearchParams(payload).toString(),redirect:'manual',signal:AbortSignal.timeout(12000)
   });}catch{throw providerError('The verification service did not respond. Wait a minute before trying again.');}
   if(response.status===429)throw providerError('Too many verification attempts. Please wait before trying again.',429);
   if(action==='check'&&response.status===404)throw providerError('That code has expired or was already used. Request a new code.',400);

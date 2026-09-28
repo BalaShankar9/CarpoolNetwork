@@ -48,6 +48,16 @@ try{
   assert.equal((await api('/api/posts',driver,'POST',sample)).data.code,'VEHICLE_REQUIRED');
   await sql("INSERT INTO member_vehicles(user_id,registration,make,colour,mot_status,mot_expiry,tax_status,tax_due,passenger_seats,keeper_confirmed_at) VALUES(?,'TEST001','Synthetic fixture','Red','Valid',date('now','+180 days'),'Taxed',date('now','+180 days'),7,CURRENT_TIMESTAMP)",[driver.id]);
   console.log('PASS email-and-WhatsApp launch mode, required contact/photo/vehicle gates and disabled SMS. Synthetic photo and vehicle fixtures only.');
+  assert.equal((await api('/api/account-status')).status,401);
+  const status=ok(await api('/api/account-status',driver)).account;
+  const {ok:contactOK,...ownContact}=ok(await api('/api/contact-details',driver));
+  assert.deepEqual(status.contact,ownContact);assert.equal(status.contact.shareBookings,true);assert.equal(status.canOfferToday,true);
+  assert.equal(status.email.verified,true);assert.equal(status.photo.hasApprovedPhoto,true);assert.equal(status.vehicle.passenger_seats,7);
+  assert.ok(!JSON.stringify(status).includes('synthetic-'+driver.id));assert.ok(!JSON.stringify(status).includes('TEST001'));
+  ok(await api('/api/profile',driver,'PATCH',{name:driver.name,area:'Preview test only',travelRole:'both'}));
+  assert.equal(ok(await api('/api/account-status',driver)).account.contact.number,'+12025550123');
+  console.log('PASS canonical saved contact, consent, private account status and profile edits preserve contact.');
+
   const date=new Date(Date.now()+4*86400000).toISOString().slice(0,10);
   const ride=ok(await api('/api/posts',driver,'POST',{category:'ride_offer',origin:'Preview test Cardiff',destination:'Preview test Bristol',journeyDate:date,journeyTime:'12:00',seats:1,body:'Automated preview test. Not a real journey.'}),201).post;
   const requests=[];for(const u of [rider,third])requests.push(ok(await api('/api/ride-requests/quick',u,'POST',{rideOfferPostId:ride.id}),201));

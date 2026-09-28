@@ -1,3 +1,4 @@
+import {accountPresentation,contactPresentation} from './account-status.js';
 import {createCommutes} from './commutes.js';
 import {createLiveTrips} from './live-trip.js';
 import {createContactDetails} from './contact-details.js';
@@ -870,7 +871,7 @@ function openJoin(after) {
         <label><span>Gender <em>optional</em></span><select name="gender"><option value="">Prefer not to say</option><option>Woman</option><option>Man</option><option>Non-binary</option></select></label>
       </div>
       <label><span>Workplace / community <em>optional</em></span><input name="community" maxlength="100" placeholder="e.g. Amazon EMA2, NHS, university, local group"></label>
-      <div class="privacy-note">${icon('lock')}<span><strong>Your WhatsApp number is not shown to anonymous visitors.</strong> Coordinate accepted bookings in Messages. WhatsApp remains optional. Gender is optional and is not secretly used to rank matches.</span></div>
+      <div class="privacy-note">${icon('lock')}<span><strong>Your WhatsApp number is not shown to anonymous visitors.</strong> Coordinate accepted bookings in Messages. A WhatsApp contact is required before participating. Gender is optional and is not secretly used to rank matches.</span></div>
       <button class="primary-btn red full large" type="submit">Join Carpool Network</button>
       <button class="text-action centered" type="button" id="recoverAccount">Already a member? Sign in</button>
     </form>`);
@@ -944,13 +945,14 @@ function urlBase64ToUint8Array(base64String) { const padding = '='.repeat((4 - b
 
 async function renderMe(tab = 'rides') {
   const visit = beginView('me', { tab });
-  let mine = [], trips = [];
+  let mine = [], trips = [], account;
   try {
-    const [pd, feed, bookings] = await Promise.all([api('/api/profile'), api('/api/feed?mine=1'), api('/api/ride-requests/mine')]);
+    const [pd, feed, bookings, setup] = await Promise.all([api('/api/profile'), api('/api/feed?mine=1'), api('/api/ride-requests/mine'), tab==='account'?api('/api/account-status'):null]);
+    account=setup?.account;
     if (visit !== viewRevision) return;
     saveProfile({ ...state.profile, ...pd.profile, token: state.profile?.token });
     mine = feed.posts || []; trips = bookings.requests || [];
-  } catch (error) { if (visit === viewRevision) pageError('Your bookings are unavailable', error, () => state.profile ? renderMe(tab) : openSignIn(() => renderMe(tab))); return; }
+  } catch (error) { if (visit === viewRevision) pageError(tab==='account'?'Your account is unavailable':tab==='posts'?'Your posts are unavailable':'Your bookings are unavailable', error, () => state.profile ? renderMe(tab) : openSignIn(() => renderMe(tab))); return; }
   const rating = state.profile?.rating_count ? `★ ${Number(state.profile.rating).toFixed(1)}` : 'New';
   const completed = trips.filter(t => t.status === 'completed').length;
   const confirmed = trips.filter(t => t.status === 'accepted').length;
@@ -968,7 +970,7 @@ async function renderMe(tab = 'rides') {
       if(next<0)return;e.preventDefault();await renderMe(order[next]);requestAnimationFrame(()=>document.querySelector(`#me-tab-${order[next]}`)?.focus());
     };
   });
-  document.querySelector('#editProfile').onclick = editProfile;
+  document.querySelector('#editProfile').onclick = ()=>editProfile();
   document.querySelectorAll('[data-manage-ride]').forEach(b => b.onclick = () => openPost(b.dataset.manageRide));
   document.querySelectorAll('[data-ride-filter]').forEach(b => b.onclick = () => { state.rideFilter = b.dataset.rideFilter; renderMe('rides'); });
   document.querySelector('#regularCommutes')?.addEventListener('click',()=>commuteUI.list());
@@ -981,7 +983,7 @@ async function renderMe(tab = 'rides') {
   document.querySelector('#installApp')?.addEventListener('click', installApp);
   document.querySelector('#signOut')?.addEventListener('click', signOut);
   if (tab === 'account') {
-    document.querySelector('#meContent').insertAdjacentHTML('afterbegin',accountSetupHtml());
+    document.querySelector('#meContent').insertAdjacentHTML('afterbegin',accountSetupHtml(account));
     document.querySelector('#whatsappContact').onclick=()=>editContact();
     document.querySelector('#profilePhoto').onclick=()=>profilePhotos.edit();
     document.querySelector('#vehicleAndLinks').onclick=()=>memberDetails.edit();
@@ -1049,15 +1051,9 @@ async function openBookingHistory(id) {
   } catch(e) { showToast(e.message, 'error'); }
 }
 
-function accountSetupHtml() {
-  const cards=[
-    ['whatsappContact','whatsapp','Phone & WhatsApp',state.phoneVerificationRequired?'Verify access to your number. Contact is shared with accepted ride partners.':'Add your WhatsApp number. Contact is shared with accepted ride partners.',state.phoneVerificationRequired?'Verify or manage':'Manage contact'],
-    ['profilePhoto','user','Your profile photo',state.profile.photo_approved?'Your approved photo helps ride partners recognise you.':'Add a clear photo of yourself for moderator review.','Manage photo'],
-    ['vehicleAndLinks','car','Vehicle & social profiles','Driving? Check your registration and passenger seats. Social links are optional.','Manage details'],
-    ['socialSecurity','shield','Sign-in & privacy','Email, passkeys, blocked members and your personal data.','Review security'],
-    ['communityReports','alert','Community reports','Track a concern about a member, message or listing.','View reports']
-  ];
-  return `<section class="account-setup" aria-labelledby="accountSetupTitle"><div class="section-title-row"><div><span class="eyebrow">BEFORE YOUR FIRST JOURNEY</span><h2 id="accountSetupTitle">Get ready to travel</h2><p>${state.phoneVerificationRequired?'Verify your phone':'Add your WhatsApp number'} and add your photo. Drivers also add their vehicle.</p></div></div><div class="setup-grid">${cards.map(([id,ico,title,copy,action])=>`<article class="setup-card"><span class="setup-icon">${icon(ico)}</span><h3>${title}</h3><p>${copy}</p><button class="text-action" id="${id}">${action} ${icon('arrow')}</button></article>`).join('')}<article class="setup-card"><span class="setup-icon">${icon('bag')}</span><h3>Local businesses</h3><p>Explore member-provided services around your community.</p><button class="text-action" data-nav="businesses">Explore directory ${icon('arrow')}</button></article></div></section><div class="section-title-row account-preferences"><div><span class="eyebrow">MAKE IT YOURS</span><h2>Preferences & support</h2></div></div>`;
+function accountSetupHtml(account) {
+  const presentation=accountPresentation(account);
+  return `<section class="account-setup" aria-labelledby="accountSetupTitle"><div class="section-title-row"><div><span class="eyebrow">YOUR ACCOUNT STATUS</span><h2 id="accountSetupTitle">${esc(presentation.heading)}</h2><p>${esc(presentation.summary)}</p></div></div><div class="setup-grid">${presentation.cards.map(([id,ico,title,copy,action,status])=>`<article class="setup-card"><span class="setup-icon">${icon(ico)}</span><h3>${esc(title)}</h3>${status?`<span class="account-status-label ${['Saved','Approved','Checked','Verified'].includes(status)?'ready':'pending'}">${esc(status)}</span>`:''}<p>${esc(copy)}</p><button class="text-action" id="${id}">${action} ${icon('arrow')}</button></article>`).join('')}<article class="setup-card"><span class="setup-icon">${icon('bag')}</span><h3>Local businesses</h3><p>Explore member-provided services around your community.</p><button class="text-action" data-nav="businesses">Explore directory ${icon('arrow')}</button></article></div></section><div class="section-title-row account-preferences"><div><span class="eyebrow">MAKE IT YOURS</span><h2>Preferences & support</h2></div></div>`;
 }
 
 function accountHtml() {
@@ -1135,11 +1131,13 @@ async function removeReportedPost(id){const reason=prompt('Why is this post bein
 async function moderateMember(id,action){const reason=action==='unban'?'':prompt(`${action==='ban'?'Ban':'Suspend'} reason:`);if(action!=='unban'&&!reason)return;let days=7;if(action==='suspend'){const raw=prompt('Suspend for how many days?','7');if(!raw)return;days=Math.max(1,Math.min(90,Number(raw)||7));}if(!confirm(`${action==='unban'?'Restore':action==='ban'?'Ban':'Suspend'} this member?`))return;try{await api(`/api/admin/users/${id}/moderate`,{method:'POST',body:JSON.stringify({action,reason,days})});showToast('Moderation updated','success');renderAdmin();}catch(e){showToast(e.message,'error')}}
 async function openAdminTicket(id){try{const d=await api(`/api/admin/support/${id}`);openSheet(`<div class="sheet-title"><span class="eyebrow">ADMIN SUPPORT</span><h2>${esc(d.ticket.subject)}</h2><p>${esc(d.ticket.name)} · ${esc(String(d.ticket.phone||'').startsWith('email:')?'Email account':d.ticket.phone||'Phone not shared')} · ${esc(d.ticket.category)}</p></div><div class="support-thread">${d.messages.map(m=>`<div class="support-message ${m.sender_role}"><strong>${m.sender_role==='admin'?'Support':esc(d.ticket.name)}</strong><p>${esc(m.body)}</p><small>${relative(m.created_at)}</small></div>`).join('')}</div><form id="adminSupportReply" class="simple-form"><label><span>Reply</span><textarea name="message" maxlength="1800" required></textarea></label><label><span>After reply</span><select name="status"><option value="waiting">Waiting for member</option><option value="resolved">Resolved</option><option value="open">Keep open</option><option value="closed">Close</option></select></label><button class="primary-btn full">Send reply</button></form>`);document.querySelector('#adminSupportReply').onsubmit=async e=>{e.preventDefault();try{await api(`/api/admin/support/${id}`,{method:'POST',body:JSON.stringify({message:e.currentTarget.message.value,status:e.currentTarget.status.value})});closeSheet();showToast('Support reply sent','success');renderAdmin();}catch(err){showToast(err.message,'error')}};}catch(e){showToast(e.message,'error')}}
 
-function editProfile() {
+async function editProfile() {
+  let contact;try{contact=await api('/api/contact-details');}catch(error){showToast(error.message,'error');return;}
+  const contactView=contactPresentation(contact);
   const currentEmoji=memberEmoji(state.profile);
   openSheet(`<div class="sheet-title"><span class="eyebrow">PROFILE</span><h2>Edit your details</h2><p>These details help members know who they are travelling or dealing with. Gender is optional.</p></div><form id="profileForm" class="simple-form">
     <label><span>Name</span><input name="name" value="${esc(state.profile.name)}" required></label>
-    <label><span>WhatsApp number</span><input name="phone" value="${esc(state.profile.phone || '')}" required></label>
+    <label><span>WhatsApp number</span><input value="${esc(contact.number||'')}" readonly placeholder="No WhatsApp contact saved"></label><p class="auth-intro">${esc(contactView.label)}. Change your number in Account → Manage contact.</p>
     <label><span>Area</span><input name="area" value="${esc(state.profile.area || '')}" required></label>
     <div class="form-columns two profile-extra-grid">
       <label><span>I usually</span><select name="travelRole"><option value="both" ${state.profile.travel_role==='both'?'selected':''}>Drive & ride</option><option value="driver" ${state.profile.travel_role==='driver'?'selected':''}>Offer rides</option><option value="rider" ${state.profile.travel_role==='rider'?'selected':''}>Look for rides</option></select></label>
@@ -1151,7 +1149,6 @@ function editProfile() {
     <button class="primary-btn full">Save changes</button></form>`);
   const form=document.querySelector('#profileForm');
   bindLocationInput(form.area,{current:true,toast:showToast});
-  if(state.profile.phone?.startsWith('email:') && form.phone){form.phone.value='';form.phone.disabled=true;form.phone.placeholder='Phone not verified';}
   form.querySelectorAll('[data-emoji]').forEach(b=>b.onclick=()=>{ form.avatarEmoji.value=b.dataset.emoji; form.querySelectorAll('[data-emoji]').forEach(x=>x.classList.toggle('selected',x===b)); });
   form.onsubmit = async e => { e.preventDefault(); const f = new FormData(e.currentTarget); try { await api('/api/profile', { method: 'PATCH', body: JSON.stringify(Object.fromEntries(f)) }); const d = await api('/api/profile'); saveProfile({ ...state.profile, ...d.profile, token: state.profile.token }); closeSheet(); renderMe('account'); } catch (err) { showToast(err.message); } };
 }
@@ -1269,9 +1266,10 @@ async function boot() {
 }
 const commuteUI=createCommutes({api,esc,openSheet,closeSheet,showToast,state,openPost,chat:id=>socialUI.render('inbox',id)});
 const openTrip=createLiveTrips({api,esc,openSheet,closeSheet,showToast});
-const editContact=createContactDetails({api,esc,openSheet,closeSheet,showToast});
-const profilePhotos=createProfilePhotos({api,esc,openSheet,closeSheet,showToast});
-const memberDetails=createMemberDetails({api,esc,openSheet,closeSheet,showToast});
+const refreshAccount=async()=>{if(state.view==='me')await renderMe(state.routeParams?.tab||'account');};
+const editContact=createContactDetails({api,esc,openSheet,closeSheet,showToast,onSaved:refreshAccount});
+const profilePhotos=createProfilePhotos({api,esc,openSheet,closeSheet,showToast,onSaved:refreshAccount});
+const memberDetails=createMemberDetails({api,esc,openSheet,closeSheet,showToast,onSaved:refreshAccount});
 const socialUI = createSocialUI({api,esc,icon,shell,beginView,state,openSheet,closeSheet,showToast,openPost,openUser,saveProfile,clearStoredProfile,navigate,openPinSignIn,connectLive});
 boot().catch(error => { app.textContent = 'Unable to load Carpool Network. Please reload the page.'; showToast(error.message, 'error'); });
 

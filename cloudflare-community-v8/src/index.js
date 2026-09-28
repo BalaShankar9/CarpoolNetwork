@@ -6,6 +6,7 @@ import {participationIssue,rideEligibility} from './eligibility.js';
 import {contactRoutes,connectedContact,hasContact} from './contacts.js';
 import {photoRoutes,cleanupProfilePhotos} from './photos.js';
 import {vehicleRoutes} from './vehicles.js';
+import {accountStatus} from './account-status.js';
 import { placesRoute, locationMatch, resolvePlace } from './places.js';
 import { emailAuth } from './email-auth.js';
 import { generateAuthenticationOptions, verifyAuthenticationResponse, generateRegistrationOptions, verifyRegistrationResponse } from '@simplewebauthn/server';
@@ -1538,10 +1539,11 @@ async function sendBackgroundPush(env, userId) {
         const v = await vapidJwt(keys.vapid_private_jwk, keys.vapid_public, sub.endpoint);
         const response = await fetch(sub.endpoint, {
           method: "POST",
-          redirect: "error",
+          redirect: "manual",
           signal: AbortSignal.timeout(5e3),
           headers: { "TTL": "60", "Urgency": "high", "Authorization": `vapid t=${v.jwt}, k=${v.publicKey}` }
         });
+        if (!response.ok && response.status!==404 && response.status!==410) console.error(JSON.stringify({event:"push_delivery_failed",status:response.status}));
         if (response.status === 404 || response.status === 410) {
           await env.DB.prepare("DELETE FROM push_subscriptions WHERE id=?").bind(sub.id).run();
         }
@@ -1961,6 +1963,10 @@ async function handleApi(request, env) {
     if (auth.error) return auth.error;
     return json({ ok: true, profile: auth.user }, 200, { "set-cookie": sessionCookie(auth.sessionToken), "x-auth-source": auth.authSource });
   }
+  if (path === "/api/account-status" && request.method === "GET") {
+    const auth=await requireUser(request,env);if(auth.error)return auth.error;
+    return json({ok:true,account:await accountStatus(env,auth.user)});
+  }
   if (path === "/api/profile/logout" && request.method === "POST") {
     const candidates = sessionCandidates(request);
     for (const candidate of candidates) {
@@ -1987,10 +1993,10 @@ async function handleApi(request, env) {
     if (auth.error) return auth.error;
     const data = await request.json().catch(() => ({}));
     const emailOnly = auth.user.phone.startsWith("email:");
-    const name = clean(data.name, 60), rawPhone = clean(data.phone, 30), phone = emailOnly ? auth.user.phone : normalisePhone(rawPhone), area = clean(data.area, 100), bio = cleanBody(data.bio, 300);
+    const name = clean(data.name, 60), rawPhone = data.phone===undefined?auth.user.phone:clean(data.phone, 30), phone = emailOnly ? auth.user.phone : normalisePhone(rawPhone), area = clean(data.area, 100), bio = cleanBody(data.bio, 300);
     const gender = cleanGender(data.gender), travelRole = cleanTravelRole(data.travelRole), community = clean(data.community, 100), avatarEmoji = cleanAvatar(data.avatarEmoji, auth.user.id);
     if (name.length < 2 || !emailOnly && !validPhone(rawPhone) || phone.length < 9 || area.length < 2) return fail("Please check your profile details.");
-    if (phone !== auth.user.phone) return fail("For security, WhatsApp number changes are locked until the new number can be verified. Contact Support to change it safely.", 409);
+    if (phone !== auth.user.phone) return fail("Your sign-in number cannot be changed here. Manage your WhatsApp contact from Account.", 409);
     await env.DB.batch([
       env.DB.prepare("UPDATE users SET name=?,phone=?,area=?,bio=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(name, phone, area, bio, auth.user.id),
       env.DB.prepare(`INSERT INTO user_profile_details(user_id,avatar_emoji,gender,travel_role,community,updated_at) VALUES(?,?,?,?,?,CURRENT_TIMESTAMP)

@@ -37,3 +37,10 @@ The downloadable introduction PDF and message describe deployed capabilities wit
 ## DVLA correction verified on production
 
 The Worker rejected `redirect: error` before contacting DVLA, and the previous catch-all mislabeled this as a timeout. The adapter now uses `manual`, rejects every redirect, distinguishes failure types and records safe operational codes. Eight focused tests pass, including a bundled adapter test in Workerd, and 44 scripts pass syntax. The real vehicle form returned and saved a DVLA record with the user-selected four passenger seats. Production version: 073d6c43-5b94-46e1-aa3a-65066ba9bee2. Preview: e7795770-f071-4e2f-bbd2-a7847dde2a1e.
+
+
+## 28 September account integration follow-up
+
+Fixed the saved WhatsApp mismatch, restored persisted sharing consent, removed incorrect SMS prompts in launch mode, and replaced static setup instructions with current account states. Account status uses the same eligibility rules as booking and posting. Profile edits preserve both contact and legacy login identifiers. Photo and vehicle saves refresh account cards immediately.
+
+The current suite passes 56 local results and 47 syntax checks; isolated hosted validation passes 10 groups including the new canonical contact/account checks. Chrome confirmed contact save/update/reopen/reload, profile editing, maps and mobile layout. Push and SMS outbound requests no longer use the unsupported redirect mode; guide navigation no longer overwrites the offline app shell. Physical-device GPS, push and passkey qualification remains outstanding; these results are not a claim of 100% reliability. See INTEGRATION-AUDIT.md.

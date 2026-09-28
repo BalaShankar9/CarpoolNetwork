@@ -31,3 +31,7 @@ button:disabled{cursor:not-allowed}
 .me-tabs button{background:transparent;border:0;border-bottom:2px solid transparent;border-radius:0;box-shadow:none;color:#596780}.me-tabs button.active{background:transparent;color:#b92332;border-color:#c92938;box-shadow:none}.me-page:has([data-me-tab="account"].active) .profile-metrics{display:none}
 
 .static-page,.policy-page{max-width:800px;margin:40px auto;padding:36px;background:#fff;border:1px solid #dce4ed;border-radius:22px;color:#23334c;font:16px/1.75 system-ui,sans-serif}.static-page h1,.policy-page h1{font-size:34px;line-height:1.2;color:#1d2c55}.static-page h2,.policy-page h2{font-size:22px;line-height:1.4;margin-top:30px}.static-page a,.policy-page a{color:#ad2331;text-decoration:underline}.static-page li,.policy-page li{margin-block:10px}@media(max-width:760px){.static-page,.policy-page{margin:16px;padding:24px 20px;border-radius:16px}.static-page h1,.policy-page h1{font-size:29px}.room-tools{flex-direction:row;align-items:center}.room-tools button{min-height:40px;white-space:nowrap}}
+
+.account-status-label{display:inline-block;border-radius:999px;padding:5px 10px;background:#e6f3f0;color:#245c55;font-size:12px;font-weight:700;margin:0 0 12px}
+
+.account-status-label.pending{background:#fff2dc;color:#865711}
