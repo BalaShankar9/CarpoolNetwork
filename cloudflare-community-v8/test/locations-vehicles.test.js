@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {findPlace,nearestPlace,distanceMiles,departureMatch} from '../public/geo.js';
-import {queryVehicle,registrationNumber,socialLink} from '../src/vehicles.js';
+import {queryVehicle,registrationNumber,socialLink,vehicleRoutes} from '../src/vehicles.js';
 const places=JSON.parse(readFileSync(new URL('../public/uk-places.json',import.meta.url)));
 test('departure filters cannot match an unrelated or unknown origin solely on destination and time',()=>{
   const resolve=value=>findPlace(places,value);
@@ -34,6 +34,33 @@ test('DVLA missing key, upstream failures and mismatched plates fail closed',asy
   await assert.rejects(()=>queryVehicle({},'AB12CDE',()=>assert.fail()),{status:503});
   await assert.rejects(()=>queryVehicle({DVLA_API_KEY:'test'},'AB12CDE',async()=>new Response('',{status:403})),{status:503});
   await assert.rejects(()=>queryVehicle({DVLA_API_KEY:'test'},'AB12CDE',async()=>Response.json({registrationNumber:'XX11XXX',make:'TEST',motStatus:'Valid',taxStatus:'Taxed'})),{status:503});
+});
+test('DVLA redirects, malformed responses and network failures stay distinct from timeouts',async()=>{
+  const env={DVLA_API_KEY:'synthetic-secret'};
+  for(const [status,code] of [[302,'DVLA_REDIRECT'],[403,'DVLA_AUTHORIZATION'],[429,'DVLA_RATE_LIMITED'],[500,'DVLA_UPSTREAM']]){
+    await assert.rejects(()=>queryVehicle(env,'AB12CDE',async()=>new Response('',{status,headers:{location:'https://untrusted.invalid/'}})),{code,status:503});
+  }
+  for(const data of [null,{},'unexpected'])await assert.rejects(()=>queryVehicle(env,'AB12CDE',async()=>Response.json(data)),{code:'DVLA_INVALID_RESPONSE'});
+  await assert.rejects(()=>queryVehicle(env,'AB12CDE',async()=>new Response('<html>Unavailable</html>')),{code:'DVLA_INVALID_RESPONSE'});
+  await assert.rejects(()=>queryVehicle(env,'AB12CDE',async()=>{throw new TypeError('private transport detail');}),e=>e.code==='DVLA_CONNECTION'&&!e.message.includes('private')&&!e.message.includes('timed out'));
+  await assert.rejects(()=>queryVehicle(env,'AB12CDE',async()=>{throw new DOMException('deadline','TimeoutError');}),{code:'DVLA_TIMEOUT'});
+});
+test('failed DVLA checks preserve the saved vehicle and record only a safe diagnostic code',async()=>{
+  const calls=[],originalFetch=globalThis.fetch;
+  const env={DVLA_API_KEY:'private-test-key',DB:{
+    prepare(sql){return {bind(...values){return {async run(){calls.push({sql,values});return {};}};}};}
+  }};
+  globalThis.fetch=async()=>{throw new TypeError('private-test-key AB12CDE provider internals');};
+  try{
+    const result=await vehicleRoutes(new Request('https://carpool.invalid/api/member-details/vehicle',{method:'POST',body:JSON.stringify({registration:'AB12CDE',passengerSeats:4,authorised:true})}),env,{
+      requireUser:async()=>({user:{id:'synthetic-member'}}),verified:async()=>true,rateLimitOrFail:async()=>null,
+      fail:(error,status=400)=>Response.json({ok:false,error},{status})
+    });
+    assert.equal(result.status,503);assert.match((await result.json()).error,/could not connect/);
+    assert.equal(calls.length,1);assert.match(calls[0].sql,/INSERT INTO diagnostic_issues/);
+    assert.ok(calls[0].values.includes('DVLA_CONNECTION'));
+    assert.doesNotMatch(JSON.stringify(calls),/private-test-key|AB12CDE|synthetic-member|provider internals/);
+  }finally{globalThis.fetch=originalFetch;}
 });
 test('social links allow only direct HTTPS Instagram/Facebook origins and strip tracking',()=>{
   assert.equal(socialLink('https://instagram.com/test/?tracking=1#token','instagram'),'https://instagram.com/test/');
