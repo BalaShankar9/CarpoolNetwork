@@ -1,0 +1,76 @@
+{
+  "name": "carpool-community-design",
+  "main": "src/recovery.js",
+  "compatibility_date": "2026-08-16",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "carpool-community-design",
+      "database_id": "00000000-0000-4000-8000-000000000008"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "LIVE_HUB",
+        "class_name": "LiveHub"
+      },
+      {
+        "name": "CHAT_ROOMS",
+        "class_name": "ChatRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "LiveHub",
+        "ChatRoom"
+      ]
+    }
+  ],
+  "vars": {
+    "APP_ENV": "local",
+    "REQUIRE_VERIFIED_BOOKING": "true",
+    "REQUIRE_WHATSAPP": "true",
+    "AUTO_PUBLISH": "false",
+    "AI_DRAFTS": "false",
+    "UPLOADS_ENABLED": "false",
+    "EMAIL_FROM": "signin@carpoolnetwork.co.uk",
+    "REQUIRE_PROFILE_PHOTO": "false",
+    "REQUIRE_VEHICLE": "false",
+    "REQUIRE_PHONE_VERIFICATION": "false",
+    "SMS_DAILY_LIMIT": "0",
+    "SMS_MONTHLY_LIMIT": "0"
+  },
+  "observability": {
+    "enabled": true,
+    "redact_query_string": true,
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.01
+    }
+  },
+  "workers_dev": true,
+  "send_email": [
+    {
+      "name": "EMAIL"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "PROFILE_PHOTOS",
+      "bucket_name": "carpool-community-profile-photos"
+    }
+  ]
+}

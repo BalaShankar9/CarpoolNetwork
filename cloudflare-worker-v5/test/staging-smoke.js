@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import {writeFileSync} from 'node:fs';
-const base='https://carpool-network-release-check.balashankarbollineni4.workers.dev';
+const base=process.env.CARPOOL_STAGING_URL;
+if(!base || !/^https:\/\/carpool-polish-[a-z0-9-]+\.balashankarbollineni4\.workers\.dev$/.test(base)) throw Error('Set CARPOOL_STAGING_URL to an explicitly provisioned disposable carpool-polish staging Worker. Production and v8 rehearsal are not test targets.');
 const results=[];
 async function call(path,method='GET',body,user){const r=await fetch(base+path,{method,headers:{...(body?{'content-type':'application/json'}:{}),...(user?{authorization:`Bearer ${user.token}`}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(20000)});const d=await r.json();assert.ok(r.ok,`${method} ${path}: ${r.status} ${d.error}`);assert.equal(d.ok,true);return d;}
-const health=await call('/api/health');assert.equal(health.version,'5.9.0');results.push('Cloudflare Worker and D1 health');
+const health=await call('/api/health');assert.equal(health.version,'5.9.1');results.push('Cloudflare Worker and D1 health');
 for(const path of ['/','/app.js','/diagnostics.js','/sw.js','/styles.css','/reliability.css','/privacy.html','/safety.html','/manifest.webmanifest','/icon-192.png','/icon-512.png','/community-cover.png']){const r=await fetch(base+path);assert.equal(r.status,200,path);assert.ok((await r.arrayBuffer()).byteLength>100,path);}results.push('All application assets and information pages');
 const seed=String(Date.now()).slice(-5);
 const driver=(await call('/api/profile','POST',{name:'Release check driver',phone:'+4477009'+seed,area:'Cardiff'})).profile;

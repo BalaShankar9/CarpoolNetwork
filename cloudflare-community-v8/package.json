@@ -1,0 +1,25 @@
+{
+  "name": "carpool-community",
+  "private": true,
+  "version": "8.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --config wrangler.local.jsonc --ip 127.0.0.1 --port 8788",
+    "check": "node scripts/check-syntax.mjs",
+    "test": "node --test test/*.test.js",
+    "db:local": "wrangler d1 execute DB --local --config wrangler.local.jsonc --file schema.sql && wrangler d1 execute DB --local --config wrangler.local.jsonc --file migration-v8.sql && wrangler d1 execute DB --local --config wrangler.local.jsonc --file migration-mobility.sql && wrangler d1 execute DB --local --config wrangler.local.jsonc --file migration-launch.sql",
+    "build": "node scripts/build-browser.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.1",
+    "miniflare": "5.20260910.0-alpha",
+    "wrangler": "4.131.0",
+    "ws": "8.22.0"
+  },
+  "dependencies": {
+    "@simplewebauthn/browser": "14.0.0",
+    "@simplewebauthn/server": "14.0.3",
+    "libphonenumber-js": "1.13.14",
+    "maplibre-gl": "6.11.2"
+  }
+}

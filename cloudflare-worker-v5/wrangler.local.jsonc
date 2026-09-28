@@ -1,0 +1,49 @@
+{
+  "name": "carpool-polish-local",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-16",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "LIVE_HUB",
+        "class_name": "LiveHub"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "LiveHub"
+      ]
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.01
+    },
+    "redact_query_string": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "carpool-polish-local",
+      "database_id": "00000000-0000-4000-8000-000000000059"
+    }
+  ],
+  "workers_dev": true
+}

@@ -172,7 +172,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').cat
 
 function navButton(id, iconName, label, active) {
   const badge = id === 'alerts' && state.unread ? `<b class="nav-badge">${state.unread > 9 ? '9+' : state.unread}</b>` : '';
-  return `<button class="nav-item ${active === id ? 'active' : ''}" data-nav="${id}">${icon(iconName)}<span>${label}</span>${badge}</button>`;
+  return `<button class="nav-item ${active === id ? 'active' : ''}" ${active === id ? 'aria-current="page"' : ''} data-nav="${id}">${icon(iconName)}<span>${label}</span>${badge}</button>`;
 }
 
 function shell(content, active = 'home', opts = {}) {
@@ -181,13 +181,14 @@ function shell(content, active = 'home', opts = {}) {
     : `<button class="side-join" id="sideJoin">Join network</button>`;
 
   app.innerHTML = `
+    <a class="skip-link" href="#mainContent">Skip to content</a>
     <div class="app-shell">
       <aside class="sidebar">
         <button class="side-brand" data-nav="home">
           <img src="/icon.svg" alt="Carpool Network">
-          <span><strong>= carpool network =</strong><small>move together</small></span>
+          <span><strong>carpool network</strong><small>move together</small></span>
         </button>
-        <nav class="side-nav">
+        <nav class="side-nav" aria-label="Main navigation">
           ${navButton('home', 'home', 'Home', active)}
           ${navButton('find', 'search', 'Find a ride', active)}
           ${navButton('post', 'plus', 'Post', active)}
@@ -203,14 +204,14 @@ function shell(content, active = 'home', opts = {}) {
 
       <section class="workspace">
         <header class="mobile-topbar">
-          <button class="mobile-brand" data-nav="home"><img src="/icon.svg" alt=""><span>= carpool network =</span></button>
+          <button class="mobile-brand" data-nav="home"><img src="/icon.svg" alt=""><span>carpool network</span></button>
           <button class="circle-btn" data-nav="alerts" aria-label="Alerts">${icon('bell')}${state.unread ? `<b class="nav-badge">${state.unread > 9 ? '9+' : state.unread}</b>` : ''}</button>
         </header>
         ${opts.title ? `<div class="page-heading"><div><span class="eyebrow">${esc(opts.eyebrow || 'CARPOOL NETWORK')}</span><h1>${esc(opts.title)}</h1>${opts.subtitle ? `<p>${esc(opts.subtitle)}</p>` : ''}</div>${opts.action || ''}</div>` : ''}
-        <main class="main-content">${content}<footer class="site-info-links"><a href="/safety.html">Travelling safely</a><a href="/privacy.html">Privacy & reports</a></footer></main>
+        <main class="main-content" id="mainContent" tabindex="-1">${content}<footer class="site-info-links"><a href="/safety.html">Travelling safely</a><a href="/privacy.html">Privacy & reports</a></footer></main>
       </section>
 
-      <nav class="mobile-nav">
+      <nav class="mobile-nav" aria-label="Mobile navigation">
         ${navButton('home', 'home', 'Home', active)}
         ${navButton('find', 'search', 'Find', active)}
         ${navButton('post', 'plus', 'Post', active)}
@@ -219,6 +220,8 @@ function shell(content, active = 'home', opts = {}) {
       </nav>
     </div>`;
 
+  document.title = `${({home:'Find a ride',find:'Search rides',me:'My network',post:'Create a post',alerts:'Activity',support:'Help & support',admin:'Control room',community:'Local listings'})[state.view] || 'Move together'} · Carpool Network`;
+  if(shell.lastView!==state.view){shell.lastView=state.view;requestAnimationFrame(()=>{if(!document.querySelector('#sheetBackdrop')){document.querySelector('#mainContent')?.focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});}});}
   bindNav();
   document.querySelector('#sideOffer')?.addEventListener('click', () => ensureMember(() => renderPostPage('ride_offer')));
   document.querySelector('#sideJoin')?.addEventListener('click', () => openJoin());
@@ -311,20 +314,9 @@ async function renderHome() {
   state.view = 'home';
   await refreshUnread();
   shell(`
-    <section class="home-hero">
-      <div class="hero-art"><img src="/community-cover.png" alt="Carpool Network community"></div>
-      <div class="hero-content">
-        <span class="eyebrow red-text">THE COMMUNITY THAT MOVES</span>
-        <h1>Find the right person.<br><span>Hold the seat.</span> Connect.</h1>
-        <p>Carpool Network finds the right people, protects seats from double booking, then moves the final trip conversation to WhatsApp.</p>
-        <div class="trust-row"><span>${icon('check')} No app-store download</span><span>${icon('check')} Finalise on WhatsApp</span><span>${icon('check')} Double-booking protection</span></div>
-      </div>
-      <div class="hero-search-card">
-        <div class="search-card-head"><div><span class="eyebrow">NEED A LIFT?</span><h2>Where are you going?</h2></div><div class="pulse-dot"><i></i>Live network</div></div>
-        ${rideSearchForm()}
-        <div class="search-foot"><button class="link-btn" id="offerInstead">${icon('car')} Driving instead? Offer your seats</button><span>Search first. When a match is accepted, finalise the trip on WhatsApp.</span></div>
-      </div>
-    </section>
+    <section class="hero-intro"><div><span class="eyebrow">A GOOD WAY TO GET THERE</span><h1>Your journey.<br>A little more <em>together.</em></h1><p>Find a seat going your way, offer your spare seats, and connect with your local community.</p></div><div class="hero-art"><img src="/community-cover.png" alt="The Carpool Network community sharing a red car"></div></section>
+    <section class="journey-search"><div class="search-card-head"><h2>Where are you heading?</h2><button class="outline-btn" id="offerInstead">${icon('car')} Offer a ride</button></div>${rideSearchForm()}<p class="search-hint">${icon('clock')} Request a seat here. Once accepted, agree your pickup and contribution on WhatsApp.</p></section>
+    <div class="home-steps"><div class="home-step"><span class="step-number">1</span><div><strong>Find your route</strong><p>Choose your journey, date and the seats you need.</p></div></div><div class="home-step"><span class="step-number">2</span><div><strong>Request a seat</strong><p>Your seat is confirmed when the driver accepts.</p></div></div><div class="home-step"><span class="step-number">3</span><div><strong>Agree the details</strong><p>Connect on WhatsApp to arrange your pickup.</p></div></div></div>
 
     <section id="networkStats" class="stat-strip"><div class="stat-skeleton"></div><div class="stat-skeleton"></div><div class="stat-skeleton"></div><div class="stat-skeleton"></div></section>
 
@@ -485,7 +477,7 @@ async function renderCommunity(category = '', q = '') {
         <div><span class="eyebrow">COMMUNITY FEED</span><h1>${category ? esc(LABELS[category]) : 'What’s happening in the network'}</h1></div>
         <button class="primary-btn red" id="communityPost">${icon('plus')} Create post</button>
       </div>
-      <div class="community-search"><div class="wide-search">${icon('search')}<input id="communitySearch" value="${esc(q)}" placeholder="Search rides, jobs, items, people, places…"><button id="communitySearchGo">Search</button></div></div>
+      <div class="community-search"><div class="wide-search">${icon('search')}<input id="communitySearch" aria-label="Search local listings" value="${esc(q)}" placeholder="Search rides, jobs, items, people, places…"><button id="communitySearchGo">Search</button></div></div>
       <div class="filter-chips">${CATEGORIES.map(([k, l, ico]) => `<button class="filter-chip ${category === k ? 'active' : ''}" data-community-cat="${k}">${icon(ico)}${esc(l)}</button>`).join('')}</div>
       <div id="communityFeed" class="feed-grid"><div class="feed-loading">Loading…</div></div>
     </section>
@@ -739,7 +731,7 @@ function reportPost(id) {
 }
 
 function openJoin(after) {
-  openSheet(`<div class="join-hero"><img src="/icon.svg" alt=""><span class="eyebrow">WELCOME TO</span><h2>= carpool network =</h2><p>Join in seconds. No password and no app-store download.</p></div>
+  openSheet(`<div class="join-hero"><img src="/icon.svg" alt=""><span class="eyebrow">WELCOME TO</span><h2>carpool network</h2><p>Join in seconds. No password and no app-store download.</p></div>
     <form id="joinForm" class="simple-form join-form">
       <label><span>Your name</span><input name="name" autocomplete="name" maxlength="60" required placeholder="Your name"></label>
       <label><span>WhatsApp number</span><input name="phone" autocomplete="tel" inputmode="tel" required placeholder="+44 7…"></label>

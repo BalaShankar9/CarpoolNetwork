@@ -1,0 +1,94 @@
+{
+  "name": "carpool-network-release-check",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-16",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "carpool-network-release-check",
+      "database_id": "46d0e693-595e-4975-b261-ef82ec387fbc"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "LIVE_HUB",
+        "class_name": "LiveHub"
+      },
+      {
+        "name": "CHAT_ROOMS",
+        "class_name": "ChatRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "LiveHub"
+      ]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": [
+        "ChatRoom"
+      ]
+    }
+  ],
+  "vars": {
+    "APP_ENV": "preview",
+    "REQUIRE_VERIFIED_BOOKING": "true",
+    "REQUIRE_WHATSAPP": "true",
+    "AUTO_PUBLISH": "false",
+    "AI_DRAFTS": "false",
+    "UPLOADS_ENABLED": "false",
+    "EMAIL_FROM": "signin@carpoolnetwork.co.uk",
+    "EMAIL_MONTHLY_LIMIT": "1000",
+    "REQUIRE_PROFILE_PHOTO": "true",
+    "REQUIRE_VEHICLE": "true",
+    "REQUIRE_PHONE_VERIFICATION": "false",
+    "SMS_DAILY_LIMIT": "0",
+    "SMS_MONTHLY_LIMIT": "0",
+    "SUPPORT_EMAIL": "balashankarbollineni4@gmail.com"
+  },
+  "observability": {
+    "enabled": true,
+    "redact_query_string": true,
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.01
+    }
+  },
+  "workers_dev": true,
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "allowed_sender_addresses": [
+        "signin@carpoolnetwork.co.uk"
+      ]
+    }
+  ],
+  "limits": {
+    "cpu_ms": 100
+  },
+  "triggers": {
+    "crons": []
+  },
+  "r2_buckets": [
+    {
+      "binding": "PROFILE_PHOTOS",
+      "bucket_name": "carpool-release-rehearsal-photos"
+    }
+  ]
+}

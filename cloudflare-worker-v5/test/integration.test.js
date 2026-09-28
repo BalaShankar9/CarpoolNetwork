@@ -25,7 +25,7 @@ async function post(user,extra={}){return ok(await api('/api/posts',{user,method
 async function requestRide(user,id,extra={}){return api('/api/ride-requests/quick',{user,method:'POST',body:{rideOfferPostId:id,...extra}});}
 // Reset only our local database between runs by recreating it with the setup command.
 await test('Carpool release: end-to-end API and persistence',async t=>{
- await t.test('health and security headers',async()=>{const r=await api('/api/health');ok(r);assert.equal(r.data.version,'5.9.0');assert.equal(r.data.database,'ok');assert.ok(r.headers.get('x-request-id'));assert.match(r.headers.get('content-security-policy'),/frame-ancestors 'none'/);});
+ await t.test('health and security headers',async()=>{const r=await api('/api/health');ok(r);assert.equal(r.data.version,'5.9.1');assert.equal(r.data.database,'ok');assert.ok(r.headers.get('x-request-id'));assert.match(r.headers.get('content-security-policy'),/frame-ancestors 'none'/);});
  await t.test('signup, duplicate protection, anonymous and authenticated access',async()=>{
   for(let i=0;i<7;i++){const d=ok(await api('/api/profile',{method:'POST',body:{name:`Release Test ${i}`,phone:`+44770090000${i}`,area:'Cardiff'}}),201);people.push({...d.profile,recoveryCode:d.recoveryCode});}
   ok(await api('/api/profile',{user:people[0]}));assert.equal((await api('/api/profile')).status,401);

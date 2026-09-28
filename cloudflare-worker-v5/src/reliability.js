@@ -1,4 +1,4 @@
-export const RELEASE = '5.9.0';
+export const RELEASE = '5.9.1';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Never store query strings, route identifiers, credentials or submitted fields in automatic reports.
 export function safeRoute(input='') {
