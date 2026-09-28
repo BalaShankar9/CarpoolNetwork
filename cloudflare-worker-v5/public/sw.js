@@ -1,5 +1,5 @@
-const CACHE = 'carpool-network-v5-9-0';
-const CORE = ['/', '/styles.css', '/app.js', '/diagnostics.js', '/reliability.css', '/icon.svg', '/manifest.webmanifest'];
+const CACHE = 'carpool-network-v5-9-1-polish';
+const CORE = ['/', '/styles.css', '/app.js', '/diagnostics.js', '/reliability.css', '/release.css', '/focus.css', '/polish.css', '/community-cover.png', '/icon.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)).then(()=>self.skipWaiting()));

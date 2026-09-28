@@ -198,13 +198,14 @@ function shell(content, active = 'home', opts = {}) {
     : `<button class="side-join" id="sideJoin">Sign in / Join</button>`;
 
   app.innerHTML = `
+    <a class="skip-link" href="#mainContent">Skip to content</a>
     <div class="app-shell">
       <aside class="sidebar">
         <button class="side-brand" data-nav="home">
           <img src="/icon.svg" alt="Carpool Network">
           <span><strong>carpool network</strong><small>move together</small></span>
         </button>
-        <nav class="side-nav">
+        <nav class="side-nav" aria-label="Main navigation">
           ${navButton('home', 'search', 'Find a ride', active === 'find' ? 'home' : active)}
           ${navButton('trips', 'car', 'My bookings', active === 'me' && state.routeParams?.tab === 'rides' ? 'trips' : active)}
           ${navButton('inbox', 'comment', 'Messages', active)}
@@ -224,10 +225,10 @@ function shell(content, active = 'home', opts = {}) {
           <button class="circle-btn" data-nav="alerts" aria-label="Alerts">${icon('bell')}${state.unread ? `<b class="nav-badge">${state.unread > 9 ? '9+' : state.unread}</b>` : ''}</button>
         </header>
         ${opts.title ? `<div class="page-heading"><div><span class="eyebrow">${esc(opts.eyebrow || 'CARPOOL NETWORK')}</span><h1>${esc(opts.title)}</h1>${opts.subtitle ? `<p>${esc(opts.subtitle)}</p>` : ''}</div>${opts.action || ''}</div>` : ''}
-        <main class="main-content">${state.preview ? '<div class="preview-notice">Preview: test accounts and journeys only</div>' : ''}${content}</main>
+        <main class="main-content" id="mainContent" tabindex="-1">${state.preview ? '<div class="preview-notice">Preview: test accounts and journeys only</div>' : ''}${content}</main>
       </section>
 
-      <nav class="mobile-nav">
+      <nav class="mobile-nav" aria-label="Mobile navigation">
         ${navButton('home','search','Find',active === 'find' ? 'home' : active)}
         ${navButton('trips','car','Bookings',active === 'me' && state.routeParams?.tab === 'rides' ? 'trips' : active)}
         ${navButton('inbox','comment','Messages',active)}
@@ -236,6 +237,12 @@ function shell(content, active = 'home', opts = {}) {
       </nav>
     </div>`;
 
+  const titles = {home:'Find a ride',find:'Search rides',me:state.routeParams?.tab==='account'?'Your account':'My bookings',post:'Create a post',inbox:'Messages',chat:'Community',community:'Local listings',support:'Help & support',admin:'Control room',alerts:'Activity'};
+  document.title = `${titles[state.view] || 'Move together'} · Carpool Network`;
+  if (focusNextView) {
+    focusNextView=false;
+    requestAnimationFrame(()=>{if(!document.querySelector('#sheetBackdrop')){document.querySelector('#mainContent')?.focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});}});
+  }
   bindNav();
   document.querySelector('#sideOffer')?.addEventListener('click', () => ensureMember(() => renderPostPage('ride_offer')));
   document.querySelector('#sideJoin')?.addEventListener('click', () => openSignIn());
@@ -262,7 +269,8 @@ function navigate(view) {
   if (view === 'me') return state.profile ? renderMe() : openSignIn(() => renderMe());
 }
 let viewRevision = 0;
-function beginView(view, params = {}) { socialUI.stop(); state.view = view; state.routeParams = params; return ++viewRevision; }
+let focusNextView = false;
+function beginView(view, params = {}) { focusNextView=state.view!==view || JSON.stringify(state.routeParams||{})!==JSON.stringify(params); socialUI.stop(); state.view = view; state.routeParams = params; return ++viewRevision; }
 function pageError(title, error, retry) {
   shell(`<section class="error-card" role="alert"><div><h1>${esc(title)}</h1><p>${esc(error.message)}</p></div><button class="outline-btn" id="retryPage">${icon('refresh')} Retry</button></section>`, state.view);
   document.querySelector('#retryPage').onclick = retry;
@@ -504,9 +512,9 @@ async function renderCommunity(category = '', q = '') {
         <div><span class="eyebrow">COMMUNITY FEED</span><h1>${category ? esc(LABELS[category]) : 'What’s happening in the network'}</h1></div>
         <button class="primary-btn red" id="communityPost">${icon('plus')} Create post</button>
       </div>
-      <div class="community-search"><div class="wide-search">${icon('search')}<input id="communitySearch" value="${esc(q)}" placeholder="Search rides, jobs, items, people, places…"><button id="communitySearchGo">Search</button></div></div>
+      <div class="community-search"><div class="wide-search">${icon('search')}<input id="communitySearch" aria-label="Search local listings" value="${esc(q)}" placeholder="Search rides, jobs, items, people, places…"><button id="communitySearchGo">Search</button></div></div>
       <div class="filter-chips">${CATEGORIES.map(([k, l, ico]) => `<button class="filter-chip ${category === k ? 'active' : ''}" data-community-cat="${k}">${icon(ico)}${esc(l)}</button>`).join('')}</div>
-      <div id="communityFeed" class="feed-grid"><div class="feed-loading">Loading…</div></div>
+      <div id="communityFeed" class="feed-grid"><div class="feed-loading" role="status">Loading…</div></div>
     </section>
   `, 'community');
   document.querySelector('#communityPost').insertAdjacentHTML('beforebegin','<button class="outline-btn" id="businessDirectory">Local businesses</button>');
@@ -590,7 +598,7 @@ function renderPostPage(type = '') {
   ];
   shell(`
     <section class="post-page">
-      <div class="post-page-head"><span class="eyebrow">CREATE</span><h1>${type ? esc(types.find(t => t[0] === type)?.[1] || 'Create post') : 'Create a post'}</h1></div>
+      <div class="post-page-head"><span class="eyebrow">CREATE</span><h1>${type ? esc(types.find(t => t[0] === type)?.[1] || 'Create post') : 'Create a post'}</h1><p>${type==='ride_offer'?'Share the journey. You choose which requests to accept.':type==='ride_wanted'?'Tell the community where you need to go.':'A clear title and useful details make it easier to connect.'}</p></div>
       ${type ? `<div id="postFormWrap">${postForm(type)}</div>` : `<div class="post-type-grid">${types.map(([k, title, sub, ico]) => `<button class="post-type-card" data-post-type="${k}"><span class="post-type-icon ${k}">${icon(ico)}</span><span><strong>${esc(title)}</strong><small>${esc(sub)}</small></span>${icon('chevron')}</button>`).join('')}</div>`}
     </section>
   `, 'post');
@@ -624,7 +632,7 @@ function postForm(type) {
       <label><span>Title</span><input name="title" maxlength="140" required placeholder="A short clear title"></label>
       <label><span>Details</span><textarea name="body" maxlength="2500" required placeholder="Tell the network what people need to know…"></textarea></label>
       <div class="form-columns two"><label><span>Area / location</span><input name="location" value="${esc(state.profile?.area || '')}" placeholder="Cardiff"></label><label><span>Price / pay <em>optional</em></span><input name="price" placeholder="e.g. £25, £12/hour, Free"></label></div>
-      <label class="toggle-row"><input type="checkbox" name="whatsappEnabled" checked><span class="toggle-ui"></span><span><strong>Show a WhatsApp button</strong><small>Joined members can contact the number on your profile directly.</small></span></label>
+      <label class="toggle-row"><input type="checkbox" name="whatsappEnabled" checked><span class="toggle-ui"></span><span><strong>Show a WhatsApp button</strong><small>WhatsApp contact is available only to accepted ride partners.</small></span></label>
     </div>
     <div class="sticky-submit"><button class="ghost-btn" type="button" id="backPostTypes">Back</button><button class="primary-btn red large" type="submit">Publish post ${icon('arrow')}</button></div>
   </form>`;
@@ -946,12 +954,19 @@ async function renderMe(tab = 'rides') {
   const completed = trips.filter(t => t.status === 'completed').length;
   const confirmed = trips.filter(t => t.status === 'accepted').length;
   shell(`<section class="me-page">
-    <div class="profile-hero"><div class="profile-avatar-xl emoji-avatar">${esc(memberEmoji(state.profile))}</div><div class="profile-main"><span class="eyebrow">YOUR JOURNEYS</span><h1>${esc(state.profile.name)}</h1><p>${esc(state.profile.area || '')}${state.profile.bio ? ` · ${esc(state.profile.bio)}` : ''}</p><div class="profile-chip-row">${profileChips(state.profile)}</div><div class="profile-metrics"><div><strong>${esc(rating)}</strong><span>ride rating</span></div><div><strong>${completed}</strong><span>past bookings</span></div><div><strong>${confirmed}</strong><span>upcoming</span></div><div><strong>${mine.length}</strong><span>posts</span></div></div></div><button class="outline-btn" id="editProfile">${icon('edit')} Edit profile</button></div>
-    <div class="me-tabs" role="tablist" aria-label="My account"><button role="tab" aria-selected="${tab === 'rides'}" class="${tab === 'rides' ? 'active' : ''}" data-me-tab="rides">My rides</button><button role="tab" aria-selected="${tab === 'posts'}" class="${tab === 'posts' ? 'active' : ''}" data-me-tab="posts">My posts</button><button role="tab" aria-selected="${tab === 'account'}" class="${tab === 'account' ? 'active' : ''}" data-me-tab="account">Account</button></div>
-    <div id="meContent" role="tabpanel">${tab === 'rides' ? myRidesHtml(trips, mine) : tab === 'posts' ? `<div class="feed-grid">${mine.map(postCard).join('') || emptyFeed('No posts yet', 'Create your first post.')}</div>` : accountHtml()}</div>
+    <div class="profile-hero">${avatarHtml(state.profile,'profile-avatar-xl')}<div class="profile-main"><span class="eyebrow">YOUR JOURNEYS</span><h1>${esc(state.profile.name)}</h1><p>${esc(state.profile.area || '')}${state.profile.bio ? ` · ${esc(state.profile.bio)}` : ''}</p><div class="profile-chip-row">${profileChips(state.profile)}</div><div class="profile-metrics"><div><strong>${esc(rating)}</strong><span>ride rating</span></div><div><strong>${completed}</strong><span>past bookings</span></div><div><strong>${confirmed}</strong><span>upcoming</span></div><div><strong>${mine.length}</strong><span>posts</span></div></div></div><button class="outline-btn" id="editProfile">${icon('edit')} Edit profile</button></div>
+    <div class="me-tabs" role="tablist" aria-label="My account"><button role="tab" id="me-tab-rides" aria-controls="meContent" tabindex="${tab === 'rides' ? '0' : '-1'}" aria-selected="${tab === 'rides'}" class="${tab === 'rides' ? 'active' : ''}" data-me-tab="rides">My rides</button><button role="tab" id="me-tab-posts" aria-controls="meContent" tabindex="${tab === 'posts' ? '0' : '-1'}" aria-selected="${tab === 'posts'}" class="${tab === 'posts' ? 'active' : ''}" data-me-tab="posts">My posts</button><button role="tab" id="me-tab-account" aria-controls="meContent" tabindex="${tab === 'account' ? '0' : '-1'}" aria-selected="${tab === 'account'}" class="${tab === 'account' ? 'active' : ''}" data-me-tab="account">Account</button></div>
+    <div id="meContent" role="tabpanel" aria-labelledby="me-tab-${tab}">${tab === 'rides' ? myRidesHtml(trips, mine) : tab === 'posts' ? `<div class="feed-grid">${mine.map(postCard).join('') || emptyFeed('No posts yet', 'Create your first post.')}</div>` : accountHtml()}</div>
   </section>`, 'me');
   state.posts = mine; bindPostActions(); bindTripActions();
-  document.querySelectorAll('[data-me-tab]').forEach(b => b.onclick = () => renderMe(b.dataset.meTab));
+  document.querySelectorAll('[data-me-tab]').forEach(b => {
+    b.onclick = () => renderMe(b.dataset.meTab);
+    b.onkeydown = async e => {
+      const order=['rides','posts','account'],index=order.indexOf(b.dataset.meTab);
+      const next=e.key==='ArrowRight'?(index+1)%3:e.key==='ArrowLeft'?(index+2)%3:e.key==='Home'?0:e.key==='End'?2:-1;
+      if(next<0)return;e.preventDefault();await renderMe(order[next]);requestAnimationFrame(()=>document.querySelector(`#me-tab-${order[next]}`)?.focus());
+    };
+  });
   document.querySelector('#editProfile').onclick = editProfile;
   document.querySelectorAll('[data-manage-ride]').forEach(b => b.onclick = () => openPost(b.dataset.manageRide));
   document.querySelectorAll('[data-ride-filter]').forEach(b => b.onclick = () => { state.rideFilter = b.dataset.rideFilter; renderMe('rides'); });
@@ -965,7 +980,7 @@ async function renderMe(tab = 'rides') {
   document.querySelector('#installApp')?.addEventListener('click', installApp);
   document.querySelector('#signOut')?.addEventListener('click', signOut);
   if (tab === 'account') {
-    document.querySelector('#meContent').insertAdjacentHTML('afterbegin','<div class="toolbar-actions"><button class="outline-btn" id="whatsappContact">Phone & WhatsApp</button><button class="outline-btn" id="profilePhoto">Profile photo</button><button class="outline-btn" id="vehicleAndLinks">Vehicle & social profiles</button><button class="outline-btn" id="socialSecurity">Email, passkeys & privacy</button><button class="outline-btn" id="communityReports">Community reports</button><button class="outline-btn" data-nav="businesses">Local businesses</button></div>');
+    document.querySelector('#meContent').insertAdjacentHTML('afterbegin',accountSetupHtml());
     document.querySelector('#whatsappContact').onclick=()=>editContact();
     document.querySelector('#profilePhoto').onclick=()=>profilePhotos.edit();
     document.querySelector('#vehicleAndLinks').onclick=()=>memberDetails.edit();
@@ -1031,6 +1046,17 @@ async function openBookingHistory(id) {
     openSheet(`<div class="sheet-title"><h2>Booking activity</h2><p>${esc(labels[data.booking.status] || data.booking.status)}</p></div><ol class="timeline"><li><strong>Request created</strong><small>${esc(new Date(data.booking.created_at + 'Z').toLocaleString())}</small></li>${changes.map(e => `<li><strong>${esc(labels[e.to_status] || e.to_status)}</strong><small>${esc(new Date(e.created_at + 'Z').toLocaleString())}</small></li>`).join('')}</ol><button class="outline-btn" id="bookingHelp">${icon('help')} Booking support</button>`);
     document.querySelector('#bookingHelp').onclick = () => { closeSheet(); renderSupport(); };
   } catch(e) { showToast(e.message, 'error'); }
+}
+
+function accountSetupHtml() {
+  const cards=[
+    ['whatsappContact','whatsapp','Phone & WhatsApp','Verify access to your number. Contact is shared with accepted ride partners.','Verify or manage'],
+    ['profilePhoto','user','Your profile photo',state.profile.photo_approved?'Your approved photo helps ride partners recognise you.':'Add a clear photo of yourself for moderator review.','Manage photo'],
+    ['vehicleAndLinks','car','Vehicle & social profiles','Driving? Check your registration and passenger seats. Social links are optional.','Manage details'],
+    ['socialSecurity','shield','Sign-in & privacy','Email, passkeys, blocked members and your personal data.','Review security'],
+    ['communityReports','alert','Community reports','Track a concern about a member, message or listing.','View reports']
+  ];
+  return `<section class="account-setup" aria-labelledby="accountSetupTitle"><div class="section-title-row"><div><span class="eyebrow">BEFORE YOUR FIRST JOURNEY</span><h2 id="accountSetupTitle">Get ready to travel</h2><p>Verify your phone and add your photo. Drivers also add their vehicle.</p></div></div><div class="setup-grid">${cards.map(([id,ico,title,copy,action])=>`<article class="setup-card"><span class="setup-icon">${icon(ico)}</span><h3>${title}</h3><p>${copy}</p><button class="text-action" id="${id}">${action} ${icon('arrow')}</button></article>`).join('')}<article class="setup-card"><span class="setup-icon">${icon('bag')}</span><h3>Local businesses</h3><p>Explore member-provided services around your community.</p><button class="text-action" data-nav="businesses">Explore directory ${icon('arrow')}</button></article></div></section><div class="section-title-row account-preferences"><div><span class="eyebrow">MAKE IT YOURS</span><h2>Preferences & support</h2></div></div>`;
 }
 
 function accountHtml() {

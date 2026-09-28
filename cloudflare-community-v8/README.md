@@ -4,7 +4,7 @@ A focused upgrade for the existing UK ride-sharing community. It preserves the o
 
 Hosted preview: https://carpool-community-design.balashankarbollineni4.workers.dev
 
-**This is an isolated preview release candidate, not a production launch.** The public site remains v5.9.0. This candidate is not approved for public invitations. Read `LAUNCH-PLAN.md` for implementation status and outstanding work.
+**This is an isolated preview release candidate, not a production launch.** The original domain now serves the separate v5.9.1 visual refresh, retaining its established booking/WhatsApp flow. This candidate is not approved for public invitations. Read `LAUNCH-PLAN.md` for implementation status and outstanding work.
 
 ## Local development
 
@@ -37,7 +37,7 @@ node --test test/phone-eligibility.test.js test/trips-commutes.test.js test/loca
 - `src/phone-verification.js`: Twilio Verify integration, account-bound code challenges, resend/attempt/send caps and number replacement. No credentials or real SMS delivery are configured yet.
 - `src/trips.js`, `public/live-trip.js`: confirmed trip membership, start/finish, explicit foreground location sharing, revocable sharing grants and ephemeral 90-second coordinates.
 - `src/commutes.js`, `public/commutes.js`: bounded recurring journeys, invitations, per-date bookings, cancellations and membership removal.
-- `src/recovery.js`: maintenance forward-recovery entrypoint; both Durable Object classes remain exported, writes are paused and databases preserved. Local HTTP recovery checks passed; production topology rehearsal is outstanding.
+- `src/recovery.js`: maintenance forward-recovery entrypoint; both Durable Object classes remain exported, writes are paused and databases preserved. Local and isolated hosted recovery checks passed with the production-compatible v1 LiveHub → v2 ChatRoom migration history. Maintenance paused writes and return to the candidate preserved the original fixture records and LiveHub namespace.
 - `src/photos.js`, `public/profile-photo.js`: private R2 uploads, metadata removal, pending moderator review and approved public thumbnails. Optional on-device face detection is advisory. No facial recognition or identity proof is claimed.
 - `public/app.js`, `social.js`, `email-ui.js`, `focus.css`: member journeys and original-brand refinements. Reconnection reloads persisted messages; failed sends keep the draft.
 - `scripts/build-browser.mjs`: bundles pinned SimpleWebAuthn browser code. The server imports the pinned package directly. See `THIRD-PARTY-NOTICES.md`.

@@ -1,8 +1,5 @@
 node_modules/
 .wrangler/
+audit/
 .dev.vars*
-.env*
-private-backups/
 *.log
-*-results.*
-*.backup.sql

@@ -83,9 +83,9 @@ export function createSocialUI(h) {
       const list = `<aside class="room-list"><div class="room-list-heading"><h1>${view==='inbox'?'Messages':'Community'}</h1>${button('plus','',`id="newCommunity" aria-label="${view==='inbox'?'New message':'Create community'}" title="${view==='inbox'?'New message':'Create community'}"`)}</div>
         ${rooms.map(r=>`<button class="room-link ${r.id===selected?.id?'selected':''}" data-room="${esc(r.id)}"><strong>${esc(r.title)}</strong><span>${r.membership==='pending'?'Message request':r.kind==='booking'?'Ride conversation':r.unread?`${r.unread} unread`:r.kind==='lounge'?'All members':'Community'}</span></button>`).join('')}
         ${view==='chat'?`<h2>Discover communities</h2>${overview.communities.map(c=>`<div class="community-row"><strong>${esc(c.name)}</strong><small>${esc(c.description)}</small><span>${esc(c.access)} · ${esc(c.status)}</span>${c.status==='approved'?button('plus','Join',`data-join="${esc(c.id)}"`):''}</div>`).join('')||'<p>No communities yet.</p>'}`:''}
-        ${view==='chat'?button('bag','Local listings','id="localListings"'):''}${button('shield','Reports & moderation','id="socialReports"')}${button('user','Account security','id="socialAccount"')}</aside>`;
+        <div class="room-tools">${view==='chat'?button('users','Browse groups','id="browseCommunities"')+button('bag','Local listings','id="localListings"'):''}${button('shield','Reports','id="socialReports"')}${button('user','Account security','id="socialAccount"')}</div></aside>`;
       if (!selected) {
-        shell(`<section class="chat-workspace">${list}<div class="chat-empty">${view==='inbox'?'No private conversations yet.':'Choose a conversation.'}</div></section>`,view);
+        shell(`<section class="chat-workspace">${list}<div class="chat-empty"><span class="setup-icon">${icon(view==='inbox'?'comment':'users')}</span><h2>${view==='inbox'?'Your conversations start here':'Find your people'}</h2><p>${view==='inbox'?'Accepted bookings have their own conversation. You can also request a chat from a member’s profile.':'Join a local group to arrange journeys and keep in touch.'}</p>${button('search','Find a ride','id="chatFindRide"')}</div></section>`,view);
         bindSidebar(view,rooms); return;
       }
       currentRoom = selected;
@@ -138,7 +138,13 @@ export function createSocialUI(h) {
       await loadMessages(id,visit);connect(id,visit);
     } catch(error) { if(visit===generation){shell(`<section class="chat-empty"><h1>Conversation unavailable</h1><p>${esc(error.message)}</p>${button('arrow','Retry','id="retryChat"')}</section>`,view);$('#retryChat').onclick=()=>render(view,roomId);} }
   }
+  function browseCommunities(){
+    openSheet(`<span class="eyebrow">YOUR COMMUNITY</span><h2>Find a group</h2><p>Join a local conversation. Private groups may need approval from their owner.</p><div class="chat-directory-list">${overview.communities.filter(c=>c.status==='approved').map(c=>`<article><h3>${esc(c.name)}</h3><p>${esc(c.description||'Connect with members of this community.')}</p><p>${esc(c.access==='public'?'Open community':'Private community')}</p>${button('plus','Join community',`data-directory-join="${esc(c.id)}"`)}</article>`).join('')||'<p>No groups are available to join yet. You can start a community from the + button.</p>'}</div>`);
+    document.querySelectorAll('[data-directory-join]').forEach(b=>b.onclick=safe(async()=>{b.disabled=true;try{const d=await post(`/api/social/communities/${encodeURIComponent(b.dataset.directoryJoin)}/join`);closeSheet();showToast(d.status==='pending'?'Join request sent':'Joined');await render('chat',b.dataset.directoryJoin);}catch(e){b.disabled=false;throw e;}}));
+  }
   function bindSidebar(view,rooms) {
+    $('#browseCommunities')?.addEventListener('click',browseCommunities);
+    $('#chatFindRide')?.addEventListener('click',()=>h.navigate('home'));
     $('#localListings')?.addEventListener('click',()=>h.navigate('community'));
     if(view==='inbox'){
       $('.room-list-heading').insertAdjacentHTML('afterend',button('bell','Activity','id="inboxActivity"'));

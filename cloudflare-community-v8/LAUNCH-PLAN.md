@@ -1,6 +1,6 @@
 # Release plan and acceptance criteria
 
-Status: **isolated preview; not ready for public invitations**. Keep the original red/navy/aqua identity and red-car artwork. Production remains v5.9.0, with no production schema or route changes in this release.
+Status: **isolated preview; not ready for public invitations**. Keep the original red/navy/aqua identity and red-car artwork. The original domain now has the v5.9.1 visual refresh on its established booking/WhatsApp application. The larger v8 release remains isolated; no v8 production schema changes have run.
 
 | Area | Implemented and tested in candidate | Remaining qualification |
 |---|---|---|
@@ -13,7 +13,7 @@ Status: **isolated preview; not ready for public invitations**. Keep the origina
 | Live trips | Driver start/finish; explicit sharing consent; per-sharing-session grants prevent delayed updates after Stop; current confirmed participants only; block/removal/logout checks; 90-second expiry, twelve-hour trip maximum | Two-person device and weak-network pilot. Sharing is foreground only, stops when closing/hiding the trip screen, and is not promised through phone lock/background |
 | Regular commutes | Private four-week schedules, weekday/day-off selections, invitations, separate per-date requests/acceptance/capacity, one-date or future cancellation, removal/leave with future-seat cancellation | Real shift-group pilot. To change a route/time, cancel future dates and create a replacement series; completed history is retained. No automatic renewal/payment collection |
 | Reporting and support | Automatic scrubbed error capture, manual issue reports, protected administration and resolution | Named response/moderation coverage and owner control-room exercise |
-| Recovery | Additive schema rehearsal preserves all 29 old tables/53 rows from the protected backup; maintenance recovery entrypoint retains DO exports and rejects writes | Fresh production backup and isolated hosted rehearsal of the actual production migration/bindings and forward recovery before any domain change |
+| Recovery | Additive schema rehearsal preserves all 29 old tables/53 rows from the protected backup; maintenance recovery entrypoint retains DO exports and rejects writes | Fresh production backup and local preservation passed; hosted release-check upgrade, compatible maintenance and return passed, preserving 29 tables/46 fixture rows and LiveHub namespace. Repeat the production backup during the eventual v8 release window |
 
 ## Next release steps
 
@@ -21,7 +21,7 @@ Status: **isolated preview; not ready for public invitations**. Keep the origina
 2. Arrange SMS provider/budget and activate through `SMS-SETUP.md`. Do not mark the owner's real number verified through a database edit. Photo and vehicle requirements are enabled in preview; this is a setup gate, not a public-ready claim.
 3. Pilot a real authorized vehicle, approved profile photos and multiple consenting driver/rider phones. Exercise signup, actual SMS, denied GPS, low signal, background/return, group invitations, multiple dates, full capacity, cancellation, live sharing and WhatsApp contact. Verify push separately; a mock delivery is not a real notification receipt.
 4. The owner checks administrator access and report/photo-review handling and identifies support coverage. Existing owner privileges and production credentials must remain intact.
-5. Rehearse a fresh production snapshot and compatible forward maintenance recovery. See `migrations/README.md`; a rollback to the pre-ChatRoom Worker cannot be assumed. No production migration has run.
+5. Hosted migration/recovery is now rehearsed in `carpool-network-release-check`: v1 LiveHub to v2 ChatRoom, maintenance 503/read-only mode, then candidate return. All original rehearsal records survived. A fresh production-backup local rehearsal preserved 29 tables/53 rows. See `migrations/README.md`; take a new backup during the eventual release window. No v8 production migration has run.
 6. Only after those gates pass, qualify the exact production configuration and conduct a small, staffed community launch. Maintain WhatsApp as the established contact option.
 
 ## Boundaries

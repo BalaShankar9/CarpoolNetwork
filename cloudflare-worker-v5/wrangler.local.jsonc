@@ -1,6 +1,5 @@
-// Template only: provision a disposable staging D1 database and replace the placeholder ID before use.
 {
-  "name": "carpool-polish-staging",
+  "name": "carpool-polish-local",
   "main": "src/index.js",
   "compatibility_date": "2026-08-16",
   "compatibility_flags": [
@@ -42,7 +41,7 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "carpool-polish-staging",
+      "database_name": "carpool-polish-local",
       "database_id": "00000000-0000-4000-8000-000000000059"
     }
   ],

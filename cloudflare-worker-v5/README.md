@@ -1,10 +1,16 @@
-# Carpool Network Worker 5.9.0
+# Carpool Network Worker 5.9.1
 
 This directory is the deployable Cloudflare application. The React/Supabase project at the repository root is legacy and does not build the current public site.
 
 The baseline was recovered from the **active production v5.7 Worker**, version `5f9fba91-35b6-4f54-9e2d-494ba4f065de`, and the public v5.6 frontend. The uploaded v5.8 Worker was not active and was not used. Source recovery removed the missing source-map reference; Wrangler bundles the readable module source here.
 
-## Release changes
+## 5.9.1 visual refresh
+
+The original domain retains the v5 booking and WhatsApp application. The separate `cloudflare-community-v8` project contains the richer preview; its SMS, vehicle/photo checks, public chat, recurring groups and live-location features are not part of this production refresh.
+
+Updated home/search, forms, posts, profile/account, bookings, support/admin, dialogs and information-page styling preserves the red/navy/aqua identity. Mobile layouts, a keyboard skip link, navigation focus and reduced-motion support were checked. Validation: 20 local API regression results passed, desktop and 390px mobile visual checks, and exact deployed asset hashes/health checks. This update requires **no database migration** and preserves existing production bindings and secrets.
+
+## Earlier reliability release changes
 
 - A persistent Report a problem button and signed-out Help & Support route. Reporting runs in a separate script so an app startup failure does not disable it.
 - Automatic browser, API and Worker error capture, aggregation and recurrence tracking. No request body, token, form contents, raw error message, IP address or query string is stored in the diagnostic record. Manually submitted descriptions are private and receive a reference.
@@ -22,8 +28,8 @@ Use Node.js 22 or later and Python 3 for the local fixture tests. On an iCloud-s
 cd cloudflare-worker-v5
 npm ci
 node test/generate-test-keys.js
-npx wrangler d1 execute DB --local --file schema.sql
-npx wrangler d1 execute DB --local --file migration-v5-9.sql
+npx wrangler d1 execute DB --local --config wrangler.local.jsonc --file schema.sql
+npx wrangler d1 execute DB --local --config wrangler.local.jsonc --file migration-v5-9.sql
 npm run dev
 ```
 
@@ -37,23 +43,22 @@ npm test
 
 `reset-local.py` recreates the **local disposable fixture database**. Never point it at production. The integration suite refuses a non-local test URL and uses reserved, synthetic phone numbers. Keep the browser idle while resetting fixtures. The tests cover signup, validation, privacy, simultaneous booking acceptance, pending limits, cancellation, community/support actions, diagnostics, administrator permissions, signing and rating integrity, overnight conflicts, scheduled cleanup, recovery and logout. Fault injection is local only.
 
-`test/staging-smoke.js` is explicitly restricted to the dedicated `carpool-network-release-check` Worker. It creates synthetic members and rides there and checks real Cloudflare WebSocket delivery. It must never be redirected to production.
+`test/staging-smoke.js` requires `CARPOOL_STAGING_URL` for an explicitly provisioned `carpool-polish-*` staging Worker. `wrangler.staging.jsonc` is a template with a placeholder database ID; provision its disposable database first. The former release-check Worker now hosts the v8 migration/recovery rehearsal and is not a v5 staging target. Never run synthetic smoke journeys against production.
 
 ## Production release procedure
 
 1. Run the checks, tests and `npm run dry-run`. Validate the release in isolated staging.
 2. Export and verify the existing D1 database. Treat a full export as private member data. Record the current deployed Worker version for rollback.
-3. Apply only the additive migration to an existing production database:
+3. For a v5.9.0 to v5.9.1 visual update, skip database migrations. The additive `migration-v5-9.sql` is only needed when upgrading a separately checked older v5 database:
 
 ```sh
-npx wrangler d1 execute DB --remote --file migration-v5-9.sql
 npx wrangler deploy --dry-run
 npx wrangler deploy
 ```
 
 Do **not** import `schema.sql` into an existing production database. It is a fresh-database fixture baseline. Do not rerun older migration scripts as a shortcut. The deployment keeps the existing DB, LiveHub namespace, integrity secret names, custom domains and cleanup schedule. Production signing keys remain in Cloudflare secrets; never replace them with the local test keys.
 
-4. Verify `/api/health` returns `5.9.0` and `database: ok`, verify public assets and browser navigation, inspect diagnostics/logs, and compare existing table counts with the backup. Do not create public synthetic rides in production.
+4. Verify `/api/health` returns `5.9.1` and `database: ok`, verify public assets and browser navigation, inspect diagnostics/logs, and compare existing table counts with the backup. Do not create public synthetic rides in production.
 
 For a code rollback, deploy the previously recorded Worker version with Wrangler's rollback command. The additive diagnostic table and triggers can remain. Do not restore the full database over new member activity unless a separately reviewed recovery procedure requires it.
 
