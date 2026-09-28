@@ -48,7 +48,9 @@
     "AI_DRAFTS": "false",
     "UPLOADS_ENABLED": "false",
     "EMAIL_FROM": "signin@carpoolnetwork.co.uk",
-    "EMAIL_MONTHLY_LIMIT": "1000"
+    "EMAIL_MONTHLY_LIMIT": "1000",
+    "REQUIRE_PROFILE_PHOTO": "false",
+    "REQUIRE_VEHICLE": "false"
   },
   "observability": {
     "enabled": true,
@@ -74,5 +76,11 @@
     "crons": [
       "17 3 * * *"
     ]
-  }
+  },
+  "r2_buckets": [
+    {
+      "binding": "PROFILE_PHOTOS",
+      "bucket_name": "carpool-community-profile-photos"
+    }
+  ]
 }

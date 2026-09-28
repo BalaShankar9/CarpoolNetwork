@@ -1,3 +1,6 @@
+import {createProfilePhotos} from './profile-photo.js';
+import {createMemberDetails} from './member-details.js';
+import {bindLocationInput,bindSearchLocations} from './locations.js';
 import { createSocialUI } from './social.js';
 const app = document.querySelector('#app');
 const toastEl = document.querySelector('#toast');
@@ -122,7 +125,7 @@ function initials(name = '') { return name.split(/\s+/).filter(Boolean).slice(0,
 const MEMBER_EMOJIS = ['🚗','🦊','🌟','🐼','🦁','🐬','🦉','🐧','🦋','⚡','🌿','🎯','🚙','☀️','🧭','🐨','🌈','☕','🎧','🐢','🐝','🌙','🏁','🛣️'];
 function fallbackEmoji(id='') { let hash=0; for(const ch of String(id)) hash=((hash*31)+ch.charCodeAt(0))>>>0; return MEMBER_EMOJIS[hash % MEMBER_EMOJIS.length]; }
 function memberEmoji(user={}) { return user.avatarEmoji || user.avatar_emoji || fallbackEmoji(user.id || user.name || 'cn'); }
-function avatarHtml(user={}, cls='') { return `<span class="avatar emoji-avatar ${cls}" title="${esc(user.name || 'Member')}">${esc(memberEmoji(user))}</span>`; }
+function avatarHtml(user={}, cls='') { return user.photo_approved?`<img class="avatar profile-photo ${cls}" src="/api/profile-photo/${encodeURIComponent(user.id)}" alt="${esc(user.name||'Member')} profile photo">`:`<span class="avatar emoji-avatar ${cls}" title="${esc(user.name || 'Member')}">${esc(memberEmoji(user))}</span>`; }
 function travelRoleLabel(role='both') { return role === 'driver' ? 'Usually drives' : role === 'rider' ? 'Usually rides' : 'Drives & rides'; }
 function profileChips(user={}) {
   const chips=[];
@@ -156,7 +159,7 @@ async function api(path, options = {}) {
   catch (cause) {
     const timeout = cause.name === 'TimeoutError' || cause.name === 'AbortError';
     window.CarpoolDiagnostics?.capture(timeout ? 'API_TIMEOUT' : 'API_NETWORK',path);
-    throw new Error(timeout ? 'The request timed out. Check My network before repeating a booking action.' : 'Connection lost. Check your internet connection and try again.');
+    throw new Error(timeout ? 'The request timed out. Check My bookings before repeating a booking action.' : 'Connection lost. Check your internet connection and try again.');
   }
   let data;
   try { data = await response.json(); }
@@ -172,7 +175,7 @@ async function api(path, options = {}) {
 }
 
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); state.installPrompt = e; });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => window.CarpoolDiagnostics?.capture('SERVICE_WORKER_ERROR','/sw.js'));
 
 function navButton(id, iconName, label, active) {
   const badge = ['alerts','inbox'].includes(id) && state.unread ? `<b class="nav-badge">${state.unread > 9 ? '9+' : state.unread}</b>` : '';
@@ -268,11 +271,13 @@ async function refreshUnread() {
 function rideSearchValues(overrides = {}) {
   const saved = state.lastRideSearch || {};
   return {
-    origin: overrides.origin ?? saved.origin ?? '',
+    origin: overrides.origin ?? saved.origin ?? state.profile?.area ?? '',
     destination: overrides.destination ?? saved.destination ?? '',
     date: overrides.date ?? saved.date ?? today(1),
     time: overrides.time ?? saved.time ?? defaultTime(),
     seats: Number(overrides.seats ?? saved.seats ?? 1),
+    radiusMiles:Number(overrides.radiusMiles ?? saved.radiusMiles ?? 0),
+    localDrivers:Boolean(overrides.localDrivers ?? saved.localDrivers ?? false),
   };
 }
 
@@ -312,12 +317,14 @@ function rideSearchForm(values = rideSearchValues(), compact = false) {
 function bindRideSearchForm(onSubmit) {
   const form = document.querySelector('#rideSearchForm');
   if (!form) return;
+  bindSearchLocations(form,showToast);
+  form.radiusMiles.value=String(state.lastRideSearch?.radiusMiles||0);form.localDrivers.checked=Boolean(state.lastRideSearch?.localDrivers);
   document.querySelector('#swapRoute')?.addEventListener('click', () => {
     const a = form.origin.value; form.origin.value = form.destination.value; form.destination.value = a; haptic();
   });
   form.onsubmit = e => {
     e.preventDefault();
-    const values = { origin: form.origin.value.trim(), destination: form.destination.value.trim(), date: form.date.value, time: form.time.value, seats: Number(form.seats.value) };
+    const values = { origin: form.origin.value.trim(), destination: form.destination.value.trim(), date: form.date.value, time: form.time.value, seats: Number(form.seats.value),radiusMiles:Number(form.radiusMiles.value),localDrivers:form.localDrivers.checked };
     saveRideSearch(values);
     onSubmit(values);
   };
@@ -334,7 +341,7 @@ async function renderHome() {
     <div class="home-steps"><div class="home-step"><span class="step-number">1</span><div><strong>Find your route</strong><p>Choose your journey, date and the seats you need.</p></div></div><div class="home-step"><span class="step-number">2</span><div><strong>Request a seat</strong><p>Your seat is confirmed when the driver accepts.</p></div></div><div class="home-step"><span class="step-number">3</span><div><strong>Agree the details</strong><p>Use your booking conversation to arrange the pickup.</p></div></div></div>
     <section class="section-block"><div class="section-title-row"><div><span class="eyebrow">GOING YOUR WAY</span><h2>Rides from the community</h2></div><button class="text-action" id="allRides">Find rides ${icon('arrow')}</button></div><div id="homeFeed" class="feed-grid"><p class="feed-loading" role="status">Looking for available rides…</p></div></section>
     <section class="community-cta"><div><h2>The people behind the journeys.</h2><p>Meet your community, ask a question, or share a useful local update.</p></div><button class="outline-btn" data-nav="chat">Open community ${icon('arrow')}</button></section>
-    <footer class="site-footer"><span>Carpool Network · Move together</span><div><a href="/safety.html">Travel safely</a><a href="/privacy.html">Privacy</a><button class="text-action" data-nav="community">Local listings</button></div></footer>
+    <footer class="site-footer"><span>Carpool Network · Move together</span><div><a href="/safety.html">Travel safely</a><a href="/privacy.html">Privacy</a><a href="/attribution.html">Attribution</a><button class="text-action" data-nav="community">Local listings</button></div></footer>
   `,'home');
   bindRideSearchForm(values => renderFind(values,true));
   document.querySelector('#offerInstead').onclick=()=>ensureMember(()=>renderPostPage('ride_offer'));
@@ -391,7 +398,7 @@ async function runRideSearch(values) {
   const searchId = Symbol(); el.searchId = searchId;
   el.innerHTML = `<div class="results-head"><div><span class="eyebrow">SEARCHING</span><h2>Finding the best matches…</h2></div></div>${Array.from({ length: 3 }, () => '<div class="ride-skeleton"></div>').join('')}`;
   try {
-    const qs = new URLSearchParams({ from: values.origin, to: values.destination, date: values.date, time: values.time || '', seats: String(values.seats || 1) });
+    const qs = new URLSearchParams({ from: values.origin, to: values.destination, date: values.date, time: values.time || '', seats: String(values.seats || 1),radiusMiles:String(values.radiusMiles||0),localDrivers:String(Boolean(values.localDrivers)) });
     const data = await api(`/api/rides/search?${qs}`);
     if (!el.isConnected || el.searchId !== searchId) return;
     const rides = data.rides || [];
@@ -428,6 +435,7 @@ function rideResultCard(p) {
         <div class="timeline-row"><i class="end-dot"></i><div><small>${fmtDate(p.journeyDate)}</small><strong>${esc(p.destination)}</strong></div></div>
       </div>
       ${p.body ? `<p class="ride-note">${esc(p.body)}</p>` : ''}
+      ${p.pickupDistanceMiles!=null?`<p class="ride-note">Pickup town is about ${Number(p.pickupDistanceMiles)} miles from your selected town. Agree the exact pickup before travelling.</p>`:''}
       <div class="ride-result-bottom">
         <div class="price-stack">${p.price ? `<strong>${esc(p.price)}</strong><span>contribution</span>` : `<strong>Ask driver</strong><span>contribution</span>`}</div>
         <div class="ride-result-actions">
@@ -609,6 +617,7 @@ function postForm(type) {
 function bindPostForm(type, existing = null) {
   document.querySelector('#backPostTypes').onclick = () => existing ? closeSheet() : renderPostPage();
   const form = document.querySelector('#createPostForm');
+  bindLocationInput(form.origin,{current:true,toast:showToast});bindLocationInput(form.destination,{toast:showToast});
   form.onsubmit = async e => {
     e.preventDefault(); const button = form.querySelector('[type="submit"]'); const original = button.innerHTML; button.disabled = true; button.innerHTML = 'Publishing…';
     const f = new FormData(form); const body = Object.fromEntries(f.entries()); body.category = type; body.whatsappEnabled = form.whatsappEnabled?.type === 'checkbox' ? form.whatsappEnabled.checked : true;
@@ -688,6 +697,7 @@ function bindOwnerActions(post) {
 function editPost(post) {
   openSheet(`<div class="sheet-title"><h2>Edit ${esc(LABELS[post.category])}</h2></div>${postForm(post.category)}`);
   const form = document.querySelector('#createPostForm');
+  bindLocationInput(form.origin,{current:true,toast:showToast});bindLocationInput(form.destination,{toast:showToast});
   for (const key of ['title','body','location','price','origin','destination','journeyDate','journeyTime','seats','flexibilityMinutes']) {
     const field = form.elements.namedItem(key); if (field) field.value = post[key] ?? '';
   }
@@ -756,7 +766,8 @@ async function openUser(id) {
   try {
     const data = await api(`/api/users/${id}`); const u = data.user; const reviews = data.reviews || [];
     const memberSince = u.created_at ? new Date(`${String(u.created_at).replace(' ','T')}Z`).toLocaleDateString(undefined,{month:'short',year:'numeric'}) : '';
-    openSheet(`<div class="member-profile"><div class="member-avatar emoji-avatar">${esc(memberEmoji(u))}</div><h2>${esc(u.name)}</h2><p>${esc(u.area || '')}</p><div class="profile-chip-row centered-chips">${profileChips(u)}</div><div class="member-trust-grid"><div><strong>${u.rating_count ? `★ ${Number(u.rating).toFixed(1)}` : '☆ New'}</strong><span>ride rating</span></div><div><strong>${Number(u.completed_rides||0)}</strong><span>past bookings</span></div><div><strong>${esc(memberSince || 'New')}</strong><span>member since</span></div></div>${u.bio ? `<p class="member-bio">${esc(u.bio)}</p>` : ''}<div class="trust-note">${icon('lock')} Ratings come only from completed Carpool Network ride matches. New reviews are cryptographically sealed after submission. Agree final trip details in your booking conversation.</div><div class="review-list">${reviews.length ? reviews.map(r => `<div class="review"><div class="review-head"><strong>${'★'.repeat(r.score)}</strong>${r.sealed?`<span class="sealed-badge">${icon('shield')} Sealed</span>`:''}</div><p>${esc(r.comment)}</p><small>${esc(r.rater_name)} · ${relative(r.created_at)}</small></div>`).join('') : '<p class="muted-center">No written ride reviews yet.</p>'}</div>${state.profile && state.profile.id!==u.id?`<button class="text-danger report-member-btn" data-report-member="${esc(u.id)}">Report this member to Support</button>`:''}</div>`);
+    openSheet(`<div class="member-profile">${avatarHtml(u,'member-avatar')}<h2>${esc(u.name)}</h2><p>${esc(u.area || '')}</p><div class="profile-chip-row centered-chips">${profileChips(u)}</div><div class="member-trust-grid"><div><strong>${u.rating_count ? `★ ${Number(u.rating).toFixed(1)}` : '☆ New'}</strong><span>ride rating</span></div><div><strong>${Number(u.completed_rides||0)}</strong><span>past bookings</span></div><div><strong>${esc(memberSince || 'New')}</strong><span>member since</span></div></div>${u.bio ? `<p class="member-bio">${esc(u.bio)}</p>` : ''}<div class="trust-note">${icon('lock')} Ratings come only from completed Carpool Network ride matches. New reviews are cryptographically sealed after submission. Agree final trip details in your booking conversation.</div><div class="review-list">${reviews.length ? reviews.map(r => `<div class="review"><div class="review-head"><strong>${'★'.repeat(r.score)}</strong>${r.sealed?`<span class="sealed-badge">${icon('shield')} Sealed</span>`:''}</div><p>${esc(r.comment)}</p><small>${esc(r.rater_name)} · ${relative(r.created_at)}</small></div>`).join('') : '<p class="muted-center">No written ride reviews yet.</p>'}</div>${state.profile && state.profile.id!==u.id?`<button class="text-danger report-member-btn" data-report-member="${esc(u.id)}">Report this member to Support</button>`:''}</div>`);
+    if(state.profile){const profile=document.querySelector('.member-profile');profile?.insertAdjacentHTML('beforeend','<button class="outline-btn" id="viewVehicleDetails">Vehicle & social profiles</button>');document.querySelector('#viewVehicleDetails')?.addEventListener('click',()=>memberDetails.view(u.id));}
     document.querySelector('[data-report-member]')?.addEventListener('click',()=>reportMember(u.id,u.name));
     const trust = document.querySelector('.trust-note');
     if (trust) trust.textContent = `${u.email_verified ? 'Email verified. ' : 'Email not verified. '}Phone and identity are not verified. Reviews follow confirmed bookings, not independently verified travel. New reviews publish when both participants submit or after 14 days.`;
@@ -896,7 +907,7 @@ async function enablePush() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) { showToast('Push notifications are not supported on this browser.'); return; }
   try {
     const permission = await Notification.requestPermission(); if (permission !== 'granted') throw new Error('Notifications were not allowed.');
-    const reg = await navigator.serviceWorker.ready; const key = (await api('/api/push/public-key')).publicKey; const existing = await reg.pushManager.getSubscription();
+    const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((_, reject) => setTimeout(() => reject(new Error('Notifications could not start. Reload the app and try again.')), 10000))]); const key = (await api('/api/push/public-key')).publicKey; const existing = await reg.pushManager.getSubscription();
     const sub = existing || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(key) });
     await api('/api/push/subscribe', { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint }) }); showToast('Notifications enabled', 'success');
   } catch (e) { showToast(e.message || 'Could not enable notifications.', 'error'); }
@@ -934,7 +945,9 @@ async function renderMe(tab = 'rides') {
   document.querySelector('#installApp')?.addEventListener('click', installApp);
   document.querySelector('#signOut')?.addEventListener('click', signOut);
   if (tab === 'account') {
-    document.querySelector('#meContent').insertAdjacentHTML('afterbegin','<div class="toolbar-actions"><button class="outline-btn" id="socialSecurity">Email, passkeys & privacy</button><button class="outline-btn" id="communityReports">Community reports</button><button class="outline-btn" data-nav="businesses">Local businesses</button></div>');
+    document.querySelector('#meContent').insertAdjacentHTML('afterbegin','<div class="toolbar-actions"><button class="outline-btn" id="profilePhoto">Profile photo</button><button class="outline-btn" id="vehicleAndLinks">Vehicle & social profiles</button><button class="outline-btn" id="socialSecurity">Email, passkeys & privacy</button><button class="outline-btn" id="communityReports">Community reports</button><button class="outline-btn" data-nav="businesses">Local businesses</button></div>');
+    document.querySelector('#profilePhoto').onclick=()=>profilePhotos.edit();
+    document.querySelector('#vehicleAndLinks').onclick=()=>memberDetails.edit();
     document.querySelector('#socialSecurity').onclick = () => socialUI.account();
     document.querySelector('#communityReports').onclick = () => socialUI.reports();
     bindNav();
@@ -1033,7 +1046,7 @@ async function renderAdmin(){
   let status;try{status=await api('/api/admin/status');}catch(e){showToast(e.message,'error');return renderMe('account');}
   if(!status.isAdmin){shell('<div class="empty-card"><h2>Admin access only</h2><p>This area is restricted to authorised Carpool Network administrators.</p></div>','me',{title:'Admin Control Room'});return;}
   if(!state.adminToken){
-    shell(`<section class="admin-lock-screen"><div class="admin-lock-icon">${icon('shield')}</div><span class="eyebrow">SECURE ADMIN</span><h1>Unlock Control Room</h1><p>Your normal member session is not enough. Enter the separate admin security code stored on your Mac.</p><form id="adminUnlock" class="admin-unlock-form"><input name="code" type="password" autocomplete="off" placeholder="Admin security code" required><button class="primary-btn">Unlock for 30 minutes</button></form><small>Admin sessions expire automatically and all moderation actions are audited.</small></section>`,'me',{title:'Admin Control Room',eyebrow:'CARPOOL NETWORK'});
+    shell(`<section class="admin-lock-screen"><div class="admin-lock-icon">${icon('shield')}</div><span class="eyebrow">SECURE ADMIN</span><h1>Unlock Control Room</h1><p>Your normal member session is not enough. Enter your separate admin security code.</p><form id="adminUnlock" class="admin-unlock-form"><input name="code" type="password" autocomplete="off" placeholder="Admin security code" required><button class="primary-btn">Unlock for 30 minutes</button></form><small>Admin sessions expire automatically and all moderation actions are audited.</small></section>`,'me',{title:'Admin Control Room',eyebrow:'CARPOOL NETWORK'});
     document.querySelector('#adminUnlock').onsubmit=async e=>{e.preventDefault();try{const d=await api('/api/admin/unlock',{method:'POST',body:JSON.stringify({code:e.currentTarget.code.value})});state.adminToken=d.adminToken;saveAdminToken(d.adminToken);showToast('Admin unlocked','success');renderAdmin();}catch(err){showToast(err.message,'error')}};return;
   }
   let d;try{d=await api('/api/admin/dashboard');}catch(e){if(/expired|unlock/i.test(e.message)){state.adminToken='';saveAdminToken('');return renderAdmin();}showToast(e.message,'error');return;}
@@ -1056,10 +1069,10 @@ async function renderAdmin(){
     <section class="admin-panel"><div class="section-head"><div><span class="eyebrow">AUDIT TRAIL</span><h2>Recent admin actions</h2></div></div><div class="audit-list">${(d.audit||[]).length?(d.audit||[]).map(a=>`<div><strong>${esc(a.action)}</strong><span>${esc(a.target_type)} · ${esc(a.target_id).slice(0,10)}…</span><small>${esc(a.admin_name||'Admin')} · ${relative(a.created_at)}${a.reason?` · ${esc(a.reason)}`:''}</small></div>`).join(''):'<p class="muted-center">No admin actions yet.</p>'}</div></section>`, 'me', {title:'Admin Control Room',eyebrow:'SECURE NETWORK OPERATIONS'});
   document.querySelector('#lockAdmin').onclick=async()=>{try{await api('/api/admin/lock',{method:'POST'});}catch{}state.adminToken='';saveAdminToken('');renderAdmin();};
   const search=document.querySelector('#adminMemberSearch');search.oninput=()=>{const q=search.value.toLowerCase();document.querySelectorAll('.admin-member').forEach(x=>x.hidden=!x.dataset.search.includes(q));};
-  const adminTop=document.querySelector('.admin-top');if(adminTop){adminTop.insertAdjacentHTML('afterend','<button class="outline-btn" id="openIssues">Problems & bug reports</button>');document.querySelector('#openIssues').onclick=renderIssues;}
+  const adminTop=document.querySelector('.admin-top');if(adminTop){adminTop.insertAdjacentHTML('afterend','<button class="outline-btn" id="reviewPhotos">Profile photo reviews</button><button class="outline-btn" id="openIssues">Problems & bug reports</button>');document.querySelector('#openIssues').onclick=renderIssues;document.querySelector('#reviewPhotos').onclick=()=>profilePhotos.review();}
   bindAdminActions();
 }
-function adminMemberCard(u){return `<div class="admin-member" data-search="${esc(`${u.name} ${u.phone} ${u.area}`.toLowerCase())}"><div class="admin-member-main"><span class="admin-member-avatar">${esc(fallbackEmoji(u.id))}</span><div><strong>${esc(u.name)} ${u.role?`<em>${esc(u.role)}</em>`:''}</strong><p>${esc(u.area)} · ${esc(u.phone)}</p><small>${u.rating?`★ ${Number(u.rating).toFixed(1)} · `:''}${Number(u.posts||0)} posts · ${esc(u.moderation_status)}</small></div></div>${u.role==='superadmin'?'<span class="protected-admin">Protected</span>':`<div class="admin-actions"><a class="whatsapp-mini" target="_blank" rel="noopener" href="https://wa.me/${esc(String(u.phone).replace(/\D/g,''))}">${icon('whatsapp')}</a>${u.moderation_status==='active'?`<button class="outline-btn tiny" data-admin-suspend="${esc(u.id)}">Suspend</button><button class="danger-outline tiny" data-admin-ban="${esc(u.id)}">Ban</button>`:`<button class="outline-btn tiny" data-admin-unban="${esc(u.id)}">Restore</button>`}</div>`}</div>`;}
+function adminMemberCard(u){return `<div class="admin-member" data-search="${esc(`${u.name} ${u.phone} ${u.area}`.toLowerCase())}"><div class="admin-member-main"><span class="admin-member-avatar">${esc(fallbackEmoji(u.id))}</span><div><strong>${esc(u.name)} ${u.role?`<em>${esc(u.role)}</em>`:''}</strong><p>${esc(u.area)} · ${esc(String(u.phone||'').startsWith('email:')?'Email account':u.phone||'Phone not shared')}</p><small>${u.rating?`★ ${Number(u.rating).toFixed(1)} · `:''}${Number(u.posts||0)} posts · ${esc(u.moderation_status)}</small></div></div>${u.role==='superadmin'?'<span class="protected-admin">Protected</span>':`<div class="admin-actions">${/^\+?[0-9 ()-]{9,20}$/.test(String(u.phone||''))?`<a class="whatsapp-mini" aria-label="Open WhatsApp contact" target="_blank" rel="noopener" href="https://wa.me/${esc(String(u.phone).replace(/\D/g,''))}">${icon('whatsapp')}</a>`:``}${u.moderation_status==='active'?`<button class="outline-btn tiny" data-admin-suspend="${esc(u.id)}">Suspend</button><button class="danger-outline tiny" data-admin-ban="${esc(u.id)}">Ban</button>`:`<button class="outline-btn tiny" data-admin-unban="${esc(u.id)}">Restore</button>`}</div>`}</div>`;}
 function adminTicketCard(t){return `<button class="admin-ticket" data-admin-ticket="${esc(t.id)}"><span class="ticket-priority ${esc(t.priority)}"></span><div><strong>${esc(t.subject)}</strong><p>${esc(t.name)} · ${esc(t.category)}</p><small>${relative(t.updated_at)}</small></div>${icon('chevron')}</button>`;}
 function bindAdminActions(){
   document.querySelectorAll('[data-admin-suspend]').forEach(b=>b.onclick=()=>moderateMember(b.dataset.adminSuspend,'suspend'));
@@ -1070,7 +1083,7 @@ function bindAdminActions(){
 }
 async function removeReportedPost(id){const reason=prompt('Why is this post being removed?');if(!reason)return;if(!confirm('Remove this post from the network?'))return;try{await api(`/api/admin/posts/${id}/remove`,{method:'POST',body:JSON.stringify({reason})});showToast('Post removed','success');renderAdmin();}catch(e){showToast(e.message,'error')}}
 async function moderateMember(id,action){const reason=action==='unban'?'':prompt(`${action==='ban'?'Ban':'Suspend'} reason:`);if(action!=='unban'&&!reason)return;let days=7;if(action==='suspend'){const raw=prompt('Suspend for how many days?','7');if(!raw)return;days=Math.max(1,Math.min(90,Number(raw)||7));}if(!confirm(`${action==='unban'?'Restore':action==='ban'?'Ban':'Suspend'} this member?`))return;try{await api(`/api/admin/users/${id}/moderate`,{method:'POST',body:JSON.stringify({action,reason,days})});showToast('Moderation updated','success');renderAdmin();}catch(e){showToast(e.message,'error')}}
-async function openAdminTicket(id){try{const d=await api(`/api/admin/support/${id}`);openSheet(`<div class="sheet-title"><span class="eyebrow">ADMIN SUPPORT</span><h2>${esc(d.ticket.subject)}</h2><p>${esc(d.ticket.name)} · ${esc(d.ticket.phone)} · ${esc(d.ticket.category)}</p></div><div class="support-thread">${d.messages.map(m=>`<div class="support-message ${m.sender_role}"><strong>${m.sender_role==='admin'?'Support':esc(d.ticket.name)}</strong><p>${esc(m.body)}</p><small>${relative(m.created_at)}</small></div>`).join('')}</div><form id="adminSupportReply" class="simple-form"><label><span>Reply</span><textarea name="message" maxlength="1800" required></textarea></label><label><span>After reply</span><select name="status"><option value="waiting">Waiting for member</option><option value="resolved">Resolved</option><option value="open">Keep open</option><option value="closed">Close</option></select></label><button class="primary-btn full">Send reply</button></form>`);document.querySelector('#adminSupportReply').onsubmit=async e=>{e.preventDefault();try{await api(`/api/admin/support/${id}`,{method:'POST',body:JSON.stringify({message:e.currentTarget.message.value,status:e.currentTarget.status.value})});closeSheet();showToast('Support reply sent','success');renderAdmin();}catch(err){showToast(err.message,'error')}};}catch(e){showToast(e.message,'error')}}
+async function openAdminTicket(id){try{const d=await api(`/api/admin/support/${id}`);openSheet(`<div class="sheet-title"><span class="eyebrow">ADMIN SUPPORT</span><h2>${esc(d.ticket.subject)}</h2><p>${esc(d.ticket.name)} · ${esc(String(d.ticket.phone||'').startsWith('email:')?'Email account':d.ticket.phone||'Phone not shared')} · ${esc(d.ticket.category)}</p></div><div class="support-thread">${d.messages.map(m=>`<div class="support-message ${m.sender_role}"><strong>${m.sender_role==='admin'?'Support':esc(d.ticket.name)}</strong><p>${esc(m.body)}</p><small>${relative(m.created_at)}</small></div>`).join('')}</div><form id="adminSupportReply" class="simple-form"><label><span>Reply</span><textarea name="message" maxlength="1800" required></textarea></label><label><span>After reply</span><select name="status"><option value="waiting">Waiting for member</option><option value="resolved">Resolved</option><option value="open">Keep open</option><option value="closed">Close</option></select></label><button class="primary-btn full">Send reply</button></form>`);document.querySelector('#adminSupportReply').onsubmit=async e=>{e.preventDefault();try{await api(`/api/admin/support/${id}`,{method:'POST',body:JSON.stringify({message:e.currentTarget.message.value,status:e.currentTarget.status.value})});closeSheet();showToast('Support reply sent','success');renderAdmin();}catch(err){showToast(err.message,'error')}};}catch(e){showToast(e.message,'error')}}
 
 function editProfile() {
   const currentEmoji=memberEmoji(state.profile);
@@ -1087,6 +1100,7 @@ function editProfile() {
     <div class="emoji-picker-wrap"><span class="field-label">Your network emoji</span><input type="hidden" name="avatarEmoji" value="${esc(currentEmoji)}"><div class="emoji-picker">${MEMBER_EMOJIS.map(e=>`<button type="button" class="${e===currentEmoji?'selected':''}" data-emoji="${esc(e)}">${esc(e)}</button>`).join('')}</div></div>
     <button class="primary-btn full">Save changes</button></form>`);
   const form=document.querySelector('#profileForm');
+  bindLocationInput(form.area,{current:true,toast:showToast});
   if(state.profile.phone?.startsWith('email:') && form.phone){form.phone.value='';form.phone.disabled=true;form.phone.placeholder='Phone not verified';}
   form.querySelectorAll('[data-emoji]').forEach(b=>b.onclick=()=>{ form.avatarEmoji.value=b.dataset.emoji; form.querySelectorAll('[data-emoji]').forEach(x=>x.classList.toggle('selected',x===b)); });
   form.onsubmit = async e => { e.preventDefault(); const f = new FormData(e.currentTarget); try { await api('/api/profile', { method: 'PATCH', body: JSON.stringify(Object.fromEntries(f)) }); const d = await api('/api/profile'); saveProfile({ ...state.profile, ...d.profile, token: state.profile.token }); closeSheet(); renderMe('account'); } catch (err) { showToast(err.message); } };
@@ -1187,11 +1201,24 @@ async function renderLocation() {
 }
 window.addEventListener('popstate', () => { closeSheet(); renderLocation().catch(error => showToast(error.message, 'error')); });
 window.addEventListener('offline', () => showToast('You are offline. Reconnect before posting or booking.', 'error'));
+function renderConnectionUnavailable(){
+  state.connectionUnavailable=true;
+  closeSheet();
+  shell('<section class="section-block"><div class="empty-card"><h1>Connection unavailable</h1><p>Reconnect to check your account, bookings and messages. Your sign-in has not been cleared. No booking or message can be confirmed while offline.</p><button id="retryConnection" class="primary-btn">Try connection again</button></div></section>','home');
+  document.querySelector('#retryConnection').onclick=()=>boot().catch(error=>showToast(error.message,'error'));
+}
+window.addEventListener('online',()=>{if(state.connectionUnavailable)boot().catch(error=>showToast(error.message,'error'));});
 async function boot() {
+  if(!navigator.onLine){renderConnectionUnavailable();return;}
+  state.connectionUnavailable=false;
   const params = new URLSearchParams(location.search); const post = params.get('post');
-  await Promise.all([restoreSession(), fetch('/api/config', { signal: AbortSignal.timeout(10000) }).then(r => r.json()).then(config => { state.preview = Boolean(config.preview); state.supportEmail = config.supportEmail || ''; state.emailAvailable = Boolean(config.emailAvailable); }).catch(() => {})]);
+  let configLoaded=false;
+  await Promise.all([restoreSession(), fetch('/api/config', { signal: AbortSignal.timeout(10000) }).then(r => {if(!r.ok)throw Error('Configuration unavailable');return r.json();}).then(config => { configLoaded=true;state.preview = Boolean(config.preview); state.supportEmail = config.supportEmail || ''; state.emailAvailable = Boolean(config.emailAvailable); }).catch(() => {})]);
+  if(!configLoaded&&!state.profile){renderConnectionUnavailable();return;}
   await renderLocation();
 }
+const profilePhotos=createProfilePhotos({api,esc,openSheet,closeSheet,showToast});
+const memberDetails=createMemberDetails({api,esc,openSheet,closeSheet,showToast});
 const socialUI = createSocialUI({api,esc,icon,shell,beginView,state,openSheet,closeSheet,showToast,openPost,openUser,saveProfile,clearStoredProfile,navigate,openPinSignIn,connectLive});
 boot().catch(error => { app.textContent = 'Unable to load Carpool Network. Please reload the page.'; showToast(error.message, 'error'); });
 

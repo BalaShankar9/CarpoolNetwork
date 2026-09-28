@@ -6,6 +6,7 @@ import {resolve,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {randomUUID,createHash,randomInt} from 'node:crypto';
 import WebSocket from 'ws';
+import {authenticator} from './passkey-fixture.js';
 const root=fileURLToPath(new URL('..',import.meta.url));
 const base='http://127.0.0.1:8788';
 const walk=p=>readdirSync(p,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(join(p,e.name)):[join(p,e.name)]);
@@ -69,6 +70,56 @@ await test('Focused community candidate: real Worker, D1 and WebSocket journeys'
   const d=ok(await api('/api/auth/passkey/register/options',{user:driver,method:'POST',body:{}}));assert.equal(d.options.rp.id,'127.0.0.1');assert.ok(d.options.challenge);
   const bad=await api('/api/auth/passkey/register/verify',{user:driver,method:'POST',body:{id:d.id,response:{id:'forged'}}});assert.equal(bad.status,400);
   assert.equal((await api('/api/auth/passkey/register/verify',{user:driver,method:'POST',body:{id:d.id,response:{id:'forged'}}})).status,403);
+ });
+ await t.test('signed passkey registration and sign-in work; replay and wrong origin fail',async()=>{
+  const device=authenticator(base);
+  const registration=ok(await api('/api/auth/passkey/register/options',{user:driver,method:'POST',body:{}}));
+  const response=device.register(registration.options.challenge);
+  ok(await api('/api/auth/passkey/register/verify',{user:driver,method:'POST',body:{id:registration.id,response,label:'Synthetic local authenticator'}}));
+  const challenge=ok(await api('/api/auth/passkey/login/options',{method:'POST',body:{}}));
+  const assertion={id:challenge.id,response:device.login(challenge.options.challenge,driver.id)};
+  const signed=ok(await api('/api/auth/passkey/login/verify',{method:'POST',body:assertion}));assert.equal(signed.profile.id,driver.id);
+  assert.equal((await api('/api/auth/passkey/login/verify',{method:'POST',body:assertion})).status,403);
+  const other=ok(await api('/api/auth/passkey/login/options',{method:'POST',body:{}}));
+  assert.equal((await api('/api/auth/passkey/login/verify',{method:'POST',body:{id:other.id,response:device.login(other.options.challenge,driver.id,2,'https://wrong.invalid')}})).status,403);
+ });
+ await t.test('service-worker startup failures enter the private diagnostic queue',async()=>{
+  ok(await api('/api/diagnostics',{method:'POST',body:{source:'browser',code:'SERVICE_WORKER_ERROR',route:'/sw.js'}}),201);
+  assert.ok(sql("SELECT id FROM diagnostic_issues WHERE code='SERVICE_WORKER_ERROR' AND route='/sw.js'").length);
+ });
+ await t.test('city and radius search excludes remote pickup towns and mismatched destinations',async()=>{
+  const q=new URLSearchParams({from:'Cardiff, Wales',to:'Bristol',date,time:'10:00',seats:'1',radiusMiles:'5'});
+  const local=ok(await api('/api/rides/search?'+q));assert.ok(local.rides.some(p=>p.id===ride.id));
+  q.set('from','London, England');assert.ok(!ok(await api('/api/rides/search?'+q)).rides.some(p=>p.id===ride.id));
+  q.set('from','Cardiff');q.set('to','Manchester');assert.ok(!ok(await api('/api/rides/search?'+q)).rides.some(p=>p.id===ride.id));
+  q.set('from','Not a known town');assert.equal((await api('/api/rides/search?'+q)).status,400);
+  assert.ok(ok(await api('/api/places?q=Cardiff')).places.some(p=>p.name==='Cardiff'));
+ });
+ await t.test('social profile links require a session; missing DVLA setup never reports verification',async()=>{
+  assert.equal((await api('/api/member-details')).status,401);
+  ok(await api('/api/member-details/links',{user:driver,method:'POST',body:{instagram:'https://www.instagram.com/local-test/'}}));
+  assert.equal(ok(await api('/api/member-details',{user:driver})).links.instagram,'https://www.instagram.com/local-test/');
+  assert.equal((await api('/api/member-details/vehicle',{user:driver,method:'POST',body:{registration:'AB12CDE',passengerSeats:4,authorised:true}})).status,503);
+  assert.equal(ok(await api('/api/member-details',{user:driver})).vehicle,null);
+ });
+ await t.test('profile photos remain private until moderator approval; stale reviews and member approvals fail',async()=>{
+  const jpeg=readFileSync(join(root,'test/fixtures/photo-placeholder.jpg')).toString('base64');
+  ok(await api('/api/profile-photo',{user:driver,method:'POST',body:{jpeg,publicProfile:true}}),201);
+  assert.equal(ok(await api('/api/profile-photo',{user:driver})).photo.status,'pending');
+  assert.equal((await fetch(base+'/api/profile-photo/'+driver.id)).status,404);
+  assert.equal((await api('/api/admin/profile-photos',{user:rider})).status,403);
+  const code=randomUUID().toUpperCase();
+  sql("INSERT INTO user_roles(user_id,role) VALUES(?,'admin')",[rider.id]);sql('INSERT INTO admin_credentials(user_id,code_hash) VALUES(?,?)',[rider.id,hash(code)]);
+  try{
+    const admin=ok(await api('/api/admin/unlock',{user:rider,method:'POST',body:{code}})).adminToken,headers={'x-admin-token':admin};
+    const image=ok(await api('/api/admin/profile-photos/'+driver.id,{user:rider,headers}));assert.match(image.image,/^data:image\/jpeg;base64,/);
+    assert.equal((await api('/api/admin/profile-photos/'+driver.id,{user:rider,headers,method:'POST',body:{key:'stale',status:'approved'}})).status,409);
+    // Approval here is a synthetic authorization/storage test, not a claim that
+    // this deliberately blank fixture contains a face.
+    ok(await api('/api/admin/profile-photos/'+driver.id,{user:rider,headers,method:'POST',body:{key:image.key,status:'approved',note:'Synthetic local test fixture only'}}));
+    const photo=await fetch(base+'/api/profile-photo/'+driver.id);assert.equal(photo.status,200);assert.equal(photo.headers.get('content-type'),'image/jpeg');
+    assert.equal(ok(await api('/api/profile',{user:driver})).profile.photo_approved,1);
+  }finally{sql('DELETE FROM admin_sessions WHERE user_id=?',[rider.id]);sql('DELETE FROM admin_credentials WHERE user_id=?',[rider.id]);sql('DELETE FROM user_roles WHERE user_id=?',[rider.id]);}
  });
  await t.test('support conversations are private to their member',async()=>{
   const created=ok(await api('/api/support/tickets',{user:driver,method:'POST',body:{category:'technical',subject:'Local support privacy check',message:'This is a synthetic support request for automated tests.'}}),201);

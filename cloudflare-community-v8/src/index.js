@@ -1,5 +1,8 @@
+import {photoRoutes,cleanupProfilePhotos} from './photos.js';
+import {vehicleRoutes} from './vehicles.js';
+import { placesRoute, locationMatch, resolvePlace } from './places.js';
 import { emailAuth } from './email-auth.js';
-import { generateAuthenticationOptions, verifyAuthenticationResponse, generateRegistrationOptions, verifyRegistrationResponse } from './vendor/passkeys.js';
+import { generateAuthenticationOptions, verifyAuthenticationResponse, generateRegistrationOptions, verifyRegistrationResponse } from '@simplewebauthn/server';
 import { RELEASE, captureFailure, diagnosticRoutes } from './reliability.js';
 const __name=(target,value)=>Object.defineProperty(target,'name',{value,configurable:true});
 
@@ -738,6 +741,9 @@ async function socialRoutes(request, env, h) {
   }
   if (path === "/export" && method === "GET") return reply({
     profile: auth.user,
+    socialLinks: await one(env,'SELECT instagram,facebook FROM member_social_links WHERE user_id=?',uid),
+    vehicle: await one(env,'SELECT registration,make,colour,manufacture_year,fuel,mot_status,mot_expiry,tax_status,tax_due,passenger_seats,checked_at FROM member_vehicles WHERE user_id=?',uid),
+    profilePhoto: await one(env,'SELECT status,review_note,updated_at FROM profile_photos WHERE user_id=?',uid),
     messages: await all(env, "SELECT id,body,created_at FROM chat_messages WHERE author_id=?", uid),
     posts: await all(env, "SELECT * FROM posts WHERE author_id=?", uid),
     memberships: await all(env, "SELECT * FROM conversation_members WHERE user_id=?", uid),
@@ -752,7 +758,7 @@ async function socialRoutes(request, env, h) {
       env.DB.prepare("UPDATE users SET name='Deleted member',phone=?,bio='',area='',token_hash=? WHERE id=?").bind(`deleted:${uid}`, crypto.randomUUID(), uid),
       env.DB.prepare("UPDATE posts SET status='deleted',body='',title='Deleted listing' WHERE author_id=?").bind(uid),
       env.DB.prepare("UPDATE chat_messages SET body='',deleted=1,pinned=0 WHERE author_id=?").bind(uid),
-      ...["member_emails", "passkeys", "user_sessions", "account_login_pins", "account_recovery", "push_subscriptions", "admin_sessions", "user_roles", "business_profiles", "user_profile_details"].map((table) => env.DB.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(uid)),
+      ...["profile_photos", "member_social_links", "member_vehicles", "member_emails", "passkeys", "user_sessions", "account_login_pins", "account_recovery", "push_subscriptions", "admin_sessions", "user_roles", "business_profiles", "user_profile_details"].map((table) => env.DB.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(uid)),
       env.DB.prepare("UPDATE conversation_members SET status='removed' WHERE user_id=?").bind(uid),
       env.DB.prepare("UPDATE user_moderation SET status='banned',reason='Account deleted' WHERE user_id=?").bind(uid)
     ]);
@@ -1337,7 +1343,7 @@ async function resolveSession(request, env) {
     const hash = await sha2562(candidate.token);
     const user = await env.DB.prepare(`
       SELECT u.id,u.name,u.phone,u.area,u.bio,u.created_at,
-        COALESCE(d.avatar_emoji,'') avatar_emoji,COALESCE(d.gender,'') gender,
+        COALESCE(d.avatar_emoji,'') avatar_emoji,EXISTS(SELECT 1 FROM profile_photos pp WHERE pp.user_id=u.id AND pp.approved_key<>'') photo_approved,COALESCE(d.gender,'') gender,
         COALESCE(d.travel_role,'both') travel_role,COALESCE(d.community,'') community,
         (SELECT ROUND(AVG(r.score),1) FROM published_ratings r WHERE r.ratee_id=u.id) rating,
         (SELECT COUNT(*) FROM published_ratings r WHERE r.ratee_id=u.id) rating_count,
@@ -1417,6 +1423,7 @@ function publicPost(row, viewerId = "", score = null) {
       name: row.author_name,
       area: row.author_area,
       avatarEmoji: row.author_avatar_emoji || avatarForId(row.author_id),
+      photo_approved:Boolean(row.author_photo_approved),
       rating: row.author_rating == null ? null : Number(row.author_rating),
       ratingCount: Number(row.author_rating_count || 0)
     },
@@ -1434,7 +1441,7 @@ async function queryPost(env, id, viewerId = "") {
     SELECT p.*, u.name author_name, u.phone author_phone, u.area author_area,
       (SELECT start_time FROM ride_time_windows w WHERE w.post_id=p.id) window_start,
       (SELECT end_time FROM ride_time_windows w WHERE w.post_id=p.id) window_end,
-      (SELECT avatar_emoji FROM user_profile_details d WHERE d.user_id=u.id) author_avatar_emoji,
+      (SELECT avatar_emoji FROM user_profile_details d WHERE d.user_id=u.id) author_avatar_emoji,EXISTS(SELECT 1 FROM profile_photos pp WHERE pp.user_id=u.id AND pp.approved_key<>'') author_photo_approved,
       (SELECT ROUND(AVG(rt.score),1) FROM published_ratings rt WHERE rt.ratee_id=u.id) author_rating,
       (SELECT COUNT(*) FROM published_ratings rt WHERE rt.ratee_id=u.id) author_rating_count,
       (SELECT COALESCE(SUM(rr.seats_requested),0) FROM ride_requests rr WHERE rr.ride_offer_post_id=p.id AND rr.status IN ('accepted','completed')) accepted_seats,
@@ -1708,6 +1715,12 @@ async function createPost(data, env, user, message = null) {
   const whatsappEnabled = RIDE_CATEGORIES.has(category) ? 1 : data.whatsappEnabled === false ? 0 : 1;
   let origin = "", destination = "", journeyDate = "", journeyTime = "", flexibility = 30, seats = 1;
   if (RIDE_CATEGORIES.has(category)) {
+    if(env.REQUIRE_PROFILE_PHOTO==='true'&&!await one(env,"SELECT user_id FROM profile_photos WHERE user_id=? AND approved_key<>''",user.id))return fail('Add your profile photo and wait for approval before offering or requesting rides.',428);
+    if(category==='ride_offer'&&env.REQUIRE_VEHICLE==='true'){
+      const vehicle=await one(env,"SELECT * FROM member_vehicles WHERE user_id=? AND checked_at>datetime('now','-1 day')",user.id);
+      if(!vehicle||vehicle.mot_status!=='Valid'||vehicle.tax_status!=='Taxed')return fail('Add your vehicle and refresh its DVLA check before offering a ride. MOT exemptions need Support review.',428);
+      if(Number(data.seats)>vehicle.passenger_seats)return fail('The offered seats exceed your registered passenger-seat count.');
+    }
     origin = clean(data.origin, 120);
     destination = clean(data.destination, 120);
     journeyDate = clean(data.journeyDate, 10);
@@ -1787,6 +1800,13 @@ __name(socialHelpers, "socialHelpers");
 async function handleApi(request, env) {
   const url = new URL(request.url);
   const path = url.pathname;
+  const placeResponse=placesRoute(request);if(placeResponse)return placeResponse;
+  const photoResponse=await photoRoutes(request,env,{requireUser,requireAdmin,fail,json,verified,rateLimitOrFail,stripJpegMetadata,adminAudit});if(photoResponse)return photoResponse;
+  const vehicleResponse=await vehicleRoutes(request,env,{requireUser,fail,json,verified,blocked,rateLimitOrFail});if(vehicleResponse)return vehicleResponse;
+  if(env.REQUIRE_PROFILE_PHOTO==='true'&&request.method==='POST'&&(path==='/api/posts'||path==='/api/ride-requests'||path==='/api/ride-requests/quick'||/^\/api\/social\/rooms\/[^/]+\/messages$/.test(path))){
+    const member=await requireUser(request,env);if(member.error)return member.error;
+    if(!await one(env,"SELECT user_id FROM profile_photos WHERE user_id=? AND approved_key<>''",member.user.id))return fail('Add your profile photo in Account and wait for approval before participating.',428);
+  }
   const diagnostic=await diagnosticRoutes(request,env,{json,fail,rateLimitOrFail,currentUser,requireAdmin,adminAudit});
   if(diagnostic)return diagnostic;
   if (path.startsWith("/api/social/")) return socialRoutes(request, env, socialHelpers());
@@ -1846,6 +1866,8 @@ async function handleApi(request, env) {
     const viewer = await currentUser(request, env, false);
     const origin = clean(url.searchParams.get("from"), 120), destination = clean(url.searchParams.get("to"), 120);
     const journeyDate = clean(url.searchParams.get("date"), 10), journeyTime = clean(url.searchParams.get("time"), 5);
+    const radiusMiles=clampInt(url.searchParams.get("radiusMiles"),0,50,0),localDrivers=url.searchParams.get("localDrivers")==="true";
+    if((radiusMiles||localDrivers)&&!resolvePlace(origin))return fail("Choose a suggested town to use radius or local-driver filters.");
     const seats = clampInt(url.searchParams.get("seats"), 1, 8, 1);
     if (origin.length < 2 || destination.length < 2 || !validDate(journeyDate)) return fail("Enter where you are travelling from, where you are going and the date.");
     const nowUk = ukNowParts();
@@ -1853,7 +1875,7 @@ async function handleApi(request, env) {
     const source = { category: "ride_wanted", origin, destination, journey_date: journeyDate, journey_time: validTime(journeyTime) ? journeyTime : "12:00", flexibility_minutes: validTime(journeyTime) ? 60 : 720, seats };
     const rows = await env.DB.prepare(`
       SELECT p.*, (SELECT start_time FROM ride_time_windows w WHERE w.post_id=p.id) window_start, (SELECT end_time FROM ride_time_windows w WHERE w.post_id=p.id) window_end,u.name author_name,u.phone author_phone,u.area author_area,
-        (SELECT avatar_emoji FROM user_profile_details d WHERE d.user_id=u.id) author_avatar_emoji,
+        (SELECT avatar_emoji FROM user_profile_details d WHERE d.user_id=u.id) author_avatar_emoji,EXISTS(SELECT 1 FROM profile_photos pp WHERE pp.user_id=u.id AND pp.approved_key<>'') author_photo_approved,
         (SELECT ROUND(AVG(rt.score),1) FROM published_ratings rt WHERE rt.ratee_id=u.id) author_rating,
         (SELECT COUNT(*) FROM published_ratings rt WHERE rt.ratee_id=u.id) author_rating_count,
         (SELECT COALESCE(SUM(rr.seats_requested),0) FROM ride_requests rr WHERE rr.ride_offer_post_id=p.id AND rr.status IN ('accepted','completed')) accepted_seats,
@@ -1864,10 +1886,12 @@ async function handleApi(request, env) {
       WHERE p.status='active' AND p.category='ride_offer' AND p.journey_date=?
       ORDER BY p.journey_time ASC,p.created_at DESC LIMIT 500
     `).bind(journeyDate).all();
-    const rides = (await visiblePosts(env, rows.results || [], viewer?.id)).map((row) => ({ row, score: rideMatchScore(source, row) })).filter(({ row, score }) => {
+    const rides = (await visiblePosts(env, rows.results || [], viewer?.id)).map((row) => ({ row, score: rideMatchScore(source, row), local:locationMatch(row,{from:origin,radiusMiles,localDrivers}) })).filter(({ row, score, local }) => {
       const available = Math.max(0, Number(row.seats || 1) - Number(row.accepted_seats || 0));
-      return score >= 35 && available >= seats && row.author_id !== viewer?.id && !journeyHasDeparted(row.journey_date, row.journey_time, 15);
-    }).sort((a, b) => b.score - a.score || String(a.row.journey_time).localeCompare(String(b.row.journey_time))).slice(0, 30).map(({ row, score }) => publicPost(row, viewer?.id || "", score));
+      const destinationMatches=resolvePlace(destination)?.id===resolvePlace(row.destination)?.id && !!resolvePlace(destination) || wordScore(destination,row.destination)>=0.5;
+      const timeMatches=!validTime(journeyTime)||Math.abs(timeMinutes(journeyTime)-timeMinutes(row.journey_time))<=Math.max(60,source.flexibility_minutes+Number(row.flexibility_minutes||30));
+      return local.matches && destinationMatches && timeMatches && score >= 35 && available >= seats && row.author_id !== viewer?.id && !journeyHasDeparted(row.journey_date, row.journey_time, 15);
+    }).sort((a, b) => b.score - a.score || String(a.row.journey_time).localeCompare(String(b.row.journey_time))).slice(0, 30).map(({ row, score, local }) => ({...publicPost(row, viewer?.id || "", score),pickupDistanceMiles:local.miles===null?null:Math.round(local.miles*10)/10}));
     const requests = viewer ? await env.DB.prepare("SELECT id,ride_offer_post_id,status,seats_requested FROM ride_requests WHERE rider_id=? AND status IN ('pending','accepted','completed')").bind(viewer.id).all() : { results: [] };
     return json({ ok: true, rides: rides.map((p) => ({ ...p, booking: requests.results.find((r) => r.ride_offer_post_id === p.id) || null })), query: { origin, destination, journeyDate, journeyTime: validTime(journeyTime) ? journeyTime : "", seats } });
   }
@@ -1963,7 +1987,7 @@ async function handleApi(request, env) {
     const recoveryPhoneLimited = await rateLimitOrFail(request, env, "recovery_phone", 5, 900, phone, true);
     if (recoveryPhoneLimited) return recoveryPhoneLimited;
     const hash = await sha2562(code);
-    const user = await env.DB.prepare(`SELECT u.id,u.name,u.phone,u.area,u.bio,COALESCE(d.avatar_emoji,'') avatar_emoji,COALESCE(d.gender,'') gender,COALESCE(d.travel_role,'both') travel_role,COALESCE(d.community,'') community,COALESCE(m.status,'active') moderation_status,COALESCE(m.reason,'') moderation_reason,COALESCE(m.until_at,'') moderation_until FROM users u JOIN account_recovery r ON r.user_id=u.id LEFT JOIN user_profile_details d ON d.user_id=u.id LEFT JOIN user_moderation m ON m.user_id=u.id WHERE r.code_hash=? AND u.phone=?`).bind(hash, phone).first();
+    const user = await env.DB.prepare(`SELECT u.id,u.name,u.phone,u.area,u.bio,COALESCE(d.avatar_emoji,'') avatar_emoji,EXISTS(SELECT 1 FROM profile_photos pp WHERE pp.user_id=u.id AND pp.approved_key<>'') photo_approved,COALESCE(d.gender,'') gender,COALESCE(d.travel_role,'both') travel_role,COALESCE(d.community,'') community,COALESCE(m.status,'active') moderation_status,COALESCE(m.reason,'') moderation_reason,COALESCE(m.until_at,'') moderation_until FROM users u JOIN account_recovery r ON r.user_id=u.id LEFT JOIN user_profile_details d ON d.user_id=u.id LEFT JOIN user_moderation m ON m.user_id=u.id WHERE r.code_hash=? AND u.phone=?`).bind(hash, phone).first();
     if (!user) return fail("Recovery details did not match.", 403);
     if (user.moderation_status === "banned") return fail("This account is banned. Contact Support if you believe this is wrong.", 403);
     if (user.moderation_status === "suspended" && (!user.moderation_until || user.moderation_until > sqlNow())) return fail("This account is temporarily suspended. Contact Support if you need help.", 403);
@@ -2021,7 +2045,7 @@ async function handleApi(request, env) {
     }
     const rows = await env.DB.prepare(`
       SELECT p.*, (SELECT start_time FROM ride_time_windows w WHERE w.post_id=p.id) window_start, (SELECT end_time FROM ride_time_windows w WHERE w.post_id=p.id) window_end,u.name author_name,u.phone author_phone,u.area author_area,
-        (SELECT avatar_emoji FROM user_profile_details d WHERE d.user_id=u.id) author_avatar_emoji,
+        (SELECT avatar_emoji FROM user_profile_details d WHERE d.user_id=u.id) author_avatar_emoji,EXISTS(SELECT 1 FROM profile_photos pp WHERE pp.user_id=u.id AND pp.approved_key<>'') author_photo_approved,
         (SELECT ROUND(AVG(rt.score),1) FROM published_ratings rt WHERE rt.ratee_id=u.id) author_rating,
         (SELECT COUNT(*) FROM published_ratings rt WHERE rt.ratee_id=u.id) author_rating_count,
         (SELECT COALESCE(SUM(rr.seats_requested),0) FROM ride_requests rr WHERE rr.ride_offer_post_id=p.id AND rr.status IN ('accepted','completed')) accepted_seats,
@@ -2137,7 +2161,7 @@ async function handleApi(request, env) {
     const opposite = source.category === "ride_wanted" ? "ride_offer" : "ride_wanted";
     const rows = await env.DB.prepare(`
       SELECT p.*, (SELECT start_time FROM ride_time_windows w WHERE w.post_id=p.id) window_start, (SELECT end_time FROM ride_time_windows w WHERE w.post_id=p.id) window_end,u.name author_name,u.phone author_phone,u.area author_area,
-        (SELECT avatar_emoji FROM user_profile_details d WHERE d.user_id=u.id) author_avatar_emoji,
+        (SELECT avatar_emoji FROM user_profile_details d WHERE d.user_id=u.id) author_avatar_emoji,EXISTS(SELECT 1 FROM profile_photos pp WHERE pp.user_id=u.id AND pp.approved_key<>'') author_photo_approved,
         (SELECT ROUND(AVG(rt.score),1) FROM published_ratings rt WHERE rt.ratee_id=u.id) author_rating,
         (SELECT COUNT(*) FROM published_ratings rt WHERE rt.ratee_id=u.id) author_rating_count,
         (SELECT COALESCE(SUM(rr.seats_requested),0) FROM ride_requests rr WHERE rr.ride_offer_post_id=p.id AND rr.status IN ('accepted','completed')) accepted_seats,
@@ -2447,7 +2471,7 @@ async function handleApi(request, env) {
   const userMatch = path.match(/^\/api\/users\/([^/]+)$/);
   if (userMatch && request.method === "GET") {
     const user = await env.DB.prepare(`SELECT u.id,u.name,u.area,u.bio,u.created_at,
-      COALESCE(d.avatar_emoji,'') avatar_emoji,COALESCE(d.gender,'') gender,COALESCE(d.travel_role,'both') travel_role,COALESCE(d.community,'') community,
+      COALESCE(d.avatar_emoji,'') avatar_emoji,EXISTS(SELECT 1 FROM profile_photos pp WHERE pp.user_id=u.id AND pp.approved_key<>'') photo_approved,COALESCE(d.gender,'') gender,COALESCE(d.travel_role,'both') travel_role,COALESCE(d.community,'') community,
       ROUND(AVG(r.score),1) rating,COUNT(r.id) rating_count,
       (SELECT COUNT(*) FROM ride_requests rr WHERE (rr.rider_id=u.id OR rr.driver_id=u.id) AND rr.status='completed') completed_rides
       FROM users u LEFT JOIN user_profile_details d ON d.user_id=u.id LEFT JOIN published_ratings r ON r.ratee_id=u.id WHERE u.id=? GROUP BY u.id`).bind(userMatch[1]).first();
@@ -2819,7 +2843,7 @@ var index_default = {
             const { value, done } = await reader.read();
             if (done) break;
             size += value.byteLength;
-            if (size > (url.pathname === "/api/social/media" ? 15e5 : 16384)) {
+            if (size > (["/api/social/media","/api/profile-photo"].includes(url.pathname) ? 15e5 : 16384)) {
               await reader.cancel();
               return withSecurityHeaders(fail("This request is too large.", 413));
             }
@@ -2873,12 +2897,12 @@ var index_default = {
       if (url.pathname === "/sw.js") response.headers.set("cache-control", "no-cache");
       return response;
     } catch (err) {
-      ctx.waitUntil(captureFailure(env,err,new URL(request.url).pathname,requestId));
       if (String(err).includes("PENDING_LIMIT")) return withSecurityHeaders(fail("You already have three driver requests around this time.", 409));
       if (/CHAT_ACCESS_DENIED|MESSAGE_UNAVAILABLE/.test(String(err))) return withSecurityHeaders(fail("Access to this conversation or booking has changed.", 403));
       if (/MEMBER_TIME_CONFLICT|RIDER_TIME_CONFLICT|DRIVER_TIME_CONFLICT/.test(String(err))) return withSecurityHeaders(fail("You already have a confirmed journey around this time.", 409));
       if (/JOURNEY_UNAVAILABLE|INVALID_BOOKING_TRANSITION|NO_SEATS/.test(String(err))) return withSecurityHeaders(fail("This journey has changed or is no longer available. Refresh and try again.", 409));
       if (/idx_active_rider_offer|ride_requests.rider_id, ride_requests.ride_offer_post_id/.test(String(err))) return withSecurityHeaders(fail("You already have a request or booking with this driver for this ride.", 409));
+      ctx.waitUntil(captureFailure(env,err,new URL(request.url).pathname,requestId));
       return withSecurityHeaders(json({ok:false,error:"Something went wrong. Please try again or report the problem.",reference:requestId},500));
     }
   },
@@ -2886,6 +2910,7 @@ var index_default = {
     try {
       await socialCleanup(env, socialHelpers());
       await cleanupOldContent(env);
+      await cleanupProfilePhotos(env);
       console.log(JSON.stringify({ event: "content_cleanup", scheduledTime: controller.scheduledTime, status: "ok" }));
     } catch (err) {
       await captureFailure(env,err,"/scheduled",crypto.randomUUID());

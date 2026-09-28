@@ -16,7 +16,7 @@ Purpose: help an existing UK community arrange shared journeys with less uncerta
 
 ## Architecture
 
-Workers serves the API and static application. D1 owns account, booking and message records with database constraints protecting seat allocation and authorization. A Durable Object per conversation distributes changes and short-lived presence; it is not the authoritative message store. Server acceptance precedes a sent state. The browser reloads persisted messages after reconnect. Passkeys use the recovered SimpleWebAuthn library; cryptographic protocol code remains separate from application logic. Error capture stores scrubbed metadata; manual issue descriptions are private to the support/admin workflow.
+Workers serves the API and static application. D1 owns account, booking and message records with database constraints protecting seat allocation and authorization. A Durable Object per conversation distributes changes and short-lived presence; it is not the authoritative message store. Server acceptance precedes a sent state. The browser reloads persisted messages after reconnect. Passkeys use pinned SimpleWebAuthn packages; cryptographic protocol code remains separate from application logic. Error capture stores scrubbed metadata; manual issue descriptions are private to the support/admin workflow.
 
 The public v5.9 deployment and the old v7 preview remain independent of this candidate. Testing uses a new local database and synthetic members. No production member data is copied into the candidate.
 
@@ -27,7 +27,7 @@ The public v5.9 deployment and the old v7 preview remain independent of this can
 3. Community and private messages persist, reconnect without gaps, do not duplicate on retry, and enforce blocks, membership removal and logout. Presence reflects recent visible connections rather than claiming a person is available.
 4. Desktop and mobile UI, keyboard navigation, long names/messages, empty states, API failure and offline behavior checked in Chrome.
 5. Diagnostics work for guests and members; unauthorized users cannot read reports. A named support owner and visible contact route are required for launch.
-6. A rehearsed additive migration, backup and rollback plan is available. A small real-device community pilot comes before a broad invitation.
+6. A rehearsed additive migration and protected backup are required, together with a compatible runtime recovery plan that accounts for Durable Object migration restrictions. A small real-device community pilot comes before a broad invitation.
 
 ## Known external dependency at discovery
 
@@ -40,3 +40,7 @@ The v7 preview had no email binding, sending domain or support address configure
 - https://developers.cloudflare.com/email-service/get-started/send-emails/
 - https://developers.cloudflare.com/email-service/local-development/sending/
 - https://developers.cloudflare.com/email-service/platform/pricing/
+
+## Expanded requested scope
+
+See `LAUNCH-PLAN.md` for town/location matching, reviewed profile photos, vehicle records, social links, live trip location and recurring shift groups. It records implemented candidate features separately from integrations and journeys still to build. The latest source is not yet deployed.

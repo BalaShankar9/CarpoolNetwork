@@ -1,63 +1,51 @@
-# Carpool Network community preview
+# Carpool Network community candidate
 
-A focused upgrade for an existing ride-sharing community. It preserves the original red, navy and aqua identity and community artwork. The main journeys are finding a ride, requesting and confirming seats, coordinating a booking and talking with the community. WhatsApp remains optional.
+A focused upgrade for the existing UK ride-sharing community. It preserves the original red, navy and aqua identity and community artwork. WhatsApp remains optional.
 
-Preview: https://carpool-community-design.balashankarbollineni4.workers.dev
+Hosted preview: https://carpool-community-design.balashankarbollineni4.workers.dev
 
-This is a separate Worker and database. The existing production site has not been replaced. No production members or private messages were copied into the preview.
+**The latest source changes are not deployed to that preview or production.** The public site remains v5.9.0. This candidate is not approved for public invitations. Read `LAUNCH-PLAN.md` for implementation status and outstanding work.
 
 ## Local development
 
-Use a current supported Node.js version and Python 3.11 or later. From this directory:
+Use a supported Node.js version and Python 3.11 or later:
 
 ```sh
 npm ci
+npm run build
 node scripts/init-local.mjs
 npm run db:local
 npm run dev
 ```
 
-In a second terminal:
+In a second terminal run `npm run check` and `npm test`. Integration tests target only `127.0.0.1:8788` and local D1, with synthetic members and Wrangler's local email simulator. They do not send real email. A live local Worker is required for the journey suite. The standalone location, vehicle-adapter and service-worker tests can run without it:
 
 ```sh
-npm run check
-npm test
+node --test test/locations-vehicles.test.js test/service-worker.test.js
 ```
 
-The integration suite is deliberately fixed to `127.0.0.1:8788` and a local D1 database. It creates synthetic members and reads OTP messages from Wrangler's local email simulator. It does not send real email. Database bootstrap is for a fresh local database; use additive migrations for an existing database.
-
-`wrangler.local.jsonc` is exclusively local. `wrangler.jsonc` targets the isolated hosted design preview. Both include daily maintenance. Secrets, local databases, logs and audit files are ignored by Git.
+`wrangler.local.jsonc` is local only; `wrangler.jsonc` targets the isolated hosted preview. Both include maintenance. Secrets, databases, logs and audit files are excluded from Git. Never apply `schema.sql` to an existing database.
 
 ## Components and trust boundaries
 
-- `src/index.js`: existing application API, booking lifecycle, support, moderation and real-time rooms. Database constraints protect seat allocation and transitions across concurrent requests.
-- `src/email-auth.js`: short-lived, single-use email codes, attempt limits, rate limits, linking and sign-in. A routine sign-in preserves other authentication methods.
-- `src/reliability.js`: metadata scrubbing, issue capture and protected administrator issue routes.
-- `public/app.js`, `social.js`, `email-ui.js`: application, conversation and sign-in interfaces. Reconnecting chat reloads persisted messages from D1. A failed send keeps the draft.
-- `public/diagnostics.js`: independent reporting interface and bounded automatic error reporting, including before the main application finishes loading.
-- `public/focus.css`: layout and usability refinements over the established brand.
-- `schema.sql`, `migration-v8.sql`: new-install schema and candidate migration. Production upgrade SQL is separate under `migrations/`.
+- `src/index.js`: account, booking, support and community API; database constraints protect seat allocation and transitions. D1 owns message records; one Durable Object per conversation distributes events and short-lived presence.
+- `src/email-auth.js`: single-use email codes, expiry, attempt and rate limits. Normal sign-in preserves existing authentication methods.
+- `src/reliability.js`, `public/diagnostics.js`: bounded, scrubbed diagnostics and protected manual reporting, including startup failures.
+- `src/places.js`, `public/locations.js`, `public/geo.js`: UK town suggestions, one-shot device geolocation and town-centre radius filters. These are not street-address search or live map tiles.
+- `src/vehicles.js`, `public/member-details.js`: server-only DVLA adapter and optional Instagram/Facebook profile links. A key is not configured; live vehicle checks are not verified. Social links are member-provided, not OAuth connections.
+- `src/photos.js`, `public/profile-photo.js`: private R2 uploads, metadata removal, pending moderator review and approved public thumbnails. Optional on-device face detection is advisory. No facial recognition or identity proof is claimed.
+- `public/app.js`, `social.js`, `email-ui.js`, `focus.css`: member journeys and original-brand refinements. Reconnection reloads persisted messages; failed sends keep the draft.
+- `scripts/build-browser.mjs`: bundles pinned SimpleWebAuthn browser code. The server imports the pinned package directly. See `THIRD-PARTY-NOTICES.md`.
+- `migration-v8.sql`, `migration-mobility.sql`: additive candidate schema. Production-specific migration and recovery guidance are under `migrations/`.
 
-D1 is the source of truth. A Durable Object per conversation distributes events and tracks recently active visible connections. Presence is not proof that a person is available. HTTPS and conversation authorization protect messages; this application does not claim end-to-end encryption.
+Presence is recent connection activity, not proof of availability. Email verification proves inbox access, not identity, licence, insurance or vehicle condition. Conversations are authorized over HTTPS; the app does not claim end-to-end encryption.
 
-Email verification proves inbox access only. It does not verify a phone number, legal identity, licence, insurance or vehicle. The preview does not enable image uploads or automatic publication of messages as listings.
+## Evidence on 28 September 2026
 
-## Verification completed on 28 September 2026
+The full local suite passed 30 results before the final small fixes. Those checks covered email signup/replay/expiry/attempt limits, session revocation, signed synthetic passkey registration/login, booking concurrency, private rooms, real WebSockets/presence, blocking, cancellations, diagnostic redaction, town/radius filtering, optional social links, missing-DVLA behavior and R2 photo moderation. The latest focused suite passes 7 checks, including an additional regression against unrelated departure towns. All 24 JavaScript/build/test scripts pass syntax checks. The final full integration rerun is pending because terminal network access is blocked.
 
-- 19 passing local test results, including the suite container: email signup, expiry/replay/attempt limits, preserved sign-in methods, malformed and cross-origin requests, concurrent seat acceptance, encoded booking rooms, message idempotency, real WebSockets and presence, direct-message consent and blocking, cancellation, private reports, automatic diagnostic redaction/deduplication, email-only profile updates, forged passkey rejection, support privacy and session revocation.
-- Hosted synthetic journey: competing last-seat requests; two-member booking conversation, persistence and real-time presence; unrelated-member access denial; administrator unlock, issue retrieval and resolution; cancellation and logout revocation. Test access was revoked and synthetic public listings retired afterward.
-- Chrome checks: email signup using the local simulator, posting a ride, sending a message, desktop layout and a 390px phone viewport. The chat composer now stays above mobile navigation.
-- Additive production-schema rehearsal with synthetic accounts, posts and a pending booking: 44 new schema objects; original 29 tables and their seeded records unchanged; valid foreign keys; repeat application successful. No production migration was executed.
-- Pinned npm dependency audit reports zero known vulnerabilities. The retained passkey vendor bundle is not covered by npm's dependency inventory; see `SOURCE-PROVENANCE.md`.
+Chrome confirmed test-image selection, resize/submission, persisted pending status, moderator replacement request, and the member-visible reason. The fixture is a blank image, not a real member photo or evidence of identity verification. Chrome also confirmed an offline reconnect screen and automatic recovery of the existing account when connectivity returned. Earlier desktop and 390px phone checks covered signup, posting and chat composition. Real-device passkeys, GPS permission, push delivery and background/resume remain unqualified.
 
-These results are not a claim of a security certification, load qualification or universal device compatibility.
+A protected production-backup rehearsal preserved all 29 existing tables and 53 rows through both additive migrations, repeat application, trigger removal and schema reapplication. No production migration ran. This does not test runtime rollback; adding the new Durable Object class prevents a simple rollback to the old Worker version.
 
-## Before a public invitation
-
-1. Verify actual code delivery and sign-in with an owned inbox. The sending domain and Worker binding are configured; local simulator tests do not prove inbox delivery.
-2. Establish the real owner's administrator role and separate unlock credential after that account has verified its inbox. There is no first-user-becomes-admin path. Confirm support and issue triage with that account.
-3. Pilot with at least a driver and rider on real phones. Check booking notifications, reconnect after losing signal, background/resume, installed-app behavior and any passkey options the pilot will use.
-4. Review moderator coverage and the privacy/safety copy for the actual operating community. Keep precise pickup details in booking conversations.
-5. Rehearse the production upgrade against a current protected backup, check duplicate active bookings, preserve the existing rating-signing keys and record the rollback version. Only then change the public domain.
-
-Read `PRODUCT.md` for scope and release gates, and `migrations/README.md` for deployment order.
+The recorded npm audit found zero known vulnerabilities. It is a dependency snapshot, not a security certification. The previous hosted core journey passed before these latest source changes; it must be repeated after the next preview deployment.

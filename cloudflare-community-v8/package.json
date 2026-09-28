@@ -5,12 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --local --config wrangler.local.jsonc --ip 127.0.0.1 --port 8788",
-    "check": "node --check src/index.js && node --check src/reliability.js && node --check public/app.js && node --check public/social.js && node --check src/email-auth.js && node --check public/email-ui.js",
+    "check": "node scripts/check-syntax.mjs",
     "test": "node --test test/*.test.js",
-    "db:local": "wrangler d1 execute DB --local --config wrangler.local.jsonc --file schema.sql && wrangler d1 execute DB --local --config wrangler.local.jsonc --file migration-v8.sql"
+    "db:local": "wrangler d1 execute DB --local --config wrangler.local.jsonc --file schema.sql && wrangler d1 execute DB --local --config wrangler.local.jsonc --file migration-v8.sql && wrangler d1 execute DB --local --config wrangler.local.jsonc --file migration-mobility.sql",
+    "build": "node scripts/build-browser.mjs"
   },
   "devDependencies": {
+    "esbuild": "0.28.1",
     "wrangler": "4.131.0",
     "ws": "8.22.0"
+  },
+  "dependencies": {
+    "@simplewebauthn/browser": "14.0.0",
+    "@simplewebauthn/server": "14.0.3"
   }
 }

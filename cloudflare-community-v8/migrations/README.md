@@ -1,15 +1,23 @@
-# Production upgrade and rollback
+# Additive upgrade and recovery
 
-`production-v8-additive.sql` was derived from the production schema read on 28 September 2026. It adds 44 objects and the community lounge. It has been exercised twice against an in-memory copy of that schema with synthetic legacy accounts, posts and a pending booking. It preserves the existing 29 tables and records. **It has not been applied to production.**
+No production migration has been executed. The protected 28 September 2026 backup rehearsal includes `production-v8-additive.sql` and `../migration-mobility.sql`. All 29 original tables and 53 rows were preserved through first and repeated application, trigger removal and forward schema reapplication. Foreign-key checks passed; no duplicate active booking pairs were found. Run `python3 scripts/rehearse-migration.py /path/to/protected-backup.sql` from the project root against a fresh export before a production window. The script never prints database content.
 
-Before applying it:
+This is schema evidence only. A previous draft incorrectly described a simple rollback to the old production Worker. **Cloudflare does not permit rolling back across a deployment that adds a Durable Object class.** Production currently has `LiveHub`; the candidate also needs `ChatRoom`. See [Cloudflare rollback restrictions](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/). Do not use the preview's migration history for production.
 
-1. Export a fresh protected production backup. Record the current Worker version, bindings, cron, routing and secret names. Keep the existing production integrity-signing key pair; never substitute preview or development keys.
-2. Pause new writes for the rollout window. Verify foreign keys and check for duplicate `(rider_id, ride_offer_post_id)` pairs whose status is pending, accepted or completed. The new unique index requires those conflicts to be resolved explicitly; the migration does not delete or rewrite bookings.
-3. Compare the current schema with the inspected baseline. Rehearse the migration on a protected copy of the current database, including representative existing-account, booking and rating flows.
-4. Apply the additive migration, configure the real email binding and deploy the candidate against production bindings. Confirm the owner can sign in, unlock administration and see support/reporting. Remove the preview banner and noindex headers only for the actual production release.
-5. Run the two-member smoke journey before reopening writes and issuing invitations.
+## Preview deployment order
 
-Rollback must preserve records created after rollout. Revert the Worker/routing to the recorded previous version, and remove only the new behavioral triggers if required using `rollback-v8-triggers.sql`. New tables remain intact for investigation or forward recovery. Do not restore an old database export over newly created bookings or messages as a routine rollback. Rehearse the rollback with the selected previous Worker before the production window.
+1. Confirm `wrangler.jsonc` targets `carpool-community-design` and its separate D1/R2/DO resources. Export a protected preview backup and record the current version.
+2. Apply `migration-v8.sql` if not already present, then `migration-mobility.sql`, to that preview database only. New code queries the mobility tables during session/feed loading, so migrate before deploying.
+3. Build browser assets, check all scripts and run local tests. Dry-run the Worker build. Keep profile/vehicle requirements disabled until their full workflows qualify.
+4. Deploy and run `scripts/check-preview.mjs`, then the expanded UI and provider checks. Record the exact deployed version and source commit. Retire synthetic public listings and revoke test sessions/roles afterward.
 
-The preview has separate D1, Durable Objects, signing keys and deployment versions. A preview rollback does not modify the existing public site.
+## Production release gates and order
+
+1. Complete `LAUNCH-PLAN.md`, including configured providers, real owner access and phone pilot. Prepare a separate production configuration using the existing production D1, LiveHub migration history, routing, email and R2 bindings. Keep existing integrity-signing keys and VAPID data; never substitute preview keys.
+2. Prepare and rehearse a **compatible forward-recovery Worker** that retains the new `ChatRoom` export/binding/migration history while reverting failing application behavior. An alternative is a rehearsed staged bridge deployment before switching behavior. Neither runtime recovery path has been built or validated yet, so production release remains blocked.
+3. During a controlled write pause, export a fresh protected backup and record current Worker version, deployment, bindings, cron, routing and secret names. Verify original rows, foreign keys, active booking uniqueness and schema drift.
+4. Apply only `migrations/production-v8-additive.sql`, followed by `migration-mobility.sql`. Never run `schema.sql` against production. The migration must not rewrite bookings to resolve uniqueness conflicts.
+5. Deploy the qualified Worker with a new DO migration tag adding `ChatRoom` while preserving production's existing `LiveHub` class type and history. Confirm owner sign-in, admin unlock, reporting and the two-member smoke journey before reopening writes.
+6. Enable public indexing/invitations only after verification. Keep private records, test credentials and backups out of source control.
+
+If a release fails, pause the affected writes and deploy the rehearsed compatible recovery artifact. `rollback-v8-triggers.sql` only removes new behavioral triggers; it is not a full application rollback. New tables and post-release records must remain intact. Do not overwrite recent bookings/messages with an old SQL export as routine recovery. D1 Time Travel is disaster recovery requiring explicit assessment of intervening data loss.

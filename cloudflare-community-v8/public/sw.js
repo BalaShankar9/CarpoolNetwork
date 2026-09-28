@@ -1,5 +1,5 @@
-const CACHE = 'carpool-network-v8-1-brand';
-const CORE = ['/', '/styles.css', '/release.css', '/app.js', '/icon.svg', '/community-cover.png', '/icon-192.png', '/icon-512.png', '/manifest.webmanifest', '/email-ui.js', '/social.js', '/social.css', '/focus.css', '/diagnostics.js', '/diagnostics.css', '/passkeys.js'];
+const CACHE = 'carpool-network-v8-3-launch';
+const CORE = ['/', '/styles.css', '/release.css', '/app.js', '/icon.svg', '/community-cover.png', '/icon-192.png', '/icon-512.png', '/manifest.webmanifest', '/email-ui.js', '/social.js', '/social.css', '/focus.css', '/diagnostics.js', '/diagnostics.css', '/passkeys.js', '/locations.js', '/geo.js', '/member-details.js', '/profile-photo.js'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)).then(() => self.skipWaiting()));
@@ -19,7 +19,7 @@ self.addEventListener('fetch', event => {
 self.addEventListener('push', event => {
   event.waitUntil(self.registration.showNotification('Carpool Network', {
     body: 'You have a new community alert. Tap to open Carpool Network.',
-    icon: '/icon.svg', '/community-cover.png', '/icon-192.png', '/icon-512.png', badge: '/icon.svg', '/community-cover.png', '/icon-192.png', '/icon-512.png', tag: 'carpool-network-alert', renotify: true,
+    icon: '/icon-192.png', badge: '/icon.svg', tag: 'carpool-network-alert', renotify: true,
     data: { url: '/?view=alerts' }
   }));
 });

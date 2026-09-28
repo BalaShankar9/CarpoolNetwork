@@ -57,3 +57,14 @@ button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.6}a{color:var(
  .problem-launcher{top:14px;bottom:auto!important;right:64px;font-size:10px!important;padding:8px!important;max-width:108px}
 }
 @media(max-width:360px){.problem-launcher{max-width:70px;font-size:9px!important;line-height:1.2;top:10px}.mobile-brand{font-size:14px}}
+
+/* Location choices stay within the existing brand and responsive search card. */
+.location-controls{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:12px 22px;padding:14px 4px 0;border-top:1px solid #e4e8ef}
+.location-controls label{display:flex;align-items:center;gap:8px;font-size:13px;color:#263657}
+.location-controls select{padding:8px;border:1px solid #cbd3df;border-radius:8px;background:#fff;color:#182745}
+.location-controls p{width:100%;font-size:12px;line-height:1.5;color:#637089;margin:0}
+.location-controls a{color:#ad2632;text-decoration:underline}
+.location-check input{accent-color:#d62c3a;width:17px;height:17px}
+.location-current{justify-self:start;margin:3px 0 12px}
+@media(max-width:600px){.location-controls{display:grid;grid-template-columns:1fr;padding:14px 0 0}.location-controls select{flex:1}.location-controls p{font-size:11px}}
+.profile-photo{object-fit:cover;border-radius:50%;flex-shrink:0}.photo-review-preview{display:block;width:256px;height:256px;object-fit:cover;max-width:100%;margin:16px auto;border-radius:18px}.vehicle-card{padding:18px;border:1px solid #dee4ee;border-radius:16px;background:#f7f9fc}.vehicle-card dl{display:grid;grid-template-columns:1fr 2fr;gap:10px}.vehicle-card dt{color:#637089}.vehicle-card dd{margin:0;font-weight:600}
