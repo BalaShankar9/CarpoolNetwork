@@ -1,4 +1,4 @@
-const CACHE = 'carpool-network-v8-4-contacts';
+const CACHE = 'carpool-network-v8-5-contacts';
 const CORE = ['/', '/styles.css', '/release.css', '/app.js', '/icon.svg', '/community-cover.png', '/icon-192.png', '/icon-512.png', '/manifest.webmanifest', '/email-ui.js', '/social.js', '/social.css', '/focus.css', '/diagnostics.js', '/diagnostics.css', '/passkeys.js', '/locations.js', '/geo.js', '/member-details.js', '/profile-photo.js', '/contact-details.js', '/town-map.js'];
 
 self.addEventListener('install', event => {

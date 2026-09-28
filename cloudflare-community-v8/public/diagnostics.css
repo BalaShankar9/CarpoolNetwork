@@ -4,3 +4,5 @@
 @media(max-width:800px){.problem-launcher{bottom:calc(78px + env(safe-area-inset-bottom));right:10px;padding:8px 12px;font-size:12px}.problem-dialog{padding:22px}.static-page{margin:15px auto}}
 
 .support-hero .site-info-links,.support-hero .site-info-links a,.support-hero .link-btn{color:#fff}.support-hero .diagnostic-notice{color:#e1e7f0}
+
+.license-text{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}
