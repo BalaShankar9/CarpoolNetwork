@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import {writeFileSync} from 'node:fs';
+const base='https://carpool-network-release-check.balashankarbollineni4.workers.dev';
+const results=[];
+async function call(path,method='GET',body,user){const r=await fetch(base+path,{method,headers:{...(body?{'content-type':'application/json'}:{}),...(user?{authorization:`Bearer ${user.token}`}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(20000)});const d=await r.json();assert.ok(r.ok,`${method} ${path}: ${r.status} ${d.error}`);assert.equal(d.ok,true);return d;}
+const health=await call('/api/health');assert.equal(health.version,'5.9.0');results.push('Cloudflare Worker and D1 health');
+for(const path of ['/','/app.js','/diagnostics.js','/sw.js','/styles.css','/reliability.css','/privacy.html','/safety.html','/manifest.webmanifest','/icon-192.png','/icon-512.png','/community-cover.png']){const r=await fetch(base+path);assert.equal(r.status,200,path);assert.ok((await r.arrayBuffer()).byteLength>100,path);}results.push('All application assets and information pages');
+const seed=String(Date.now()).slice(-5);
+const driver=(await call('/api/profile','POST',{name:'Release check driver',phone:'+4477009'+seed,area:'Cardiff'})).profile;
+const rider=(await call('/api/profile','POST',{name:'Release check rider',phone:'+4477019'+seed,area:'Cardiff'})).profile;
+const ws=new WebSocket(base.replace('https:','wss:')+'/api/live',driver.token);
+await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('WebSocket opening timed out')),10000);ws.onopen=()=>{clearTimeout(timer);resolve();};ws.onerror=()=>{clearTimeout(timer);reject(Error('WebSocket failed'));};});
+const eventPromise=new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Live notification timed out')),10000);ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='notification'){clearTimeout(timer);resolve(m);}};});
+const date=new Date(Date.now()+8*86400000).toISOString().slice(0,10);
+const offer=(await call('/api/posts','POST',{category:'ride_offer',origin:'Cardiff',destination:'Bristol',journeyDate:date,journeyTime:'11:00',seats:1,body:'Synthetic release check in isolated staging.'},driver)).post;
+const search=await call(`/api/rides/search?from=Cardiff&to=Bristol&date=${date}&time=11:00`);assert.ok(search.rides.some(p=>p.id===offer.id));
+const booking=await call('/api/ride-requests/quick','POST',{rideOfferPostId:offer.id},rider);await eventPromise;results.push('Real Cloudflare Durable Object WebSocket notification');
+await call('/api/ride-requests/'+booking.id,'PATCH',{status:'accepted'},driver);let mine=await call('/api/ride-requests/mine','GET',null,rider);assert.match(mine.requests.find(x=>x.id===booking.id).contact_url,/^https:\/\/wa.me\//);results.push('Signup, search, request, acceptance and private contact release');
+await call('/api/ride-requests/'+booking.id,'PATCH',{status:'cancelled'},rider);mine=await call('/api/ride-requests/mine','GET',null,rider);assert.equal(mine.requests.find(x=>x.id===booking.id).status,'cancelled');results.push('Cancellation and booking state');
+const bug=await call('/api/diagnostics','POST',{id:crypto.randomUUID(),source:'manual',description:'Synthetic staging release check: reporting works end to end.',route:'/'});assert.ok(bug.reference);results.push('Anonymous problem reporting');
+const denied=await fetch(base+'/api/admin/issues');assert.equal(denied.status,401);results.push('Admin reports are not publicly accessible');
+await call('/api/profile/logout','POST',null,rider);const signedOut=await fetch(base+'/api/profile',{headers:{authorization:`Bearer ${rider.token}`}});assert.equal(signedOut.status,401);results.push('Logout invalidates the session');
+ws.close();
+const receipt={version:health.version,time:new Date().toISOString(),checks:results};writeFileSync(new URL('../staging-results.json',import.meta.url),JSON.stringify(receipt,null,2));console.log(JSON.stringify(receipt,null,2));

@@ -1,5 +1,5 @@
 {
-  "name": "carpool-network",
+  "name": "carpool-network-release-check",
   "main": "src/index.js",
   "compatibility_date": "2026-08-16",
   "compatibility_flags": [
@@ -41,24 +41,9 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "carpool-network-db",
-      "database_id": "f0ca9e30-56bd-4f79-8d74-55a80b077a9e"
+      "database_name": "carpool-network-release-check",
+      "database_id": "46d0e693-595e-4975-b261-ef82ec387fbc"
     }
   ],
-  "triggers": {
-    "crons": [
-      "17 3 * * *"
-    ]
-  },
-  "workers_dev": true,
-  "routes": [
-    {
-      "pattern": "carpoolnetwork.co.uk",
-      "custom_domain": true
-    },
-    {
-      "pattern": "www.carpoolnetwork.co.uk",
-      "custom_domain": true
-    }
-  ]
+  "workers_dev": true
 }
