@@ -51,3 +51,12 @@ These results support a controlled initial rollout. They do not establish 100% r
 - Rehearsal Worker: `f8fca625-9498-4a22-ba79-986cd8bb4cc9`
 - Draft source PR: https://github.com/BalaShankar9/CarpoolNetwork/pull/3
 - No database migrations or changes to secrets were needed for this release.
+
+
+## Subsequent ride/chat design update
+
+The Offer a ride and Community screens were polished after the audit above. Grouped location controls correct the route-grid misalignment. A live ride summary, clearer passenger-seat guidance, setup notice and inline errors reduce surprises when publishing. Chat now includes draft-only starters, explicit audience text, on-demand search and a dedicated no-results state. Short-screen clipping and sidebar overflow were corrected.
+
+Chrome verification used only synthetic local data: four-seat ride published with map-selected destination and contribution; starter remained unsent across reload; search/no-match/clear worked; a test chat message was sent to the isolated local room; account/profile controls still loaded. Desktop and 390px views were reviewed with no document-width overflow. The same 56-test regression suite and 47-script syntax checks passed. No additional claim of physical-device qualification is made.
+
+The design update is deployed to production version `6ab1f262-08f4-4ed1-bd17-bec54b4b971a` and preview version `015ff683-6a6c-4ba8-8782-a48a55cbaaae`. Signed-in production Chrome rendered both updated pages without console errors. All five changed browser assets matched source on both original domains (10 hashes), and both database health checks passed. Production verification did not publish a ride or send a message.

@@ -45,6 +45,11 @@ export function createSocialUI(h) {
       ${own && !m.post && ['ready','clarification','manual'].includes(m.extraction_status) ? `<div class="chat-clarification"><span>Listing needs your details</span>${button('edit','Complete listing',`data-action="clarify"`)}</div>` : ''}
       ${!m.deleted ? `<footer class="message-actions">${button('comment','Reply','data-action="reply"')}${button('heart',String(m.reactions?.reduce((n,r)=>n+r.count,0) || 'Like'),'data-action="react"')}<details><summary aria-label="Message options">More</summary><div>${own ? `${button('edit','Edit','data-action="edit"')}${button('trash','Remove message','data-action="delete"')}${m.post ? button('x','Close listing','data-action="undo"') : ''}` : button('alert','Report','data-action="report"')}${['owner','moderator'].includes(currentRoom?.role) ? button('megaphone',m.pinned ? 'Unpin' : 'Pin','data-action="pin"') : ''}</div></details></footer>` : ''}</article>`;
   }
+  function emptyConversation(query=''){
+    if(query)return `<div class="conversation-welcome"><span class="welcome-symbol">${icon('search')}</span><h3>No matching messages</h3><p>Try another word or clear your search to return to the conversation.</p><button class="outline-btn" id="clearChatSearch">Clear search</button></div>`;
+    const shared=['lounge','community'].includes(currentRoom?.kind);
+    return `<div class="conversation-welcome"><span class="welcome-symbol">${icon(shared?'users':'comment')}</span><span class="eyebrow">${shared?'A PLACE TO CONNECT':'KEEP THE DETAILS TOGETHER'}</span><h3>${shared?'A good journey starts with hello.':'Your conversation starts here.'}</h3><p>${shared?'Introduce yourself, ask about a route, or share something useful with your community.':'Say hello and agree the pickup, timing and anything your ride partner should know.'}</p><div class="conversation-starters"><button type="button" data-chat-starter="hello">${shared?'Introduce myself':'Say hello'}</button><button type="button" data-chat-starter="route">${shared?'Ask about a route':'Arrange the pickup'}</button></div><small>${shared?'Keep phone numbers and exact pickup addresses in your private booking chat.':'Only members of this conversation can read these messages.'}</small></div>`;
+  }
   let messageLoadRevision = 0;
   async function loadMessages(id, visit, before = 0, incremental = false) {
     const revision = ++messageLoadRevision;
@@ -55,14 +60,18 @@ export function createSocialUI(h) {
       currentRoom = result.room;
       messages = before ? [...result.messages,...messages].filter((m,i,a)=>a.findIndex(x=>x.id===m.id)===i) : incremental ? [...messages,...result.messages].filter((m,i,a)=>a.findIndex(x=>x.id===m.id)===i) : result.messages;
       const viewport = $('#chatMessages'), atBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 120;
-      viewport.innerHTML = (messages.length ? messages.map(messageHtml).join('') : '<p class="chat-empty">No messages yet.</p>');
+      viewport.innerHTML = (messages.length ? messages.map(messageHtml).join('') : emptyConversation(q));
       viewport.querySelectorAll('.message-actions details>div').forEach(menu=>menu.insertAdjacentHTML('afterbegin',button('users','Mention','data-action="mention"')));
       if(currentRoom.kind==='community')viewport.querySelectorAll('.chat-message.own:has(.chat-listing) .message-actions details>div').forEach(menu=>menu.insertAdjacentHTML('beforeend',button('share','Share with all members','data-action="share"')));
       $('#chatPinned').innerHTML = result.pinned.map(p=>`<div>${icon('megaphone')} ${esc(p.body)}</div>`).join('');
       $('#olderMessages').hidden = result.messages.length < 50;
       $('#sendMessage').disabled = !result.canWrite;
       $('#chatWriteNotice').textContent = result.canWrite ? '' : overview.verifiedEmail ? 'This conversation is read-only or waiting for the other member to accept.' : 'Verify your email in Account to send messages.';
-      if (!before && atBottom) viewport.scrollTop = viewport.scrollHeight;
+      if(!messages.length)viewport.scrollTop=0;else if (!before && atBottom) viewport.scrollTop = viewport.scrollHeight;
+      viewport.querySelector('#clearChatSearch')?.addEventListener('click',safe(async()=>{$('#chatSearch').value='';await loadMessages(id,visit);}));
+      viewport.querySelectorAll('[data-chat-starter]').forEach(b=>b.onclick=()=>{
+        const field=$('#chatText');if(!field.value.trim()){field.value=b.dataset.chatStarter==='hello'?`Hi${['lounge','community'].includes(currentRoom.kind)?' everyone':''}, I'm ${state.profile.name.split(' ')[0]}. `:currentRoom.kind==='lounge'||currentRoom.kind==='community'?`Is anyone travelling from ${state.profile.area||'my area'} to `:'Hi! Where would be a good place to meet?';draftStore.setItem(draftKey(id),field.value);}field.focus();
+      });
       viewport.querySelectorAll('[data-author]').forEach(b=>b.onclick=()=>openUser(b.dataset.author));
       viewport.querySelectorAll('[data-listing]').forEach(b=>b.onclick=()=>openPost(b.dataset.listing));
       viewport.querySelectorAll('[data-jump]').forEach(b=>b.onclick=()=>{ const el=viewport.querySelector(`[data-message="${CSS.escape(b.dataset.jump)}"]`); if(el)el.scrollIntoView({block:'center'});else showToast('Load earlier messages to see this reply.'); });
@@ -82,17 +91,17 @@ export function createSocialUI(h) {
       const selected = rooms.find(r=>r.id===roomId) || rooms.find(r=>r.membership!=='pending');
       const list = `<aside class="room-list"><div class="room-list-heading"><h1>${view==='inbox'?'Messages':'Community'}</h1>${button('plus','',`id="newCommunity" aria-label="${view==='inbox'?'New message':'Create community'}" title="${view==='inbox'?'New message':'Create community'}"`)}</div>
         ${rooms.map(r=>`<button class="room-link ${r.id===selected?.id?'selected':''}" data-room="${esc(r.id)}"><strong>${esc(r.title)}</strong><span>${r.membership==='pending'?'Message request':r.kind==='booking'?'Ride conversation':r.unread?`${r.unread} unread`:r.kind==='lounge'?'All members':'Community'}</span></button>`).join('')}
-        ${view==='chat'?`<h2>Discover communities</h2>${overview.communities.map(c=>`<div class="community-row"><strong>${esc(c.name)}</strong><small>${esc(c.description)}</small><span>${esc(c.access)} · ${esc(c.status)}</span>${c.status==='approved'?button('plus','Join',`data-join="${esc(c.id)}"`):''}</div>`).join('')||'<p>No communities yet.</p>'}`:''}
-        <div class="room-tools">${view==='chat'?button('users','Browse groups','id="browseCommunities"')+button('bag','Local listings','id="localListings"'):''}${button('shield','Reports','id="socialReports"')}${button('user','Account security','id="socialAccount"')}</div></aside>`;
+        ${view==='chat'?`<div class="community-discovery"><span class="eyebrow">YOUR PEOPLE, YOUR ROUTES</span><p>Find a local group or bring your regular travel community together.</p>${button('users','Browse groups','id="browseCommunities"')}</div>`:''}
+        <div class="room-tools">${view==='chat'?button('bag','Local listings','id="localListings"'):''}${button('shield','Reports','id="socialReports"')}${button('user','Account security','id="socialAccount"')}</div></aside>`;
       if (!selected) {
         shell(`<section class="chat-workspace">${list}<div class="chat-empty"><span class="setup-icon">${icon(view==='inbox'?'comment':'users')}</span><h2>${view==='inbox'?'Your conversations start here':'Find your people'}</h2><p>${view==='inbox'?'Accepted bookings have their own conversation. You can also request a chat from a member’s profile.':'Join a local group to arrange journeys and keep in touch.'}</p>${button('search','Find a ride','id="chatFindRide"')}</div></section>`,view);
         bindSidebar(view,rooms); return;
       }
       currentRoom = selected;
-      shell(`<section class="chat-workspace">${list}<section class="chat-pane" aria-label="Conversation"><header class="chat-heading"><div><h2>${esc(selected.title)}</h2><span id="onlineCount">Online count connecting...</span></div><div>${button('bell',selected.muted?'Unmute':'Mute','id="muteRoom"')}${!selected.id.startsWith('commute:')&&['owner','moderator'].includes(selected.role)?button('users','Members','id="roomMembers"'):''}</div></header>
-        <div class="chat-search"><input id="chatSearch" type="search" aria-label="Search messages" placeholder="Search this conversation">${button('search','Search','id="runChatSearch"')}</div><div id="chatPinned" class="chat-pinned"></div>
+      shell(`<section class="chat-workspace">${list}<section class="chat-pane" aria-label="Conversation"><header class="chat-heading"><div class="chat-room-title"><span class="room-symbol">${icon(selected.kind==='lounge'?'users':selected.kind==='booking'?'car':'comment')}</span><div><h2>${esc(selected.title)}</h2><span id="onlineCount">Connecting to the room…</span></div></div><div class="chat-heading-actions">${button('search','','id="toggleChatSearch" aria-label="Search conversation" aria-expanded="false" aria-controls="chatSearchPanel"')}${button('bell',selected.muted?'Unmute':'Mute','id="muteRoom"')}${!selected.id.startsWith('commute:')&&['owner','moderator'].includes(selected.role)?button('users','Members','id="roomMembers"'):''}</div></header>
+        <div id="chatSearchPanel" class="chat-search" hidden><input id="chatSearch" type="search" aria-label="Search messages" placeholder="Search this conversation">${button('search','Search','id="runChatSearch"')}</div><div id="chatPinned" class="chat-pinned"></div>
         <button class="text-action" id="olderMessages" hidden>Earlier messages</button><div id="chatMessages" class="chat-messages" role="log" aria-label="Messages" aria-live="polite"></div>
-        <form id="chatComposer" class="chat-composer"><div id="replyNotice"></div><p id="chatWriteNotice" role="status"></p><textarea id="chatText" maxlength="2000" rows="2" aria-label="Message" placeholder="Message ${esc(selected.title)}"></textarea><div class="composer-tools"><label class="chat-only"><input id="chatOnly" type="checkbox" checked disabled> Only in this conversation</label><span id="photoStatus"></span>${overview.uploads ? '<label class="outline-btn small" title="Attach photo"><input type="file" id="chatPhoto" accept="image/jpeg,image/png,image/webp" hidden>Photo</label>':''}<span id="chatStatus" role="status">Connecting...</span><button class="primary-btn small" id="sendMessage" type="submit">${icon('arrow')} Send</button></div><p id="sendError" class="form-error" role="alert"></p></form></section></section>`,view);
+        <form id="chatComposer" class="chat-composer"><div id="replyNotice"></div><p id="chatWriteNotice" role="status"></p><textarea id="chatText" maxlength="2000" rows="2" aria-label="Message" placeholder="Message ${esc(selected.title)}"></textarea><div class="composer-tools"><span class="chat-audience">${icon(selected.kind==='lounge'?'users':'lock')} ${selected.kind==='lounge'?'Visible to all signed-in members':selected.kind==='community'?'Visible to this group’s members':'Only this conversation’s members'}</span><span id="photoStatus"></span>${overview.uploads ? '<label class="outline-btn small" title="Attach photo"><input type="file" id="chatPhoto" accept="image/jpeg,image/png,image/webp" hidden>Photo</label>':''}<span id="chatStatus" role="status">Connecting...</span><button class="primary-btn small" id="sendMessage" type="submit">${icon('arrow')} Send</button></div><p id="sendError" class="form-error" role="alert"></p></form></section></section>`,view);
       bindSidebar(view,rooms);
       const id=selected.id;
       if(selected.kind==='booking'){
@@ -103,6 +112,8 @@ export function createSocialUI(h) {
       }
       $('#chatText').value=draftStore.getItem(draftKey(id))||'';
       $('#chatText').oninput=()=>draftStore.setItem(draftKey(id),$('#chatText').value);
+      $('#toggleChatSearch').onclick=()=>{const panel=$('#chatSearchPanel');panel.hidden=!panel.hidden;$('#toggleChatSearch').setAttribute('aria-expanded',String(!panel.hidden));if(!panel.hidden)$('#chatSearch').focus();else if($('#chatSearch').value){$('#chatSearch').value='';safe(()=>loadMessages(id,visit))();}};
+      $('#chatSearch').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();safe(()=>loadMessages(id,visit))();}};
       $('#runChatSearch').onclick=safe(()=>loadMessages(id,visit));
       $('#olderMessages').onclick=safe(()=>loadMessages(id,visit,messages[0]?.seq));
       $('#muteRoom').onclick=safe(async()=>{await post(`/api/social/rooms/${id}/preferences`,{muted:!currentRoom.muted});await render(view,id);});
@@ -118,7 +129,7 @@ export function createSocialUI(h) {
         if(pendingBody!==text){pendingClientId=null;pendingBody=text;}
         pendingClientId ||= crypto.randomUUID(); $('#sendMessage').disabled=true;$('#sendError').textContent='';
         try {
-          await post(`/api/social/rooms/${id}/messages`,{body:text,clientId:pendingClientId,chatOnly:$('#chatOnly').checked,replyTo:selectedReply,mediaId:photoId,mentionIds});
+          await post(`/api/social/rooms/${id}/messages`,{body:text,clientId:pendingClientId,chatOnly:true,replyTo:selectedReply,mediaId:photoId,mentionIds});
           pendingClientId=null;selectedReply=null;photoId=null;mentionIds=[];
           if(draftStore.getItem(draftKey(id))===text)draftStore.removeItem(draftKey(id));
           if(visit!==generation)return;

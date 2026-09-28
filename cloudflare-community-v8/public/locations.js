@@ -5,8 +5,14 @@ export function bindLocationInput(input,{current=false,map=true,toast=()=>{}}={}
   if(!input||input.dataset.locationBound)return;
   input.dataset.locationBound='true';input.autocomplete='off';
   const list=document.createElement('datalist');list.id=`places-${crypto.randomUUID()}`;input.setAttribute('list',list.id);input.after(list);
+  // Keep a field's helpers inside its own grid cell, never as route-grid siblings.
+  let actions;
+  if(map||current){
+    const field=input.closest('label,.ride-field');
+    if(field){const group=document.createElement('div');group.className='location-field';field.before(group);group.append(field);actions=document.createElement('div');actions.className='location-actions';group.append(actions);}
+  }
   if(map){const mapButton=document.createElement('button');mapButton.type='button';mapButton.className='text-action location-map';mapButton.textContent='Choose on map';
-  input.closest('label,.ride-field')?.after(mapButton);
+  actions?.append(mapButton);
   mapButton.onclick=async()=>{mapButton.disabled=true;try{const {chooseTownOnMap}=await import('./town-map.js');await chooseTownOnMap(input);}catch{toast('The map could not load. Type your town instead.','error');}finally{mapButton.disabled=false;}};}
   let revision=0,timer;
   input.addEventListener('input',()=>{clearTimeout(timer);const turn=++revision;timer=setTimeout(async()=>{
@@ -14,7 +20,7 @@ export function bindLocationInput(input,{current=false,map=true,toast=()=>{}}={}
     try{const r=await fetch('/api/places?q='+encodeURIComponent(query));const data=await r.json();if(turn!==revision)return;list.replaceChildren(...data.places.map(p=>{const o=document.createElement('option');o.value=placeLabel(p);return o;}));}catch{/* Free text remains available. */}
   },250);});
   if(current){
-    const button=document.createElement('button');button.type='button';button.className='text-action location-current';button.textContent='Use current location';input.closest('label,.ride-field')?.after(button);
+    const button=document.createElement('button');button.type='button';button.className='text-action location-current';button.textContent='Use current location';actions?.prepend(button);
     button.onclick=async()=>{
       if(!navigator.geolocation){toast('Location is unavailable. Choose your town instead.','error');return;}
       button.disabled=true;button.textContent='Finding your town…';

@@ -494,7 +494,7 @@ async function quickRequest(offerId, values, button) {
   }
 }
 
-function offerRoute(values){ensureMember(()=>{closeSheet();renderPostPage('ride_offer');const f=document.querySelector('#createPostForm');for(const [key,value] of Object.entries({origin:values.origin,destination:values.destination,journeyDate:values.date,journeyTime:values.time||defaultTime(),seats:values.seats||1})){if(f.elements[key])f.elements[key].value=value;}});}
+function offerRoute(values){ensureMember(()=>{closeSheet();renderPostPage('ride_offer');const f=document.querySelector('#createPostForm');for(const [key,value] of Object.entries({origin:values.origin,destination:values.destination,journeyDate:values.date,journeyTime:values.time||defaultTime(),seats:values.seats||1})){if(f.elements[key])f.elements[key].value=value;}f.dispatchEvent(new Event('change',{bubbles:true}));});}
 
 async function postNeedFromSearch(values) {
   try {
@@ -599,8 +599,8 @@ function renderPostPage(type = '') {
     ['accommodation', 'Accommodation', 'Rooms, stays or housing', 'home'], ['community', 'Community', 'Question, update or announcement', 'megaphone']
   ];
   shell(`
-    <section class="post-page">
-      <div class="post-page-head"><span class="eyebrow">CREATE</span><h1>${type ? esc(types.find(t => t[0] === type)?.[1] || 'Create post') : 'Create a post'}</h1><p>${type==='ride_offer'?'Share the journey. You choose which requests to accept.':type==='ride_wanted'?'Tell the community where you need to go.':'A clear title and useful details make it easier to connect.'}</p></div>
+    <section class="post-page ${type.startsWith('ride_')?'ride-post-page':''}">
+      <div class="post-page-head"><span class="eyebrow">${type==='ride_offer'?'MAKE ROOM FOR A GOOD JOURNEY':type==='ride_wanted'?'FIND YOUR WAY TOGETHER':'CREATE'}</span><h1>${type ? esc(types.find(t => t[0] === type)?.[1] || 'Create post') : 'Create a post'}</h1><p>${type==='ride_offer'?'Share the journey. You choose which requests to accept.':type==='ride_wanted'?'Tell the community where you need to go.':'A clear title and useful details make it easier to connect.'}</p></div>
       ${type ? `<div id="postFormWrap">${postForm(type)}</div>` : `<div class="post-type-grid">${types.map(([k, title, sub, ico]) => `<button class="post-type-card" data-post-type="${k}"><span class="post-type-icon ${k}">${icon(ico)}</span><span><strong>${esc(title)}</strong><small>${esc(sub)}</small></span>${icon('chevron')}</button>`).join('')}</div>`}
     </section>
   `, 'post');
@@ -612,20 +612,25 @@ function postForm(type) {
   const ride = type === 'ride_offer' || type === 'ride_wanted';
   if (ride) {
     const offer = type === 'ride_offer';
-    return `<form id="createPostForm" class="create-form">
+    return `<form id="createPostForm" class="create-form ride-create-form">
+      <div id="rideSetupNotice" class="ride-setup-notice" role="status" hidden></div>
       <div class="form-section"><div class="form-section-title"><span>1</span><div><strong>Your journey</strong><small>${offer ? 'Tell riders where and when you are driving.' : 'Tell drivers where and when you need to travel.'}</small></div></div>
-        <div class="route-input-stack">
-          <label class="premium-field"><span>${icon('map')}</span><div><small>FROM</small><input name="origin" placeholder="e.g. Cardiff Central" required></div></label>
+        <div class="route-input-stack ride-route-fields">
+          <label class="premium-field"><span>${icon('map')}</span><div><small>FROM</small><input name="origin" placeholder="Departure town or city" value="${esc(state.profile?.area||'')}" maxlength="100" required></div></label>
           <div class="route-connector"></div>
-          <label class="premium-field"><span class="destination-pin"></span><div><small>TO</small><input name="destination" placeholder="e.g. Amazon BRS1, Bristol" required></div></label>
+          <label class="premium-field"><span class="destination-pin"></span><div><small>TO</small><input name="destination" placeholder="Where are you heading?" maxlength="100" required></div></label>
         </div>
-        <div class="form-columns three"><label><span>Date</span><input name="journeyDate" type="date" min="${today()}" value="${today(1)}" required></label><label><span>Time</span><input name="journeyTime" type="time" value="${defaultTime()}" required></label><label><span>${offer ? 'Seats available' : 'Seats needed'}</span><select name="seats">${[1,2,3,4,5,6,7].map(n => `<option>${n}</option>`).join('')}</select></label></div>
+        <p class="ride-field-hint">Choose towns for your route. Agree the exact pickup privately after a booking is accepted.</p>
+        <div class="form-columns three"><label><span>Date</span><input name="journeyDate" type="date" min="${today()}" value="${today(1)}" required></label><label><span>Time</span><input name="journeyTime" type="time" value="${defaultTime()}" required></label><label><span>${offer ? 'Passenger seats' : 'Seats needed'}</span><select name="seats">${[1,2,3,4,5,6,7].map(n => `<option value="${n}">${n} ${n===1?'seat':'seats'}</option>`).join('')}</select></label></div>
+        <p class="ride-field-hint">${offer?'Count passengers only, excluding you. ':''}All journey times use UK local time.</p>
       </div>
       <div class="form-section"><div class="form-section-title"><span>2</span><div><strong>Helpful details</strong><small>Optional, but useful for a smooth journey.</small></div></div>
         <div class="form-columns two"><label><span>${offer ? 'Contribution' : 'Budget / contribution'} <em>optional</em></span><input name="price" placeholder="e.g. £5 or Free"></label><label><span>Time flexibility</span><select name="flexibilityMinutes"><option value="15">± 15 min</option><option value="30" selected>± 30 min</option><option value="60">± 1 hour</option><option value="120">± 2 hours</option></select></label></div>
         <label><span>Notes <em>optional</em></span><textarea name="body" maxlength="800" placeholder="Pickup area, luggage, work shift, anything useful…"></textarea></label>
-        <div class="whatsapp-required-note">${icon('whatsapp')}<span><strong>Keep trip details together</strong><small>The driver confirms your seat here. Agree pickup, timing and any contribution in your booking conversation. WhatsApp is optional.</small></span></div><input type="hidden" name="whatsappEnabled" value="true">
+        <div class="whatsapp-required-note">${icon('whatsapp')}<span><strong>Keep trip details together</strong><small>${offer?'You choose which requests to accept.':'Your seat is confirmed when the driver accepts.'} Agree the pickup in your booking chat, or open WhatsApp after acceptance.</small></span></div><input type="hidden" name="whatsappEnabled" value="true">
       </div>
+      <section class="ride-review" aria-labelledby="rideReviewTitle"><div class="ride-review-heading"><span class="setup-icon">${icon('car')}</span><div><span class="eyebrow">AT A GLANCE</span><h2 id="rideReviewTitle">Your ${offer?'ride offer':'ride request'}</h2></div><span class="ride-draft-label">Not published yet</span></div><div id="ridePreview"></div></section>
+      <p id="postError" class="form-error" role="alert" tabindex="-1" hidden></p>
       <div class="sticky-submit"><button class="ghost-btn" type="button" id="backPostTypes">Back</button><button class="primary-btn red large" type="submit">${offer ? 'Publish ride offer' : 'Post ride request'} ${icon('arrow')}</button></div>
     </form>`;
   }
@@ -644,8 +649,19 @@ function bindPostForm(type, existing = null) {
   document.querySelector('#backPostTypes').onclick = () => existing ? closeSheet() : renderPostPage();
   const form = document.querySelector('#createPostForm');
   bindLocationInput(form.origin,{current:true,toast:showToast});bindLocationInput(form.destination,{toast:showToast});
+  const preview=form.querySelector('#ridePreview');
+  if(preview){
+    const update=()=>{const f=form.elements,seats=Number(f.seats.value),date=f.journeyDate.value;
+      preview.innerHTML=`<div class="ride-preview-route"><strong>${esc(f.origin.value.trim()||'Your departure')}</strong>${icon('arrow')}<strong>${esc(f.destination.value.trim()||'Your destination')}</strong></div><div class="ride-preview-meta"><span>${icon('calendar')} ${date?esc(fmtDate(date)):'Choose a date'}</span><span>${icon('clock')} ${esc(f.journeyTime.value||'Choose a time')}</span><span>${icon('users')} ${seats} ${seats===1?'seat':'seats'}</span>${f.price.value.trim()?`<span>${esc(f.price.value.trim())}</span>`:''}</div>`;};
+    form.addEventListener('input',update);form.addEventListener('change',update);update();
+    if(existing)form.querySelector('.ride-draft-label').textContent='Preview of your changes';
+    if(state.profile)api('/api/account-status').then(({account})=>{
+      if(!form.isConnected)return;const issue=account.participationIssue||(type==='ride_offer'?account.vehicleIssue:null),notice=form.querySelector('#rideSetupNotice');
+      if(issue){notice.hidden=false;notice.innerHTML=`${icon('alert')}<div><strong>Before you publish</strong><p>${esc(issue.error)}</p><a href="/?view=me&tab=account" target="_blank" rel="noopener">Open account in a new tab ${icon('arrow')}</a></div>`;}
+    }).catch(()=>{});
+  }
   form.onsubmit = async e => {
-    e.preventDefault(); const button = form.querySelector('[type="submit"]'); const original = button.innerHTML; button.disabled = true; button.innerHTML = 'Publishing…';
+    e.preventDefault();const inlineError=form.querySelector('#postError');if(inlineError){inlineError.hidden=true;inlineError.textContent='';} const button = form.querySelector('[type="submit"]'); const original = button.innerHTML; button.disabled = true; button.innerHTML = 'Publishing…';
     const f = new FormData(form); const body = Object.fromEntries(f.entries()); body.category = type; body.whatsappEnabled = form.whatsappEnabled?.type === 'checkbox' ? form.whatsappEnabled.checked : true;
     if (body.seats) body.seats = Number(body.seats); if (body.flexibilityMinutes) body.flexibilityMinutes = Number(body.flexibilityMinutes);
     try {
@@ -655,7 +671,7 @@ function bindPostForm(type, existing = null) {
       if (type === 'ride_wanted' && data.matches?.length) openRideMatches(data.post.id, 'rider');
       else if (type === 'ride_offer' && data.matches?.length) openRideMatches(data.post.id, 'driver');
       else renderHome();
-    } catch (err) { showToast(err.message, 'error'); button.disabled = false; button.innerHTML = original; }
+    } catch (err) { if(inlineError){inlineError.hidden=false;inlineError.textContent=err.message;inlineError.focus();}else showToast(err.message, 'error'); button.disabled = false; button.innerHTML = original; }
   };
 }
 
