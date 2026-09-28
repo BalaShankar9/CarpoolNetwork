@@ -58,3 +58,7 @@ The production upgrade used a controlled write pause and protected backup. All 2
 The running-Worker smoke suite enforces verified email, required WhatsApp contact, photo approval and vehicle checks with SMS disabled and verifies location grants through a real Durable Object, recurring group privacy, date requests, city/radius discovery and contact controls. It seeds synthetic approved-photo and vehicle records, but no phone-verification rows, and retires the fixtures afterward. No real photo or vehicle is verified by that suite.
 
 The recorded npm audit found zero known vulnerabilities. It is a dependency snapshot, not a security certification. Hosted release checks are recorded separately after deployment.
+
+## Public introduction and owner validation
+
+The live `/welcome.html` page provides a short getting-started guide, downloadable PDF and WhatsApp image using the original community artwork. PDF/image QR codes point to the production website. Desktop and 390px layouts were reviewed. Owner email sign-in, control-room unlock, photo-review queue and the manual report-to-resolution workflow were exercised on production. The owner inbox click handler was corrected to call `renderIssues()` without the browser event argument. Three earlier automatic load diagnostics remain under investigation because their original cause is not known; current assets and console checks did not reproduce them. See LAUNCH-PLAN.md for the remaining physical-device qualification.

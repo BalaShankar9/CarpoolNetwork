@@ -19,14 +19,17 @@ Version 8.0.0 is live on https://carpoolnetwork.co.uk/ and https://www.carpoolne
 - During a controlled production write pause, a fresh protected export was rehearsed and the three additive migrations applied. All original 29 tables/56 rows remained identical; foreign-key checks passed. The existing production D1, LiveHub identity, signing keys and routes were preserved.
 - Production R2 photos, email and server-side DVLA secret are configured. Both original domains return v8.0.0 with SMS off; ten deployed asset hashes per domain match the source, and six private endpoints reject anonymous requests.
 - Compatible maintenance recovery was tested on the isolated hosted rehearsal before production. Production history now includes ChatRoom; use compatible forward recovery, not a v5 rollback or old database restore.
-- Chrome on the original domain rendered town maps, populated the departure field from map selection, exposed email signup with required WhatsApp/consent, and showed the new navigation. No browser errors were observed during these checks.
+- Chrome on the original domain rendered town maps, populated the departure field from map selection, exposed email signup with required WhatsApp/consent, and showed the new navigation.
+- The owner completed verified email sign-in on the live www domain. The explicitly designated owner email now has a separate administrator unlock; the legacy owner identity and credentials remain. The live control room and empty photo-review queue loaded. A real launch-issue report was submitted, read and resolved through the owner UI after fixing its inbox click handler.
+- The public getting-started page, PDF and WhatsApp image are deployed at `/welcome.html`. Both download QR codes decode to the production URL. Desktop and 390px guide layouts were visually reviewed with no horizontal overflow; all 18 checked launch assets across the two domains match local files.
+- Three historical automatic load-error records (two resource errors and a service-worker registration error) are retained as investigating. They did not recur in current checks; all 25 core assets returned HTTP 200 and the current owner console was clear. Their original cause remains unconfirmed.
 
 ## Before a broad community invitation
 
 These are remaining real-person operational checks, not implemented features to advertise as certified:
 
-1. Sign in to the existing owner account, verify/link email from Account and exercise photo-review/support administration. Preserve the existing owner identity and credentials. Owner login/unlock was not completed in the signed-out production browser check.
-2. Approve suitable real profile photos and verify an actual consenting driver's vehicle. The app enforces these requirements; synthetic test fixtures do not fulfil them for real users.
-3. Complete one journey with two consenting phones: email delivery, booking acceptance, chat/WhatsApp contact, denied GPS, sharing stop, weak signal and background/return. Real-device passkeys and push delivery still need testing. Keep WhatsApp available.
+1. Approve suitable real profile photos and verify an actual consenting driver's vehicle. The app enforces these requirements; synthetic test fixtures do not fulfil them for real users.
+2. Complete one journey with two consenting phones: booking acceptance, chat/WhatsApp contact, denied GPS, sharing stop, weak signal and background/return. Real-device passkeys and push delivery still need testing. Keep WhatsApp available.
+3. Monitor the three retained automatic load diagnostics during this first rollout; capture a reproducible case before claiming their root causes are fixed.
 
 The downloadable introduction PDF and message describe deployed capabilities without claiming perfection, inspected vehicles, verified identities or continuous background location. No community announcement was sent automatically.

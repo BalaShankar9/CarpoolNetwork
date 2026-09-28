@@ -1,7 +1,7 @@
 /* Independent of the app bundle so reporting survives app startup failures. */
 (() => {
   'use strict';
-  const release = '8.0.0-preview', queue = [], seen = new Set();
+  const release = '8.0.0', queue = [], seen = new Set();
   let sending = false;
   const route = value => {
     try {

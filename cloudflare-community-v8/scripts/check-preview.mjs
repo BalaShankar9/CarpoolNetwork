@@ -133,9 +133,13 @@ try{
   assert.equal(ok(await api(nearby+'&radiusMiles=50&page=100000',driver)).nextPage,null);
   console.log('PASS city-first feed, passenger discovery, pickup radius and bounded search pagination.');
 
+  // Group removal earlier can already revoke older chat sockets. Establish
+  // a fresh, authorized socket so this assertion measures logout specifically.
+  const logoutSocket=connect(traveller,room);await logoutSocket.ready;
+  await waitFor(()=>logoutSocket.events.some(e=>e.type==='connected'));
   ok(await api('/api/profile/logout',traveller,'POST'));
   assert.equal((await api('/api/profile',traveller)).status,401);
-  await waitFor(()=>b.events.some(e=>e.type==='session_ended'));
+  await waitFor(()=>logoutSocket.events.some(e=>e.type==='session_ended'));
   console.log('PASS booking cancellation and logout revocation');
 } finally {
   for(const s of sockets)s.terminate();
