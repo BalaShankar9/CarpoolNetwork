@@ -1,6 +1,6 @@
 {
   "name": "carpool-community-design",
-  "main": "src/index.js",
+  "main": "src/recovery.js",
   "compatibility_date": "2026-08-16",
   "compatibility_flags": [
     "nodejs_compat"
@@ -9,9 +9,7 @@
     "directory": "./public",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": [
-      "/api/*"
-    ]
+    "run_worker_first": true
   },
   "d1_databases": [
     {
@@ -69,11 +67,6 @@
       "name": "EMAIL"
     }
   ],
-  "triggers": {
-    "crons": [
-      "17 3 * * *"
-    ]
-  },
   "r2_buckets": [
     {
       "binding": "PROFILE_PHOTOS",

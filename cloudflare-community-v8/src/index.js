@@ -1,3 +1,8 @@
+import {visiblePostIds} from './post-visibility.js';
+import {commuteRoutes} from './commutes.js';
+import {tripRoutes,tripPointOperation,prunePositions} from './trips.js';
+import {phoneRoutes} from './phone-verification.js';
+import {participationIssue,rideEligibility} from './eligibility.js';
 import {contactRoutes,connectedContact,hasContact} from './contacts.js';
 import {photoRoutes,cleanupProfilePhotos} from './photos.js';
 import {vehicleRoutes} from './vehicles.js';
@@ -35,6 +40,10 @@ async function roomAccess(env, id, userId, write = false) {
     if (write && await blocked(env, booking.rider_id, booking.driver_id)) return null;
   } else {
     if (room.membership !== "active") return null;
+    if(room.kind==='community'){
+      const commute=await one(env,'SELECT s.id,s.owner_id,s.status,m.status membership FROM commute_series s LEFT JOIN commute_members m ON m.series_id=s.id AND m.user_id=? WHERE s.conversation_id=?',userId,id);
+      if(commute&&(commute.membership!=='active'||write&&commute.status!=='active'||await blocked(env,userId,commute.owner_id)))return null;
+    }
     if (room.kind === "community" && !await one(env, "SELECT id FROM communities WHERE id=? AND status='approved'", room.community_id)) return null;
     if (room.kind === "direct") {
       const other = await one(env, "SELECT user_id,status FROM conversation_members WHERE conversation_id=? AND user_id<>?", id, userId);
@@ -52,9 +61,8 @@ async function canSeePost(env, postId, userId) {
 }
 __name(canSeePost, "canSeePost");
 async function visiblePosts(env, rows, userId) {
-  const result = [];
-  for (const row of rows) if (await canSeePost(env, row.id, userId)) result.push(row);
-  return result;
+  const ids=await visiblePostIds(env,rows.map(r=>r.id),userId);
+  return rows.filter(row=>ids.has(row.id));
 }
 __name(visiblePosts, "visiblePosts");
 async function socialAudit(env, actor, action, target, detail = "") {
@@ -430,7 +438,7 @@ async function socialRoutes(request, env, h) {
     return reply({
       verifiedEmail: isVerified,
       rooms: visible,
-      communities: await all(env, "SELECT id,name,description,access,status,owner_id FROM communities WHERE status='approved' OR owner_id=? ORDER BY name", uid),
+      communities: await all(env, "SELECT id,name,description,access,status,owner_id FROM communities c WHERE (status='approved' OR owner_id=?) AND NOT EXISTS(SELECT 1 FROM commute_series s WHERE s.community_id=c.id) ORDER BY name", uid),
       business: await one(env, "SELECT * FROM business_profiles WHERE user_id=?", uid),
       autoPublish: env.AUTO_PUBLISH === "true",
       uploads: !!env.CHAT_MEDIA && env.UPLOADS_ENABLED === "true"
@@ -461,6 +469,7 @@ async function socialRoutes(request, env, h) {
       await broadcast(env, id);
       return reply({ status: data.status });
     }
+    if(action!=="decision"&&await one(env,"SELECT id FROM commute_series WHERE community_id=?",id))return problem("Manage this group from Regular commutes.",409);
     if (community.status !== "approved") return problem("Community is awaiting approval.", 409);
     const room = await roomAccess(env, id, uid);
     if (action === "join" && method === "POST") {
@@ -526,6 +535,7 @@ async function socialRoutes(request, env, h) {
     const room = await roomAccess(env, id, uid, method === "POST" && action === "messages");
     if (!room) return problem("Verify your email and check your access to this conversation.", 403);
     if (action === "leave" && method === "POST") {
+      if(await one(env,"SELECT id FROM commute_series WHERE conversation_id=?",id))return problem("Leave this group from Regular commutes so future seats are cancelled safely.",409);
       if (room.kind !== "community" || room.role === "owner") return problem("Community owners must transfer ownership through Support first.", 409);
       await run(env, "UPDATE conversation_members SET status='declined' WHERE conversation_id=? AND user_id=?", id, uid);
       await broadcast(env, id);
@@ -743,25 +753,30 @@ async function socialRoutes(request, env, h) {
   if (path === "/export" && method === "GET") return reply({
     profile: auth.user,
     contact: await one(env,'SELECT whatsapp_number,confirmed_at FROM member_contacts WHERE user_id=?',uid),
+    phoneVerification:await one(env,'SELECT phone_number,verified_at,expires_at,provider FROM phone_verifications WHERE user_id=?',uid),
     socialLinks: await one(env,'SELECT instagram,facebook FROM member_social_links WHERE user_id=?',uid),
     vehicle: await one(env,'SELECT registration,make,colour,manufacture_year,fuel,mot_status,mot_expiry,tax_status,tax_due,passenger_seats,checked_at FROM member_vehicles WHERE user_id=?',uid),
     profilePhoto: await one(env,'SELECT status,review_note,updated_at FROM profile_photos WHERE user_id=?',uid),
     messages: await all(env, "SELECT id,body,created_at FROM chat_messages WHERE author_id=?", uid),
     posts: await all(env, "SELECT * FROM posts WHERE author_id=?", uid),
     memberships: await all(env, "SELECT * FROM conversation_members WHERE user_id=?", uid),
+    regularCommutes:await all(env,"SELECT s.id,s.name,s.origin,s.destination,s.start_date,s.end_date,s.status,m.status membership FROM commute_series s JOIN commute_members m ON m.series_id=s.id WHERE m.user_id=?",uid),
     reports: await all(env, "SELECT reason,status,resolution,created_at FROM safety_reports WHERE reporter_id=?", uid),
     bookings: await all(env, "SELECT id,status,seats_requested,created_at FROM ride_requests WHERE rider_id=? OR driver_id=?", uid, uid)
   });
   if (path === "/delete-account" && method === "POST") {
     if (data.confirm !== "DELETE") return problem("Type DELETE to confirm.");
     if (await one(env, "SELECT id FROM ride_requests WHERE (rider_id=? OR driver_id=?) AND status IN ('pending','accepted')", uid, uid)) return problem("Cancel or finish your outstanding bookings first.", 409);
-    if (await one(env, "SELECT id FROM communities WHERE owner_id=? AND status='approved'", uid)) return problem("Transfer community ownership through Support first.", 409);
+    if (await one(env, "SELECT id FROM communities c WHERE owner_id=? AND status='approved' AND NOT EXISTS(SELECT 1 FROM commute_series s WHERE s.community_id=c.id AND s.status='cancelled')", uid)) return problem("Transfer community ownership through Support first.", 409);
     await env.DB.batch([
+      env.DB.prepare('DELETE FROM phone_challenges WHERE user_id=?').bind(uid),
+      env.DB.prepare('DELETE FROM phone_verifications WHERE user_id=?').bind(uid),
       env.DB.prepare("UPDATE users SET name='Deleted member',phone=?,bio='',area='',token_hash=? WHERE id=?").bind(`deleted:${uid}`, crypto.randomUUID(), uid),
       env.DB.prepare("UPDATE posts SET status='deleted',body='',title='Deleted listing' WHERE author_id=?").bind(uid),
       env.DB.prepare("UPDATE chat_messages SET body='',deleted=1,pinned=0 WHERE author_id=?").bind(uid),
       ...["member_contacts", "profile_photos", "member_social_links", "member_vehicles", "member_emails", "passkeys", "user_sessions", "account_login_pins", "account_recovery", "push_subscriptions", "admin_sessions", "user_roles", "business_profiles", "user_profile_details"].map((table) => env.DB.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(uid)),
       env.DB.prepare("UPDATE conversation_members SET status='removed' WHERE user_id=?").bind(uid),
+      env.DB.prepare("UPDATE commute_members SET status='removed' WHERE user_id=?").bind(uid),
       env.DB.prepare("UPDATE user_moderation SET status='banned',reason='Account deleted' WHERE user_id=?").bind(uid)
     ]);
     await h.disconnectSessions(env, uid);
@@ -776,6 +791,12 @@ import { DurableObject } from "cloudflare:workers";
 var ChatRoom = class extends DurableObject {
   static {
     __name(this, "ChatRoom");
+  }
+  async tripPoints(input) {
+    this.tripLocations ||= new Map();
+    const result=await tripPointOperation(this.env,this.tripLocations,input);
+    if(this.tripLocations.size&&!await this.ctx.storage.getAlarm())await this.ctx.storage.setAlarm(Date.now()+30000);
+    return result;
   }
   async allowed(a) {
     if (!a) return false;
@@ -854,9 +875,10 @@ var ChatRoom = class extends DurableObject {
     await this.presence();
   }
   async alarm() {
+    if(this.tripLocations)prunePositions(this.tripLocations);
     for (const ws of this.ctx.getWebSockets()) if (!await this.allowed(ws.deserializeAttachment())) ws.close(1008, "Access ended");
     await this.presence();
-    if (this.ctx.getWebSockets().some((ws) => ws.deserializeAttachment()?.activeAt > Date.now() - 9e4)) await this.ctx.storage.setAlarm(Date.now() + 3e4);
+    if (this.tripLocations?.size || this.ctx.getWebSockets().some((ws) => ws.deserializeAttachment()?.activeAt > Date.now() - 9e4)) await this.ctx.storage.setAlarm(Date.now() + 3e4);
   }
   async webSocketClose(ws, code) {
     try {
@@ -1400,6 +1422,7 @@ function publicPost(row, viewerId = "", score = null) {
   const contactText = RIDE_CATEGORIES.has(row.category) ? `Hi ${row.author_name}, I saw your ${row.category === "ride_offer" ? "ride offer" : "ride request"} from ${row.origin} to ${row.destination} on Carpool Network.` : `Hi ${row.author_name}, I'm contacting you about your \u201C${row.title}\u201D post on Carpool Network.`;
   return {
     id: row.id,
+    commuteId:row.commute_id||null,
     category: row.category,
     title: row.title,
     body: row.body,
@@ -1440,7 +1463,7 @@ __name(publicPost, "publicPost");
 __name2(publicPost, "publicPost");
 async function queryPost(env, id, viewerId = "") {
   return await env.DB.prepare(`
-    SELECT p.*, u.name author_name, u.phone author_phone, u.area author_area,
+    SELECT p.*, (SELECT series_id FROM commute_occurrences WHERE offer_id=p.id) commute_id,u.name author_name, u.phone author_phone, u.area author_area,
       (SELECT start_time FROM ride_time_windows w WHERE w.post_id=p.id) window_start,
       (SELECT end_time FROM ride_time_windows w WHERE w.post_id=p.id) window_end,
       (SELECT avatar_emoji FROM user_profile_details d WHERE d.user_id=u.id) author_avatar_emoji,EXISTS(SELECT 1 FROM profile_photos pp WHERE pp.user_id=u.id AND pp.approved_key<>'') author_photo_approved,
@@ -1711,24 +1734,20 @@ async function createPost(data, env, user, message = null) {
     const midpoint = Math.floor((timeMinutes(data.journeyTime) + timeMinutes(data.windowEnd)) / 2);
     data = { ...data, journeyTime: `${String(Math.floor(midpoint / 60)).padStart(2, "0")}:${String(midpoint % 60).padStart(2, "0")}`, flexibilityMinutes: Math.ceil((timeMinutes(data.windowEnd) - timeMinutes(data.journeyTime)) / 2) };
   }
+  const eligible=await participationIssue(env,user.id);if(eligible)return json(eligible,eligible.status);
   const category = clean(data.category, 30);
   if (!CATEGORIES.has(category)) return fail("Choose a post type.");
   let title = clean(data.title, 140), body = cleanBody(data.body, 2500), location = clean(data.location, 120), price = clean(data.price, 60);
   const whatsappEnabled = RIDE_CATEGORIES.has(category) ? 1 : data.whatsappEnabled === false ? 0 : 1;
   let origin = "", destination = "", journeyDate = "", journeyTime = "", flexibility = 30, seats = 1;
   if (RIDE_CATEGORIES.has(category)) {
-    if(env.REQUIRE_PROFILE_PHOTO==='true'&&!await one(env,"SELECT user_id FROM profile_photos WHERE user_id=? AND approved_key<>''",user.id))return fail('Add your profile photo and wait for approval before offering or requesting rides.',428);
-    if(category==='ride_offer'&&env.REQUIRE_VEHICLE==='true'){
-      const vehicle=await one(env,"SELECT * FROM member_vehicles WHERE user_id=? AND checked_at>datetime('now','-1 day')",user.id);
-      if(!vehicle||vehicle.mot_status!=='Valid'||vehicle.tax_status!=='Taxed')return fail('Add your vehicle and refresh its DVLA check before offering a ride. MOT exemptions need Support review.',428);
-      if(Number(data.seats)>vehicle.passenger_seats)return fail('The offered seats exceed your registered passenger-seat count.');
-    }
+    const issue=await rideEligibility(env,user.id,category,String(data.journeyDate||''),Number(data.seats||1));if(issue)return json(issue,issue.status);
     origin = clean(data.origin, 120);
     destination = clean(data.destination, 120);
     journeyDate = clean(data.journeyDate, 10);
     journeyTime = clean(data.journeyTime, 5);
     flexibility = timeWindow ? data.flexibilityMinutes : clampInt(data.flexibilityMinutes, 0, 240, 30);
-    seats = clampInt(data.seats, 1, 8, 1);
+    seats = clampInt(data.seats, 1, 7, 1);
     if (origin.length < 2 || destination.length < 2 || !validDate(journeyDate) || !validTime(journeyTime)) return fail("Please complete the journey details.");
     if (journeyHasDeparted(journeyDate, journeyTime, 15)) return fail("Choose a journey time that has not already passed.");
     if (category === "ride_offer") {
@@ -1803,17 +1822,15 @@ async function handleApi(request, env) {
   const url = new URL(request.url);
   const path = url.pathname;
   const placeResponse=placesRoute(request);if(placeResponse)return placeResponse;
+  const commuteResponse=await commuteRoutes(request,env,{requireUser,json,fail,resolvePlace,rateLimitOrFail,notify:createNotification,disconnect:disconnectChat});if(commuteResponse)return commuteResponse;
+  const tripResponse=await tripRoutes(request,env,{requireUser,json,fail,sha256:sha2562});if(tripResponse)return tripResponse;
+  const phoneResponse=await phoneRoutes(request,env,{requireUser,verified,rateLimitOrFail,fail,json});if(phoneResponse)return phoneResponse;
   const contactResponse=await contactRoutes(request,env,{requireUser,verified,rateLimitOrFail,fail,json});if(contactResponse)return contactResponse;
-  if(env.REQUIRE_WHATSAPP==='true'&&request.method==='POST'&&(path==='/api/posts'||path==='/api/ride-requests'||path==='/api/ride-requests/quick'||/^\/api\/social\/rooms\/[^/]+\/messages$/.test(path))){
-    const member=await requireUser(request,env);if(member.error)return member.error;
-    if(!await verified(env,member.user.id))return fail('Verify your email before participating.',403);
-    if(!await hasContact(env,member.user.id))return json({ok:false,error:'Add your WhatsApp contact in Account before participating.',code:'CONTACT_REQUIRED'},428);
-  }
   const photoResponse=await photoRoutes(request,env,{requireUser,requireAdmin,fail,json,verified,rateLimitOrFail,stripJpegMetadata,adminAudit});if(photoResponse)return photoResponse;
   const vehicleResponse=await vehicleRoutes(request,env,{requireUser,fail,json,verified,blocked,rateLimitOrFail});if(vehicleResponse)return vehicleResponse;
-  if(env.REQUIRE_PROFILE_PHOTO==='true'&&request.method==='POST'&&(path==='/api/posts'||path==='/api/ride-requests'||path==='/api/ride-requests/quick'||/^\/api\/social\/rooms\/[^/]+\/messages$/.test(path))){
+  if(request.method==='POST'&&(path==='/api/posts'||path==='/api/ride-requests'||path==='/api/ride-requests/quick'||/^\/api\/social\/rooms\/[^/]+\/messages$/.test(path))){
     const member=await requireUser(request,env);if(member.error)return member.error;
-    if(!await one(env,"SELECT user_id FROM profile_photos WHERE user_id=? AND approved_key<>''",member.user.id))return fail('Add your profile photo in Account and wait for approval before participating.',428);
+    const issue=await participationIssue(env,member.user.id);if(issue)return json(issue,issue.status);
   }
   const diagnostic=await diagnosticRoutes(request,env,{json,fail,rateLimitOrFail,currentUser,requireAdmin,adminAudit});
   if(diagnostic)return diagnostic;
@@ -1874,13 +1891,14 @@ async function handleApi(request, env) {
     const viewer = await currentUser(request, env, false);
     const origin = clean(url.searchParams.get("from"), 120), destination = clean(url.searchParams.get("to"), 120);
     const journeyDate = clean(url.searchParams.get("date"), 10), journeyTime = clean(url.searchParams.get("time"), 5);
-    const radiusMiles=clampInt(url.searchParams.get("radiusMiles"),0,50,0),localDrivers=url.searchParams.get("localDrivers")==="true";
+    const wanted=url.searchParams.get("kind")==="wanted",offset=clampInt(url.searchParams.get("page"),0,100000,0);
+    const radiusMiles=clampInt(url.searchParams.get("radiusMiles"),0,50,0),localDrivers=!wanted&&url.searchParams.get("localDrivers")==="true";
     if((radiusMiles||localDrivers)&&!resolvePlace(origin))return fail("Choose a suggested town to use radius or local-driver filters.");
-    const seats = clampInt(url.searchParams.get("seats"), 1, 8, 1);
+    const seats = clampInt(url.searchParams.get("seats"), 1, 7, 1);
     if (origin.length < 2 || destination.length < 2 || !validDate(journeyDate)) return fail("Enter where you are travelling from, where you are going and the date.");
     const nowUk = ukNowParts();
     if (journeyDate < nowUk.date) return fail("Choose today or a future date.");
-    const source = { category: "ride_wanted", origin, destination, journey_date: journeyDate, journey_time: validTime(journeyTime) ? journeyTime : "12:00", flexibility_minutes: validTime(journeyTime) ? 60 : 720, seats };
+    const source = { category: wanted?"ride_offer":"ride_wanted", origin, destination, journey_date: journeyDate, journey_time: validTime(journeyTime) ? journeyTime : "12:00", flexibility_minutes: validTime(journeyTime) ? 60 : 720, seats };
     const rows = await env.DB.prepare(`
       SELECT p.*, (SELECT start_time FROM ride_time_windows w WHERE w.post_id=p.id) window_start, (SELECT end_time FROM ride_time_windows w WHERE w.post_id=p.id) window_end,u.name author_name,u.phone author_phone,u.area author_area,
         (SELECT avatar_emoji FROM user_profile_details d WHERE d.user_id=u.id) author_avatar_emoji,EXISTS(SELECT 1 FROM profile_photos pp WHERE pp.user_id=u.id AND pp.approved_key<>'') author_photo_approved,
@@ -1891,17 +1909,19 @@ async function handleApi(request, env) {
         (SELECT COUNT(*) FROM comments c WHERE c.post_id=p.id) comment_count,
         0 viewer_reacted
       FROM posts p JOIN users u ON u.id=p.author_id
-      WHERE p.status='active' AND p.category='ride_offer' AND p.journey_date=?
-      ORDER BY p.journey_time ASC,p.created_at DESC LIMIT 500
-    `).bind(journeyDate).all();
-    const rides = (await visiblePosts(env, rows.results || [], viewer?.id)).map((row) => ({ row, score: rideMatchScore(source, row), local:locationMatch(row,{from:origin,radiusMiles,localDrivers}) })).filter(({ row, score, local }) => {
+      WHERE p.status='active' AND p.category=? AND p.journey_date=?
+      ORDER BY p.journey_time ASC,p.created_at DESC,p.id ASC LIMIT 501 OFFSET ?
+    `).bind(wanted?'ride_wanted':'ride_offer',journeyDate,offset).all();
+    const filteredRides = (await visiblePosts(env, (rows.results || []).slice(0,500), viewer?.id)).map((row) => ({ row, score: rideMatchScore(source, row), local:locationMatch(row,{from:origin,radiusMiles,localDrivers}) })).filter(({ row, score, local }) => {
       const available = Math.max(0, Number(row.seats || 1) - Number(row.accepted_seats || 0));
       const destinationMatches=resolvePlace(destination)?.id===resolvePlace(row.destination)?.id && !!resolvePlace(destination) || wordScore(destination,row.destination)>=0.5;
       const timeMatches=!validTime(journeyTime)||Math.abs(timeMinutes(journeyTime)-timeMinutes(row.journey_time))<=Math.max(60,source.flexibility_minutes+Number(row.flexibility_minutes||30));
-      return local.matches && destinationMatches && timeMatches && score >= 35 && available >= seats && row.author_id !== viewer?.id && !journeyHasDeparted(row.journey_date, row.journey_time, 15);
-    }).sort((a, b) => b.score - a.score || String(a.row.journey_time).localeCompare(String(b.row.journey_time))).slice(0, 30).map(({ row, score, local }) => ({...publicPost(row, viewer?.id || "", score),pickupDistanceMiles:local.miles===null?null:Math.round(local.miles*10)/10}));
+      return local.matches && destinationMatches && timeMatches && score >= 35 && (wanted?Number(row.seats)<=seats:available>=seats) && row.author_id !== viewer?.id && !journeyHasDeparted(row.journey_date, row.journey_time, 15);
+    });
+    const selected=filteredRides.slice(0,30),nextPage=filteredRides.length>30?offset+rows.results.findIndex(r=>r.id===selected.at(-1).row.id)+1:rows.results.length>500?offset+500:null;
+    const rides=selected.map(({ row, score, local }) => ({...publicPost(row, viewer?.id || "", score),pickupDistanceMiles:local.miles===null?null:Math.round(local.miles*10)/10}));
     const requests = viewer ? await env.DB.prepare("SELECT id,ride_offer_post_id,status,seats_requested FROM ride_requests WHERE rider_id=? AND status IN ('pending','accepted','completed')").bind(viewer.id).all() : { results: [] };
-    return json({ ok: true, rides: rides.map((p) => ({ ...p, booking: requests.results.find((r) => r.ride_offer_post_id === p.id) || null })), query: { origin, destination, journeyDate, journeyTime: validTime(journeyTime) ? journeyTime : "", seats } });
+    return json({ ok: true, nextPage, kind:wanted?"wanted":"offered", rides: rides.map((p) => ({ ...p, booking: requests.results.find((r) => r.ride_offer_post_id === p.id) || null })), query: { origin, destination, journeyDate, journeyTime: validTime(journeyTime) ? journeyTime : "", seats } });
   }
   if (path === "/api/profile" && request.method === "POST") {
     const data = await request.json().catch(() => ({}));
@@ -2046,6 +2066,12 @@ async function handleApi(request, env) {
       where.push("p.category=?");
       args.push(category);
     }
+    const from=clean(url.searchParams.get('from'),120);
+    if(!mine&&from&&['ride_offer','ride_wanted'].includes(category)){
+      const place=resolvePlace(from),labels=[from,place?.name||from,place?.label||(place?`${place.name}, ${place.region}`:from)].map(v=>v.toLowerCase());
+      where.push('lower(trim(p.origin)) IN (?,?,?)');args.push(...labels);
+      if(url.searchParams.get('localDrivers')==='true'&&category==='ride_offer'){where.push('lower(trim(u.area)) IN (?,?,?)');args.push(...labels);}
+    }
     if (q) {
       where.push("(p.title LIKE ? OR p.body LIKE ? OR p.location LIKE ? OR p.origin LIKE ? OR p.destination LIKE ?)");
       const term = `%${q}%`;
@@ -2086,6 +2112,7 @@ async function handleApi(request, env) {
     if (auth.error) return auth.error;
     const row = await env.DB.prepare("SELECT * FROM posts WHERE id=? AND author_id=? AND status<>'deleted'").bind(postMatch[1], auth.user.id).first();
     if (!row) return fail("Post not found.", 404);
+    if(await one(env,"SELECT series_id FROM commute_occurrences WHERE offer_id=?",row.id))return fail("Manage this journey in Regular commutes. Cancel future dates and create a replacement schedule to change the route or time.",409);
     const data = await request.json().catch(() => ({}));
     if (data.category != null) {
       if (data.category !== row.category || row.status !== "active") return fail("Only an active post can be edited without changing its type.", 409);
@@ -2093,11 +2120,12 @@ async function handleApi(request, env) {
       const ride = RIDE_CATEGORIES.has(row.category);
       const origin = ride ? clean(data.origin, 120) : "", destination = ride ? clean(data.destination, 120) : "";
       const date = ride ? clean(data.journeyDate, 10) : "", time = ride ? clean(data.journeyTime, 5) : "";
-      const seats = ride ? clampInt(data.seats, 1, 8, 1) : 1;
+      const seats = ride ? clampInt(data.seats, 1, 7, 1) : 1;
       if (ride) {
         if (origin.length < 2 || destination.length < 2 || !validDate(date) || !validTime(time) || journeyHasDeparted(date, time, 15)) return fail("Enter a valid future journey.");
         title = `${row.category === "ride_wanted" ? "Ride wanted: " : ""}${origin} \u2192 ${destination} \xB7 ${seats} seat${seats === 1 ? "" : "s"}`;
       } else if (title.length < 3 || body.length < 3) return fail("Add a title and details.");
+      const issue=await rideEligibility(env,auth.user.id,row.category,date,seats);if(issue)return json(issue,issue.status);
       const updated = await env.DB.prepare(`UPDATE posts SET title=?,body=?,location=?,price=?,origin=?,destination=?,journey_date=?,journey_time=?,seats=?,flexibility_minutes=?,whatsapp_enabled=?,updated_at=CURRENT_TIMESTAMP
         WHERE id=? AND status='active' AND NOT EXISTS(SELECT 1 FROM ride_requests WHERE (ride_offer_post_id=? OR ride_wanted_post_id=?) AND status IN ('pending','accepted','completed')) RETURNING id`).bind(title, body, location, price, origin, destination, date, time, seats, ride ? clampInt(data.flexibilityMinutes, 0, 240, 30) : 30, ride || data.whatsappEnabled !== false ? 1 : 0, row.id, row.id, row.id).first();
       if (!updated) return fail("This journey has requests or confirmed bookings. Resolve them before changing the journey details.", 409);
@@ -2110,6 +2138,7 @@ async function handleApi(request, env) {
     }
     const status = clean(data.status, 20);
     if (!["active", "closed", "deleted"].includes(status)) return fail("Invalid status.");
+    if(status==='active'){const issue=await rideEligibility(env,auth.user.id,row.category,row.journey_date,row.seats);if(issue)return json(issue,issue.status);}
     if (RIDE_CATEGORIES.has(row.category)) {
       if (status === "active" && row.journey_date && journeyHasDeparted(row.journey_date, row.journey_time, 15)) return fail("Journeys that have already departed cannot be reopened.", 409);
       const accepted = await env.DB.prepare(`SELECT COUNT(*) count FROM ride_requests WHERE ${row.category === "ride_offer" ? "ride_offer_post_id" : "ride_wanted_post_id"}=? AND status='accepted'`).bind(row.id).first();
@@ -2224,7 +2253,7 @@ async function handleApi(request, env) {
       journey_date: clean(data.journeyDate || offer.journey_date, 10),
       journey_time: clean(data.journeyTime || offer.journey_time, 5),
       flexibility_minutes: clampInt(data.flexibilityMinutes, 0, 240, 60),
-      seats: clampInt(data.seats, 1, 8, 1)
+      seats: clampInt(data.seats, 1, 7, 1)
     };
     if (!validDate(source.journey_date) || !validTime(source.journey_time) || source.origin.length < 2 || source.destination.length < 2) return fail("Please check your journey details.");
     if (journeyHasDeparted(offer.journey_date, offer.journey_time, 15)) return fail("That ride has already departed.", 409);
@@ -2391,7 +2420,9 @@ async function handleApi(request, env) {
     const next = clean(data.status, 20);
     if (next === "accepted") {
       if (rr.driver_id !== auth.user.id) return fail("Only the driver can accept this request.", 403);
-      if(env.REQUIRE_WHATSAPP==='true'&&(!await hasContact(env,rr.driver_id)||!await hasContact(env,rr.rider_id)))return json({ok:false,error:'Both members need a WhatsApp contact in Account before confirming a booking.',code:!await hasContact(env,auth.user.id)?'CONTACT_REQUIRED':'PARTNER_CONTACT_REQUIRED'},428);
+      if(await blocked(env,rr.driver_id,rr.rider_id))return fail('Booking is unavailable between these members.',403);
+      const driverIssue=await rideEligibility(env,rr.driver_id,'ride_offer',rr.journey_date,Number(rr.offer_seats));if(driverIssue)return json(driverIssue,driverIssue.status);
+      const riderIssue=await participationIssue(env,rr.rider_id);if(riderIssue)return json({ok:false,error:'The rider must complete their account checks before this booking can be accepted.',code:'PARTNER_REQUIREMENTS'},428);
       if (rr.status === "accepted") return json({ ok: true, status: "accepted", idempotent: true });
       if (rr.status !== "pending") return fail("Only a pending request can be accepted.", 409);
       if (rr.offer_status !== "active" || rr.wanted_status !== "active") return fail("This journey is no longer active.", 409);
@@ -2830,6 +2861,8 @@ async function cleanupOldContent(env) {
   await env.DB.prepare(`DELETE FROM posts WHERE status='deleted' AND updated_at < datetime('now','-30 days')`).run();
   await env.DB.prepare(`DELETE FROM posts WHERE status='closed' AND updated_at < datetime('now','-180 days')`).run();
   await env.DB.prepare(`DELETE FROM notifications WHERE is_read=1 AND created_at < datetime('now','-90 days')`).run();
+  await env.DB.prepare("DELETE FROM phone_challenges WHERE expires_at<datetime('now','-1 hour')").run();
+  await env.DB.prepare("DELETE FROM phone_send_usage WHERE period<strftime('%Y-%m',date('now','-3 months'))").run();
   await env.DB.prepare(`DELETE FROM security_rate_limits WHERE reset_at < datetime('now','-1 day')`).run();
 }
 __name(cleanupOldContent, "cleanupOldContent");
@@ -2904,6 +2937,10 @@ var index_default = {
       if (url.pathname === "/sw.js") response.headers.set("cache-control", "no-cache");
       return response;
     } catch (err) {
+      if (/COMMUTE_MEMBER_LIMIT/.test(String(err))) return withSecurityHeaders(fail("This group already has seven passengers or invitations.",409));
+      if (/DRIVER_DUPLICATE_OFFER/.test(String(err))) return withSecurityHeaders(fail("You already have an active ride around one of those departure times. Manage that ride first.",409));
+      if (/VEHICLE_BOOKED/.test(String(err))) return withSecurityHeaders(fail("You have accepted journeys with this vehicle. Finish or cancel them before changing registration.",409));
+      if (/VEHICLE_CAPACITY/.test(String(err))) return withSecurityHeaders(fail("Your posted or booked passenger seats exceed this vehicle capacity. Update the unbooked offers first.",409));
       if (String(err).includes("PENDING_LIMIT")) return withSecurityHeaders(fail("You already have three driver requests around this time.", 409));
       if (/CHAT_ACCESS_DENIED|MESSAGE_UNAVAILABLE/.test(String(err))) return withSecurityHeaders(fail("Access to this conversation or booking has changed.", 403));
       if (/MEMBER_TIME_CONFLICT|RIDER_TIME_CONFLICT|DRIVER_TIME_CONFLICT/.test(String(err))) return withSecurityHeaders(fail("You already have a confirmed journey around this time.", 409));

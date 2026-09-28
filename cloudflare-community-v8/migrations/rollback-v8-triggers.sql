@@ -1,4 +1,4 @@
--- Runtime rollback only. Pause new writes and restore the previous Worker first.
+-- Trigger-rehearsal aid only, not a runtime rollback. Use the compatible maintenance recovery entrypoint; never restore the pre-ChatRoom Worker blindly.
 -- Keeps all tables, records, ratings, messages and booking history.
 DROP TRIGGER IF EXISTS trg_booking_accept_effects;
 DROP TRIGGER IF EXISTS trg_booking_block_accept;

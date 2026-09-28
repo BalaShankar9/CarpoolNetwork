@@ -1,3 +1,5 @@
+import {createCommutes} from './commutes.js';
+import {createLiveTrips} from './live-trip.js';
 import {createContactDetails} from './contact-details.js';
 import {createProfilePhotos} from './profile-photo.js';
 import {createMemberDetails} from './member-details.js';
@@ -170,7 +172,9 @@ async function api(path, options = {}) {
     if(response.status===401 && state.profile && !options.keepSessionOn401 && !(path.startsWith('/api/admin/') || path.startsWith('/api/social/'))){
       clearStoredProfile(); showToast('Your session needs reconnecting. Use Recover account to keep your existing profile.', 'error');
     }
-    if(data.code==='CONTACT_REQUIRED')queueMicrotask(()=>editContact());
+    if(['CONTACT_REQUIRED','PHONE_VERIFICATION_REQUIRED'].includes(data.code)&&!path.startsWith('/api/contact-details')&&!path.startsWith('/api/auth/phone'))queueMicrotask(()=>editContact());
+    if(data.code==='PHOTO_REQUIRED')queueMicrotask(()=>profilePhotos.edit());
+    if(data.code?.startsWith('VEHICLE_')&&!path.startsWith('/api/member-details'))queueMicrotask(()=>memberDetails.edit());
     const err = new Error((data.error || 'Something went wrong.') + (data.reference ? ` Reference: ${data.reference}` : '')); err.status=response.status; throw err;
   }
   return data;
@@ -279,7 +283,8 @@ function rideSearchValues(overrides = {}) {
     time: overrides.time ?? saved.time ?? defaultTime(),
     seats: Number(overrides.seats ?? saved.seats ?? 1),
     radiusMiles:Number(overrides.radiusMiles ?? saved.radiusMiles ?? 0),
-    localDrivers:Boolean(overrides.localDrivers ?? saved.localDrivers ?? false),
+    localDrivers:Boolean(overrides.localDrivers ?? saved.localDrivers ?? true),
+    kind:overrides.kind ?? saved.kind ?? "offered",
   };
 }
 
@@ -310,7 +315,7 @@ function rideSearchForm(values = rideSearchValues(), compact = false) {
       <div class="ride-field seats-field">
         <span class="field-icon">${icon('users')}</span>
         <label for="rideSeats">Seats</label>
-        <select id="rideSeats" name="seats">${[1,2,3,4,5,6,7,8].map(n => `<option value="${n}" ${n === values.seats ? 'selected' : ''}>${n}</option>`).join('')}</select>
+        <select id="rideSeats" name="seats">${[1,2,3,4,5,6,7].map(n => `<option value="${n}" ${n === values.seats ? 'selected' : ''}>${n}</option>`).join('')}</select>
       </div>
       <button class="find-btn" type="submit">${icon('search')}<span>Find rides</span></button>
     </form>`;
@@ -320,13 +325,15 @@ function bindRideSearchForm(onSubmit) {
   const form = document.querySelector('#rideSearchForm');
   if (!form) return;
   bindSearchLocations(form,showToast);
-  form.radiusMiles.value=String(state.lastRideSearch?.radiusMiles||0);form.localDrivers.checked=Boolean(state.lastRideSearch?.localDrivers);
+  form.radiusMiles.value=String(state.lastRideSearch?.radiusMiles||0);form.localDrivers.checked=state.lastRideSearch?.localDrivers!==false;
+  const mode=document.createElement('label');mode.className='search-mode';mode.innerHTML='<span>I want to find</span><select name=kind><option value=offered>Drivers with available seats</option><option value=wanted>Passengers for my route</option></select>';form.prepend(mode);form.kind.value=state.lastRideSearch?.kind||'offered';
+  const changeMode=()=>{const wanted=form.kind.value==='wanted';form.querySelector('.find-btn span').textContent=wanted?'Find passengers':'Find rides';form.querySelector('label[for=rideSeats]').textContent=wanted?'My capacity':'Seats';form.localDrivers.closest('label').hidden=wanted;};form.kind.onchange=changeMode;changeMode();
   document.querySelector('#swapRoute')?.addEventListener('click', () => {
     const a = form.origin.value; form.origin.value = form.destination.value; form.destination.value = a; haptic();
   });
   form.onsubmit = e => {
     e.preventDefault();
-    const values = { origin: form.origin.value.trim(), destination: form.destination.value.trim(), date: form.date.value, time: form.time.value, seats: Number(form.seats.value),radiusMiles:Number(form.radiusMiles.value),localDrivers:form.localDrivers.checked };
+    const values = { origin: form.origin.value.trim(), destination: form.destination.value.trim(), date: form.date.value, time: form.time.value, seats: Number(form.seats.value),radiusMiles:Number(form.radiusMiles.value),localDrivers:form.localDrivers.checked,kind:form.kind.value };
     saveRideSearch(values);
     onSubmit(values);
   };
@@ -341,7 +348,7 @@ async function renderHome() {
     </section>
     <section class="journey-search"><div class="search-card-head"><h2>Where are you heading?</h2><button class="outline-btn" id="offerInstead">${icon('car')} Offer a ride</button></div>${rideSearchForm()}<p class="search-hint">${icon('clock')} Journey times are shown in UK local time.</p></section>
     <div class="home-steps"><div class="home-step"><span class="step-number">1</span><div><strong>Find your route</strong><p>Choose your journey, date and the seats you need.</p></div></div><div class="home-step"><span class="step-number">2</span><div><strong>Request a seat</strong><p>Your seat is confirmed when the driver accepts.</p></div></div><div class="home-step"><span class="step-number">3</span><div><strong>Agree the details</strong><p>Use your booking conversation to arrange the pickup.</p></div></div></div>
-    <section class="section-block"><div class="section-title-row"><div><span class="eyebrow">GOING YOUR WAY</span><h2>Rides from the community</h2></div><button class="text-action" id="allRides">Find rides ${icon('arrow')}</button></div><div id="homeFeed" class="feed-grid"><p class="feed-loading" role="status">Looking for available rides…</p></div></section>
+    <section class="section-block"><div class="section-title-row"><div><span class="eyebrow">GOING YOUR WAY</span><h2>${state.profile?.area?`Rides from ${esc(state.profile.area)}`:"Rides from the community"}</h2></div><button class="text-action" id="allRides">Find rides ${icon('arrow')}</button></div><div id="homeFeed" class="feed-grid"><p class="feed-loading" role="status">Looking for available rides…</p></div></section>
     <section class="community-cta"><div><h2>The people behind the journeys.</h2><p>Meet your community, ask a question, or share a useful local update.</p></div><button class="outline-btn" data-nav="chat">Open community ${icon('arrow')}</button></section>
     <footer class="site-footer"><span>Carpool Network · Move together</span><div><a href="/safety.html">Travel safely</a><a href="/privacy.html">Privacy</a><a href="/attribution.html">Attribution</a><button class="text-action" data-nav="community">Local listings</button></div></footer>
   `,'home');
@@ -349,7 +356,7 @@ async function renderHome() {
   document.querySelector('#offerInstead').onclick=()=>ensureMember(()=>renderPostPage('ride_offer'));
   document.querySelector('#allRides').onclick=()=>renderFind();
   try {
-    const data=await api('/api/feed?category=ride_offer');
+    const nearby=new URLSearchParams({category:'ride_offer'});if(state.profile?.area){nearby.set('from',state.profile.area);nearby.set('localDrivers','true');}const data=await api('/api/feed?'+nearby);
     if(visit!==viewRevision)return;
     state.posts=data.posts||[];
     const rides=state.posts.filter(p=>p.category==='ride_offer'&&p.status==='active'&&p.journeyDate>=today()).slice(0,3);
@@ -384,7 +391,7 @@ async function renderFind(values = rideSearchValues(), autoSearch = false) {
   if (visit !== viewRevision) return;
   shell(`
     <section class="find-page">
-      <div class="find-intro"><h1>Find a ride</h1></div>
+      <div class="find-intro"><h1>Find your journey</h1></div>
       <div class="finder-panel">${rideSearchForm(values, true)}</div>
       <div id="rideResults" class="ride-results"><div class="find-empty"><span class="round-icon">${icon('search')}</span><h2>Search the network</h2><p>Enter your route and date to see the best available drivers.</p></div></div>
     </section>
@@ -400,10 +407,14 @@ async function runRideSearch(values) {
   const searchId = Symbol(); el.searchId = searchId;
   el.innerHTML = `<div class="results-head"><div><span class="eyebrow">SEARCHING</span><h2>Finding the best matches…</h2></div></div>${Array.from({ length: 3 }, () => '<div class="ride-skeleton"></div>').join('')}`;
   try {
-    const qs = new URLSearchParams({ from: values.origin, to: values.destination, date: values.date, time: values.time || '', seats: String(values.seats || 1),radiusMiles:String(values.radiusMiles||0),localDrivers:String(Boolean(values.localDrivers)) });
+    const qs = new URLSearchParams({ from: values.origin, to: values.destination, date: values.date, time: values.time || '', seats: String(values.seats || 1),radiusMiles:String(values.radiusMiles||0),localDrivers:String(Boolean(values.localDrivers)),kind:values.kind||'offered',page:String(values.page||0) });
     const data = await api(`/api/rides/search?${qs}`);
     if (!el.isConnected || el.searchId !== searchId) return;
     const rides = data.rides || [];
+    if(values.kind==='wanted'){
+      state.posts=rides;el.innerHTML=`<div class="results-head"><div><span class="eyebrow">PASSENGERS NEAR YOUR ROUTE</span><h2>${esc(values.origin)} → ${esc(values.destination)}</h2><p>${fmtLongDate(values.date)} · up to ${values.seats} passenger seat${values.seats===1?'':'s'} · ${values.radiusMiles||0} mile pickup radius</p></div></div>${rides.length?`<div class="feed-grid">${rides.map(postCard).join('')}</div>`:emptyFeed('No matching passengers yet','Offer your journey so riders can request a seat.')}${data.nextPage!==null?'<button class=outline-btn id=nextMatches>Check more journeys</button>':''}<button class="primary-btn" id="offerSearchedRoute">Offer this route</button>`;
+      document.querySelector('#offerSearchedRoute').onclick=()=>offerRoute(values);document.querySelector('#nextMatches')?.addEventListener('click',()=>runRideSearch({...values,page:data.nextPage}));bindPostActions();return;
+    }
     el.innerHTML = `<div class="results-head"><div><span class="eyebrow">${rides.length ? `${rides.length} MATCH${rides.length === 1 ? '' : 'ES'}` : 'NO MATCH YET'}</span><h2>${esc(values.origin)} <span>→</span> ${esc(values.destination)}</h2><p>${fmtLongDate(values.date)}${values.time ? ` · around ${esc(values.time)}` : ''} · ${values.seats} seat${values.seats === 1 ? '' : 's'}</p></div><button class="outline-btn" id="postNeedFromSearch">${icon('person')} Post my ride need</button></div>`;
     if (rides.length) {
       el.insertAdjacentHTML('beforeend', `<div class="ride-result-list">${rides.map(rideResultCard).join('')}</div><div class="booking-explainer"><span class="shield-icon">${icon('lock')}</span><div><strong>Request Seat prevents double booking.</strong><p>When a driver accepts, Carpool Network holds the seat. Then <b>agree pickup, timing and any contribution in your booking conversation</b>.</p></div></div>`);
@@ -412,6 +423,7 @@ async function runRideSearch(values) {
     }
     document.querySelector('#postNeedFromSearch')?.addEventListener('click', () => ensureMember(() => postNeedFromSearch(values)));
     document.querySelector('#emptyPostNeed')?.addEventListener('click', () => ensureMember(() => postNeedFromSearch(values)));
+    if(data.nextPage!==null){el.insertAdjacentHTML('beforeend','<button class=outline-btn id=nextMatches>Check more journeys</button>');document.querySelector('#nextMatches').onclick=()=>runRideSearch({...values,page:data.nextPage});}
     bindRideResultActions(values);
   } catch (e) {
     if (!el.isConnected || el.searchId !== searchId) return;
@@ -471,6 +483,8 @@ async function quickRequest(offerId, values, button) {
     showToast(e.message, 'error');
   }
 }
+
+function offerRoute(values){ensureMember(()=>{closeSheet();renderPostPage('ride_offer');const f=document.querySelector('#createPostForm');for(const [key,value] of Object.entries({origin:values.origin,destination:values.destination,journeyDate:values.date,journeyTime:values.time||defaultTime(),seats:values.seats||1})){if(f.elements[key])f.elements[key].value=value;}});}
 
 async function postNeedFromSearch(values) {
   try {
@@ -595,7 +609,7 @@ function postForm(type) {
           <div class="route-connector"></div>
           <label class="premium-field"><span class="destination-pin"></span><div><small>TO</small><input name="destination" placeholder="e.g. Amazon BRS1, Bristol" required></div></label>
         </div>
-        <div class="form-columns three"><label><span>Date</span><input name="journeyDate" type="date" min="${today()}" value="${today(1)}" required></label><label><span>Time</span><input name="journeyTime" type="time" value="${defaultTime()}" required></label><label><span>${offer ? 'Seats available' : 'Seats needed'}</span><select name="seats">${[1,2,3,4,5,6,7,8].map(n => `<option>${n}</option>`).join('')}</select></label></div>
+        <div class="form-columns three"><label><span>Date</span><input name="journeyDate" type="date" min="${today()}" value="${today(1)}" required></label><label><span>Time</span><input name="journeyTime" type="time" value="${defaultTime()}" required></label><label><span>${offer ? 'Seats available' : 'Seats needed'}</span><select name="seats">${[1,2,3,4,5,6,7].map(n => `<option>${n}</option>`).join('')}</select></label></div>
       </div>
       <div class="form-section"><div class="form-section-title"><span>2</span><div><strong>Helpful details</strong><small>Optional, but useful for a smooth journey.</small></div></div>
         <div class="form-columns two"><label><span>${offer ? 'Contribution' : 'Budget / contribution'} <em>optional</em></span><input name="price" placeholder="e.g. £5 or Free"></label><label><span>Time flexibility</span><select name="flexibilityMinutes"><option value="15">± 15 min</option><option value="30" selected>± 30 min</option><option value="60">± 1 hour</option><option value="120">± 2 hours</option></select></label></div>
@@ -678,12 +692,14 @@ async function openPost(id) {
 }
 
 function ownerActions(post) {
+  if(post.commuteId)return `<div class="owner-panel"><p>This journey belongs to your regular commute.</p><button class="outline-btn" id="manageCommuteJourney">Manage regular commute</button></div>`;
   const active = post.status === 'active';
   const isRide = post.category === 'ride_offer' || post.category === 'ride_wanted';
   return `<div class="owner-panel"><div><strong>Your post</strong><span>${active ? 'Live in the network' : `Status: ${esc(post.status)}`} · ${isRide ? 'Coordinate in your booking conversation' : `WhatsApp ${post.whatsappEnabled ? 'on' : 'off'}`}</span></div><div class="owner-buttons">${!isRide ? `<button class="outline-btn" id="toggleWhatsapp">${icon('whatsapp')} ${post.whatsappEnabled ? 'WhatsApp on' : 'Enable WhatsApp'}</button>` : `<span class="required-pill">${icon('whatsapp')} Booking chat available</span>`}${post.category === 'ride_offer' ? `<button class="danger-outline" id="cancelWholeRide">Cancel ride</button>` : ''}<button class="outline-btn" id="togglePost">${active ? 'Close' : 'Reopen'}</button><button class="danger-outline" id="deletePost">${icon('trash')} Delete</button></div></div>`;
 }
 
 function bindOwnerActions(post) {
+  if(post.commuteId){document.querySelector('#manageCommuteJourney').onclick=()=>commuteUI.view(post.commuteId);return;}
   const buttons = document.querySelector('#sheetBackdrop .owner-buttons');
   if (post.status === 'active' && !post.departed && buttons) {
     const edit = document.createElement('button'); edit.className = 'outline-btn'; edit.id = 'editPost'; edit.innerHTML = `${icon('edit')} Edit`;
@@ -746,6 +762,7 @@ async function renderBookingArea(post) {
     } catch (e) { el.innerHTML = `<div class="notice-error">${esc(e.message)}</div>`; }
     return;
   }
+  if(!post.own&&post.category==='ride_wanted'&&post.status==='active'&&!post.departed){el.innerHTML='<div class="booking-box"><h3>Can you share this journey?</h3><p>Publish your available seats. The passenger can request your ride, then you confirm the booking.</p><button class="primary-btn" id="offerWantedRoute">Offer this route</button></div>';document.querySelector('#offerWantedRoute').onclick=()=>offerRoute({origin:post.origin,destination:post.destination,date:post.journeyDate,time:post.journeyTime,seats:post.seats});}
   if (post.own && post.category === 'ride_wanted') {
     if (post.status !== 'active' || post.departed) { el.innerHTML = '<div class="booking-summary">This ride request is no longer open.</div>'; return; }
     el.innerHTML = `<div class="booking-box"><div><span class="eyebrow">DRIVER MATCHING</span><h3>Find a confirmed driver</h3><p>Request up to three matching drivers. The first accepted ride becomes your booking.</p></div><button class="primary-btn full" id="showMatches">Show matching drivers</button></div>`;
@@ -938,6 +955,7 @@ async function renderMe(tab = 'rides') {
   document.querySelector('#editProfile').onclick = editProfile;
   document.querySelectorAll('[data-manage-ride]').forEach(b => b.onclick = () => openPost(b.dataset.manageRide));
   document.querySelectorAll('[data-ride-filter]').forEach(b => b.onclick = () => { state.rideFilter = b.dataset.rideFilter; renderMe('rides'); });
+  document.querySelector('#regularCommutes')?.addEventListener('click',()=>commuteUI.list());
   document.querySelector('#offerFromRides')?.addEventListener('click', () => renderPostPage('ride_offer'));
   document.querySelector('#regenRecovery')?.addEventListener('click', regenerateRecovery);
   if(state.profile.phone?.startsWith('email:')){document.querySelector('#setupPin')?.closest('.account-card')?.remove();document.querySelector('#regenRecovery')?.closest('.account-card')?.remove();}
@@ -947,7 +965,7 @@ async function renderMe(tab = 'rides') {
   document.querySelector('#installApp')?.addEventListener('click', installApp);
   document.querySelector('#signOut')?.addEventListener('click', signOut);
   if (tab === 'account') {
-    document.querySelector('#meContent').insertAdjacentHTML('afterbegin','<div class="toolbar-actions"><button class="outline-btn" id="whatsappContact">WhatsApp contact</button><button class="outline-btn" id="profilePhoto">Profile photo</button><button class="outline-btn" id="vehicleAndLinks">Vehicle & social profiles</button><button class="outline-btn" id="socialSecurity">Email, passkeys & privacy</button><button class="outline-btn" id="communityReports">Community reports</button><button class="outline-btn" data-nav="businesses">Local businesses</button></div>');
+    document.querySelector('#meContent').insertAdjacentHTML('afterbegin','<div class="toolbar-actions"><button class="outline-btn" id="whatsappContact">Phone & WhatsApp</button><button class="outline-btn" id="profilePhoto">Profile photo</button><button class="outline-btn" id="vehicleAndLinks">Vehicle & social profiles</button><button class="outline-btn" id="socialSecurity">Email, passkeys & privacy</button><button class="outline-btn" id="communityReports">Community reports</button><button class="outline-btn" data-nav="businesses">Local businesses</button></div>');
     document.querySelector('#whatsappContact').onclick=()=>editContact();
     document.querySelector('#profilePhoto').onclick=()=>profilePhotos.edit();
     document.querySelector('#vehicleAndLinks').onclick=()=>memberDetails.edit();
@@ -967,7 +985,7 @@ function myRidesHtml(trips, posts = []) {
   const offers = posts.filter(p => p.category === 'ride_offer' && !p.departed);
   const needs = posts.filter(p => p.category === 'ride_wanted' && p.status === 'active' && !p.departed);
   const managed = (filter === 'rider' ? [] : offers).concat(filter === 'driver' ? [] : needs);
-  return `<div class="rides-dashboard"><div class="rides-toolbar"><div class="segmented" role="group" aria-label="Journey role">${[['all','All'],['driver','Driving'],['rider','Riding']].map(([key,label]) => `<button aria-pressed="${filter === key}" class="${filter === key ? 'active' : ''}" data-ride-filter="${key}">${label}</button>`).join('')}</div><div class="toolbar-actions"><button class="outline-btn" id="offerFromRides">${icon('car')} Offer ride</button><button class="primary-btn small" id="findAnother">${icon('search')} Find ride</button></div></div>
+  return `<div class="rides-dashboard"><div class="rides-toolbar"><div class="segmented" role="group" aria-label="Journey role">${[['all','All'],['driver','Driving'],['rider','Riding']].map(([key,label]) => `<button aria-pressed="${filter === key}" class="${filter === key ? 'active' : ''}" data-ride-filter="${key}">${label}</button>`).join('')}</div><div class="toolbar-actions"><button class="outline-btn" id="regularCommutes">Regular commutes</button><button class="outline-btn" id="offerFromRides">${icon('car')} Offer ride</button><button class="primary-btn small" id="findAnother">${icon('search')} Find ride</button></div></div>
     ${managed.length ? `<section class="rides-section"><h2>Your journeys</h2><div class="managed-rides">${managed.map(p => `<article class="managed-ride"><div><span class="eyebrow">${p.category === 'ride_offer' ? 'DRIVING' : 'LOOKING FOR A DRIVER'} · ${p.status === 'closed' && p.availableSeats === 0 ? 'FULL' : esc(p.status)}</span><h3>${esc(p.origin)} → ${esc(p.destination)}</h3><p>${fmtDate(p.journeyDate)} · ${esc(p.timeWindow ? p.timeWindow.start + ' to ' + p.timeWindow.end : p.journeyTime)} · ${p.category === 'ride_offer' ? `${p.availableSeats} of ${p.seats} seats available` : `${p.seats} seats needed`}</p></div><button class="outline-btn" data-manage-ride="${esc(p.id)}">Manage</button></article>`).join('')}</div></section>` : ''}
     <section class="rides-section"><h2>Upcoming & pending</h2>${upcoming.length ? `<div class="trip-list">${upcoming.map(tripCard).join('')}</div>` : `<div class="find-empty inline-empty"><h3>No active bookings</h3></div>`}</section>
     ${past.length ? `<section class="rides-section"><h2>Past activity</h2><div class="trip-list muted-trips">${past.map(tripCard).join('')}</div></section>` : ''}</div>`;
@@ -983,6 +1001,7 @@ function tripCard(t) {
     <div class="trip-main"><div class="trip-status-row"><span class="trip-status ${t.status}">${esc(statusLabel)}</span><span>${t.role === 'rider' ? 'You are riding' : 'You are driving'}</span></div><h3>${esc(t.origin)} <span>→</span> ${esc(t.destination)}</h3><p>${esc(t.journey_time)} · ${t.seats_requested} seat${t.seats_requested === 1 ? '' : 's'} · with ${esc(other)}</p></div>
     <div class="trip-actions">
       ${incoming ? `<button class="accept-btn" data-trip-accept="${esc(t.id)}">Accept</button><button class="decline-btn" data-trip-decline="${esc(t.id)}">Decline</button>` : ''}
+      ${['accepted','completed'].includes(t.status)?`<button class="outline-btn small" data-live-trip="${esc(t.ride_offer_post_id)}">Trip & location</button>`:''}
       ${t.contact_url ? `<a class="whatsapp-link compact finalise-link" href="${esc(t.contact_url)}" target="_blank" rel="noopener">${icon('whatsapp')} Open WhatsApp</a>` : ''}
       ${canCancel ? `<button class="danger-outline small" data-trip-cancel="${esc(t.id)}">${t.status === 'pending' ? 'Withdraw' : 'Cancel'}</button>` : ''}
       ${t.can_rate ? `<button class="outline-btn small" data-rate-trip="${esc(t.id)}" data-rate-name="${esc(other)}">${icon('star')} Rate</button>` : ''}
@@ -995,6 +1014,7 @@ function bindTripActions() {
   document.querySelectorAll('[data-booking]').forEach(card => {
     const b = document.createElement('button'); b.className='outline-btn small';b.textContent='Booking chat';b.onclick=()=>socialUI.render('inbox',`booking:${card.dataset.booking}`);card.querySelector('.trip-actions')?.appendChild(b);
   });
+  document.querySelectorAll('[data-live-trip]').forEach(b=>b.onclick=()=>openTrip(b.dataset.liveTrip));
   document.querySelectorAll('[data-booking-history]').forEach(b => b.onclick = () => openBookingHistory(b.dataset.bookingHistory));
   document.querySelector('#findAnother')?.addEventListener('click', () => renderFind());
   document.querySelectorAll('[data-trip-accept]').forEach(b => b.onclick = async () => { b.disabled=true; try { await api(`/api/ride-requests/${b.dataset.tripAccept}`, { method: 'PATCH', body: JSON.stringify({ status: 'accepted' }) }); showToast('Booking confirmed — agree pickup in Messages', 'success'); renderMe('rides'); } catch (e) { b.disabled=false; showToast(e.message, 'error'); } });
@@ -1162,7 +1182,7 @@ function openSheet(content) {
   requestAnimationFrame(() => wrap.querySelector('input:not([type=hidden]), button')?.focus());
   wrap.addEventListener('click', e => { if (e.target === wrap) closeSheet(); }); document.querySelector('#sheetClose').onclick = closeSheet;
 }
-function closeSheet() { const wrap = document.querySelector('#sheetBackdrop'); const previous = wrap?.previousFocus; wrap?.remove(); document.body.classList.remove('no-scroll'); if (previous?.isConnected) previous.focus(); }
+function closeSheet() { const wrap = document.querySelector('#sheetBackdrop'); const previous = wrap?.previousFocus; wrap?.dispatchEvent(new Event('close')); wrap?.remove(); document.body.classList.remove('no-scroll'); if (previous?.isConnected) previous.focus(); }
 
 function connectLive() {
   if (!state.profile || state.socket?.readyState === WebSocket.OPEN || state.socket?.readyState === WebSocket.CONNECTING) return;
@@ -1220,6 +1240,8 @@ async function boot() {
   if(!configLoaded&&!state.profile){renderConnectionUnavailable();return;}
   await renderLocation();
 }
+const commuteUI=createCommutes({api,esc,openSheet,closeSheet,showToast,state,openPost,chat:id=>socialUI.render('inbox',id)});
+const openTrip=createLiveTrips({api,esc,openSheet,closeSheet,showToast});
 const editContact=createContactDetails({api,esc,openSheet,closeSheet,showToast});
 const profilePhotos=createProfilePhotos({api,esc,openSheet,closeSheet,showToast});
 const memberDetails=createMemberDetails({api,esc,openSheet,closeSheet,showToast});

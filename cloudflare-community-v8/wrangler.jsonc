@@ -50,8 +50,12 @@
     "UPLOADS_ENABLED": "false",
     "EMAIL_FROM": "signin@carpoolnetwork.co.uk",
     "EMAIL_MONTHLY_LIMIT": "1000",
-    "REQUIRE_PROFILE_PHOTO": "false",
-    "REQUIRE_VEHICLE": "false"
+    "REQUIRE_PROFILE_PHOTO": "true",
+    "REQUIRE_VEHICLE": "true",
+    "REQUIRE_PHONE_VERIFICATION": "true",
+    "SMS_DAILY_LIMIT": "0",
+    "SMS_MONTHLY_LIMIT": "0",
+    "SUPPORT_EMAIL": "balashankarbollineni4@gmail.com"
   },
   "observability": {
     "enabled": true,

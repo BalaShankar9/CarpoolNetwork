@@ -1,55 +1,33 @@
 # Release plan and acceptance criteria
 
-Status: **not ready for public launch**. Preserve the familiar red/navy/aqua identity and red-car artwork. Complete coherent journeys before expanding the feature surface. Existing production members and records must survive migration. WhatsApp remains available.
+Status: **isolated preview; not ready for public invitations**. Keep the original red/navy/aqua identity and red-car artwork. Production remains v5.9.0, with no production schema or route changes in this release.
 
-## Current implementation status
-
-| Area | Implemented in candidate | Remaining before the requested launch |
+| Area | Implemented and tested in candidate | Remaining qualification |
 |---|---|---|
-| Accounts | Email-code sign-in, logout/revoke, optional PIN/recovery and pinned passkey protocol | Existing verified owner preserved and preview superadmin configured; verify owner admin UI access and physical-device passkey pilot |
-| Booking | Offers, requests, acceptance, cancellation, seat-race constraints, booking conversations | Real two-person phone pilot, push/background recovery |
-| Chat and reporting | Persisted community/private messages, consent/blocks, presence, automatic and manual issue capture | Named moderator/support cover; hostile-input/load and real-device pilot |
-| Locations | 5,868 UK town suggestions, one-shot GPS-to-town on device, departure radius and optional home-town driver filter | OpenFreeMap live town map is implemented; street addresses, canonical stored place IDs, default city feed and driver search for passenger requests remain |
-| Photos | Private upload, metadata stripping, moderator queue and public approved thumbnail; optional device face hint | Moderator coverage, clear appeal/replacement handling, cross-device checks; photo requirement flags remain disabled |
-| Vehicles | Server-side DVLA adapter, declared passenger seats 1–7, status/date display, masked registration before accepted rides | Key stored as preview Worker secret; documentation-example provider check passed. Real member vehicle check, expiry/exemption policy, enforce eligibility across edit/reopen/accept and future dates before enabling mandatory checks |
-| WhatsApp | Required international contact and consent; accepted/completed partners only; booking/profile/chat links; block and cancellation privacy | Real consenting two-member phone pilot; ownership verification is not claimed |
-| Social profiles | Optional direct Instagram/Facebook links including numeric Facebook profiles | Actual OAuth account connection if required; links are not proof of ownership |
-| Live trip location | Not implemented; privacy page explicitly says unavailable | Consent, authenticated recipients, start/stop/completion, stale updates, retention and phone background behavior |
-| Regular commutes | Existing one-off booking model | Recurring shift series, exceptions, invitations, group privacy and per-occurrence seat allocation |
+| Sign-in and accounts | Email code, logout and other-session revocation, passkey protocol; verified owner account retained | Owner admin UI check and physical-device passkey/recovery pilot |
+| Phone / WhatsApp | Twilio Verify adapter, six-digit code form, expiry/resend/attempt/send caps, unique numbers, number-change protection; contact only after accepted/completed booking | SMS provider account, secrets, approved budget and real delivery. SMS is deliberately unavailable until configured; participation is blocked for unverified accounts. See SMS-SETUP.md |
+| Booking and chat | Requests, acceptance, last-seat race protection, cancellation; persisted private/public chat, consent, blocks and presence | Consenting driver/rider phone pilot, push delivery, reconnect and background behavior |
+| Discovery | UK town autocomplete, one-shot current-town suggestion, on-demand live maps, city-first home feed, driver search for passenger requests, 0/5/10/25/50 mile radius, paginated search; private listing filtering in one database query | Real-device GPS/permission denial and representative-volume performance. Town centres are not street addresses or driving routes; legacy free text still exists |
+| Photos | Mandatory approved photo before participation; private upload, metadata stripping, moderator queue and replacement reasons | Named moderator coverage and suitable real member photos. Optional on-device face detection is advisory, not identity verification |
+| Vehicles | Mandatory driver registration, recent server-side DVLA record, dated MOT/tax checks and declared capacity across posting/editing/reopening/acceptance/start; vehicle-change and capacity DB guards | Real member vehicle check. Exempt records require Support review; no automated exemption approval. DVLA does not prove insurance, ownership, licence or current roadworthiness |
+| Live trips | Driver start/finish; explicit sharing consent; per-sharing-session grants prevent delayed updates after Stop; current confirmed participants only; block/removal/logout checks; 90-second expiry, twelve-hour trip maximum | Two-person device and weak-network pilot. Sharing is foreground only, stops when closing/hiding the trip screen, and is not promised through phone lock/background |
+| Regular commutes | Private four-week schedules, weekday/day-off selections, invitations, separate per-date requests/acceptance/capacity, one-date or future cancellation, removal/leave with future-seat cancellation | Real shift-group pilot. To change a route/time, cancel future dates and create a replacement series; completed history is retained. No automatic renewal/payment collection |
+| Reporting and support | Automatic scrubbed error capture, manual issue reports, protected administration and resolution | Named response/moderation coverage and owner control-room exercise |
+| Recovery | Additive schema rehearsal preserves all 29 old tables/53 rows from the protected backup; maintenance recovery entrypoint retains DO exports and rejects writes | Fresh production backup and isolated hosted rehearsal of the actual production migration/bindings and forward recovery before any domain change |
 
-Profile photos and vehicle checks have disabled feature flags. Their presence in source must not be described as mandatory enforcement in the deployed app. A DVLA record is not a mechanical inspection, ownership check or insurance/driver-licence verification. DVSA MOT history is a separate integration from DVLA's vehicle enquiry service.
+## Next release steps
 
-## Product flows to build next
+1. Complete preview schema, deploy, run the strict hosted smoke test, and retire test listings and sessions. The main local regression suite uses relaxed photo/phone/vehicle flags for legacy flows; `scripts/check-preview.mjs` separately verifies all three flags enabled, against the running Worker and real Durable Objects. Both are required.
+2. Arrange SMS provider/budget and activate through `SMS-SETUP.md`. Do not mark the owner's real number verified through a database edit. Photo and vehicle requirements are enabled in preview; this is a setup gate, not a public-ready claim.
+3. Pilot a real authorized vehicle, approved profile photos and multiple consenting driver/rider phones. Exercise signup, actual SMS, denied GPS, low signal, background/return, group invitations, multiple dates, full capacity, cancellation, live sharing and WhatsApp contact. Verify push separately; a mock delivery is not a real notification receipt.
+4. The owner checks administrator access and report/photo-review handling and identifies support coverage. Existing owner privileges and production credentials must remain intact.
+5. Rehearse a fresh production snapshot and compatible forward maintenance recovery. See `migrations/README.md`; a rollback to the pre-ChatRoom Worker cannot be assumed. No production migration has run.
+6. Only after those gates pass, qualify the exact production configuration and conduct a small, staffed community launch. Maintain WhatsApp as the established contact option.
 
-**Location and nearby matching.** Ask for a home town during onboarding; offer optional one-shot location and manual selection. Store a provider/place ID with a canonical label and coordinates, not a home address. Default discovery to that departure city, with a visible city switcher and 5/10/25/50-mile options. Keep the driver's home city separate from the ride's departure: a Cardiff-based driver can deliberately offer a trip from Bristol. Let drivers search passenger requests using their chosen pickup area and time window. Filter in indexed queries with pagination; never let a generic relevance score introduce an unrelated departure. Exact pickup points stay within accepted booking conversations. The current directory cannot resolve every street or point of interest.
+## Boundaries
 
-**Vehicle eligibility.** Driver adds registration, confirms authorized use and declares passenger seats excluding the driver. Query DVLA using a Worker secret and show the returned fields with the check timestamp. Define exemptions and stale/failed checks explicitly. Validate seat capacity and eligibility on every path that creates, edits, reopens or accepts an offer. Recheck near departure and warn affected passengers if status changes. Passengers should not need to register a vehicle. Full plate access is limited to the owner and confirmed, relevant ride partners; social links remain optional.
+No claim of universal reliability, identity verification, inspected vehicles, end-to-end encrypted chat or continuous background tracking is made. The supplied DVLA key is a server secret and the provider's documentation-example lookup returned HTTP 200; this is not a real member vehicle check. Social links are optional member-provided links, not Instagram/Facebook OAuth proof. OpenFreeMap is optional; typing towns remains available when maps fail.
 
-**Live location.** Acceptance makes sharing available; it must not silently start tracking. Each participant explicitly starts sharing with the accepted trip members and sees who can view it. Every read, write and WebSocket connection rechecks accepted membership and blocks. The screen displays accuracy and last-update time and marks stale positions. Stop immediately on stop-sharing, cancellation, completion, membership removal or maximum trip duration. Retain only the latest position with a short expiry, separate from analytics and chat history. Use temporary Durable Object state for fan-out with authorization in D1; do not put coordinates in URLs, logs, notifications or diagnostic reports. Verify real iOS/Android background limits before promising continuous tracking. Publish a location-specific privacy notice before enabling this feature.
+The owner email is balashankarbollineni4@gmail.com. SMS setup, real photos/vehicle/pilot participants and staffing are external prerequisites. Keep all private credentials, recovery codes, account data and database backups out of Git.
 
-**Recurring shift groups.** A regular-ride series contains route, UK time zone, weekdays, start/end dates, vehicle and driver. Generate bounded individual occurrences with a unique `(series_id, local_date)` key so retries cannot duplicate trips. Each occurrence owns its seat inventory and booking state. Invite named members; nobody is added without accepting. Support one-day exceptions, holidays, cancellation of one occurrence, and editing future occurrences without changing completed history. Reserve/confirm seats atomically; accepted seats plus new requests cannot exceed declared passenger seats (4 or 7 are passenger counts, not vehicle-total seats). A private group can coordinate the regular journey, but membership is not an automatic confirmed seat. Removing a member revokes chat/location access and addresses their future bookings with an explicit notice. Do not claim DST, shift crossover or recurring capacity works until those cases are tested.
-
-## Release sequence
-
-1. Finish the source candidate and final regression run. Deploy additive schema and source to the separate preview, then repeat hosted booking, chat, photo and reporting tests. Retire synthetic test access after checking.
-2. DVLA preview secret and successful direct provider check are complete. OpenFreeMap is selected with no Google billing or API key; maps are optional and have no SLA. Verify the deployed adapter with synthetic fixtures and keep precise GPS out of provider requests.
-3. Confirm the real owner's verified email and existing protected administrator role. Verify moderation, account recovery and private support/report triage. Do not assign the first signup as owner.
-4. Complete and test the requested location, eligibility, tracking and recurring flows above. Keep incomplete features visibly unavailable.
-5. Pilot with a driver and multiple riders on real phones, including limited connectivity, lost signal, background/resume, cancel/decline, exhausted seats, permission denial, oversized photos, user blocks and invalid vehicle checks. Use actual configured providers; mocked adapter tests do not qualify integrations.
-6. Rehearse a current protected production export and compatible forward recovery. Record binding/version/routing state and preserve production signing keys. Follow `migrations/README.md`; simple rollback across the new Durable Object class is unavailable.
-7. Change the public domain only after those gates pass. Start with a small community invitation and staffed reporting, then increase access based on observed reliability.
-
-## Owner inputs and pilot prerequisites
-
-The owner email, DVLA key, maps-provider choice and runtime access have been supplied. The owner’s email already has a verified preview account. Remaining real-world prerequisites are a driver’s authorized vehicle registration, suitable profile photo, consenting driver/rider pilot participants and moderator/support availability. Never put keys or private member data into source control.
-
-## Primary integration references
-
-- [DVLA Vehicle Enquiry Service](https://developer-portal.driver-vehicle-licensing.api.gov.uk/apis/vehicle-enquiry-service/v1.2.0-vehicle-enquiry-service.html)
-- [DVSA MOT history authentication](https://documentation.history.mot.api.gov.uk/mot-history-api/authentication/)
-- [GeoNames source and attribution](https://download.geonames.org/export/dump/readme.txt)
-- [Public Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/) — unsuitable for client autocomplete.
-- [Cloudflare Worker rollback restrictions](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/)
-
-- [WhatsApp click to chat](https://faq.whatsapp.com/5913398998672934)
-- [OpenFreeMap](https://openfreemap.org/) and [quick start](https://openfreemap.org/quick_start/)
+References: [Twilio Verify](https://www.twilio.com/docs/verify/api), [DVLA](https://developer-portal.driver-vehicle-licensing.api.gov.uk/apis/vehicle-enquiry-service/v1.2.0-vehicle-enquiry-service.html), [Cloudflare rollback restrictions](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/), [D1 limits](https://developers.cloudflare.com/d1/platform/limits/), [OpenFreeMap](https://openfreemap.org/).

@@ -89,7 +89,7 @@ export function createSocialUI(h) {
         bindSidebar(view,rooms); return;
       }
       currentRoom = selected;
-      shell(`<section class="chat-workspace">${list}<section class="chat-pane" aria-label="Conversation"><header class="chat-heading"><div><h2>${esc(selected.title)}</h2><span id="onlineCount">Online count connecting...</span></div><div>${button('bell',selected.muted?'Unmute':'Mute','id="muteRoom"')}${['owner','moderator'].includes(selected.role)?button('users','Members','id="roomMembers"'):''}</div></header>
+      shell(`<section class="chat-workspace">${list}<section class="chat-pane" aria-label="Conversation"><header class="chat-heading"><div><h2>${esc(selected.title)}</h2><span id="onlineCount">Online count connecting...</span></div><div>${button('bell',selected.muted?'Unmute':'Mute','id="muteRoom"')}${!selected.id.startsWith('commute:')&&['owner','moderator'].includes(selected.role)?button('users','Members','id="roomMembers"'):''}</div></header>
         <div class="chat-search"><input id="chatSearch" type="search" aria-label="Search messages" placeholder="Search this conversation">${button('search','Search','id="runChatSearch"')}</div><div id="chatPinned" class="chat-pinned"></div>
         <button class="text-action" id="olderMessages" hidden>Earlier messages</button><div id="chatMessages" class="chat-messages" role="log" aria-label="Messages" aria-live="polite"></div>
         <form id="chatComposer" class="chat-composer"><div id="replyNotice"></div><p id="chatWriteNotice" role="status"></p><textarea id="chatText" maxlength="2000" rows="2" aria-label="Message" placeholder="Message ${esc(selected.title)}"></textarea><div class="composer-tools"><label class="chat-only"><input id="chatOnly" type="checkbox" checked disabled> Only in this conversation</label><span id="photoStatus"></span>${overview.uploads ? '<label class="outline-btn small" title="Attach photo"><input type="file" id="chatPhoto" accept="image/jpeg,image/png,image/webp" hidden>Photo</label>':''}<span id="chatStatus" role="status">Connecting...</span><button class="primary-btn small" id="sendMessage" type="submit">${icon('arrow')} Send</button></div><p id="sendError" class="form-error" role="alert"></p></form></section></section>`,view);
@@ -107,7 +107,7 @@ export function createSocialUI(h) {
       $('#olderMessages').onclick=safe(()=>loadMessages(id,visit,messages[0]?.seq));
       $('#muteRoom').onclick=safe(async()=>{await post(`/api/social/rooms/${id}/preferences`,{muted:!currentRoom.muted});await render(view,id);});
       $('#roomMembers')?.addEventListener('click',safe(()=>members(id)));
-      if(selected.kind==='community'&&selected.role!=='owner'){
+      if(selected.kind==='community'&&!selected.id.startsWith('commute:')&&selected.role!=='owner'){
         $('#muteRoom').insertAdjacentHTML('afterend',button('x','Leave','id="leaveRoom"'));
         $('#leaveRoom').onclick=safe(async()=>{if(confirm('Leave this community? Existing bookings are not cancelled.')){await post(`/api/social/rooms/${id}/leave`);await render('chat');}});
       }
@@ -205,7 +205,7 @@ export function createSocialUI(h) {
   async function account() {
     try {
       const data=await api('/api/auth/email/status');
-      openSheet(`<h2>Account security</h2><p>${data.email?`${esc(data.email)} · Email verified`:'Email not verified'}</p><p>Phone and identity have not been verified.</p>${!data.email?button('message','Verify email','id="verifyEmail"'):button('lock','Add passkey','id="addPasskey"')}<div>${data.passkeys.map(p=>`<div class="community-row"><strong>${esc(p.label)}</strong>${button('trash','Remove',`data-key="${esc(p.id)}"`)}</div>`).join('')}</div><hr>${button('bag','My business profile','id="editBusiness"')}${button('copy','Export my data','id="exportAccount"')}${button('trash','Delete account','id="deleteAccount"')}`);
+      openSheet(`<h2>Account security</h2><p>${data.email?`${esc(data.email)} · Email verified`:'Email not verified'}</p><p>Manage SMS verification in Account → WhatsApp contact. Email or phone verification does not prove identity.</p>${!data.email?button('message','Verify email','id="verifyEmail"'):button('lock','Add passkey','id="addPasskey"')}<div>${data.passkeys.map(p=>`<div class="community-row"><strong>${esc(p.label)}</strong>${button('trash','Remove',`data-key="${esc(p.id)}"`)}</div>`).join('')}</div><hr>${button('bag','My business profile','id="editBusiness"')}${button('copy','Export my data','id="exportAccount"')}${button('trash','Delete account','id="deleteAccount"')}`);
       $('#verifyEmail')?.addEventListener('click',()=>email('link'));
       $('#deleteAccount').insertAdjacentHTML('afterend','<p><a href="/data-and-safety.html" target="_blank" rel="noopener">Data and safety information</a></p>');
       $('#addPasskey')?.addEventListener('click',safe(async()=>{const {startRegistration}=await import('/passkeys.js');const options=await post('/api/auth/passkey/register/options');const response=await startRegistration({optionsJSON:options.options});await post('/api/auth/passkey/register/verify',{id:options.id,response});account();}));
