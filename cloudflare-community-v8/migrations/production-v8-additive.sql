@@ -1,5 +1,5 @@
 -- Additive migration from the production schema inspected on 2026-09-28.
--- Rehearsed with synthetic records; NOT applied to production.
+-- Preserves existing records; run only after a protected backup and rehearsal.
 -- Preflight duplicate active (rider_id, ride_offer_post_id) pairs before running.
 
 CREATE TABLE IF NOT EXISTS auth_challenges (

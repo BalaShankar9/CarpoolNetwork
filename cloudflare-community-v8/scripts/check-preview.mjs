@@ -1,4 +1,4 @@
-// Explicitly targets the isolated design preview. Never use production data.
+// Targets only the isolated preview or release rehearsal, never production.
 import assert from 'node:assert/strict';
 import { randomUUID, createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -7,11 +7,12 @@ import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import WebSocket from 'ws';
 const local=process.env.CARPOOL_LOCAL_CHECK==='1';
-const base=local?'http://127.0.0.1:8788':'https://carpool-community-design.balashankarbollineni4.workers.dev';
+const rehearsal=process.env.CARPOOL_REHEARSAL_CHECK==='1';
+const base=local?'http://127.0.0.1:8788':rehearsal?'https://carpool-network-release-check.balashankarbollineni4.workers.dev':'https://carpool-community-design.balashankarbollineni4.workers.dev';
 const cookieName='__Host-cn_session';
 const walk=p=>readdirSync(p,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(join(p,e.name)):[join(p,e.name)]);
 const localDb=local?walk('.wrangler/state/v3/d1').find(p=>p.endsWith('.sqlite')&&!p.endsWith('metadata.sqlite')):null;
-const account='b7d80aea8a0938fe6d92342fa1ac7ea6', database='317cc2b1-51c9-4c8d-b3e0-aaa8621f36f2';
+const account='b7d80aea8a0938fe6d92342fa1ac7ea6', database=rehearsal?'46d0e693-595e-4975-b261-ef82ec387fbc':'317cc2b1-51c9-4c8d-b3e0-aaa8621f36f2';
 const oauth=local?'':execFileSync('python3',['-c','import tomllib,sys;print(tomllib.load(open(sys.argv[1],"rb"))["oauth_token"])',`${homedir()}/.wrangler/config/default.toml`],{encoding:'utf8'}).trim();
 const hash=s=>createHash('sha256').update(s).digest('hex');
 const users=['Driver','Rider','Third'].map(name=>({id:randomUUID(),name:`Preview test ${name}`,token:randomUUID()+randomUUID()}));
@@ -24,7 +25,7 @@ function connect(user,room){const events=[];const ws=new WebSocket(base.replace(
 const adminCode=randomUUID().toUpperCase();
 try{
   console.log('Target: '+base);
-  assert.equal(ok(await api('/api/config')).preview,true);
+  const config=ok(await api('/api/config'));assert.equal(config.preview,true);assert.equal(config.phoneVerificationRequired,false);assert.equal(config.whatsappRequired,true);
   assert.equal(ok(await api('/api/health')).database,'ok');
   for(const u of users){
     await sql('INSERT INTO users(id,token_hash,name,phone,area) VALUES(?,?,?,?,?)',[u.id,hash(randomUUID()),u.name,`email:${u.id}`,'Preview test only']);
@@ -35,15 +36,18 @@ try{
   }
   const [driver,rider,third]=users;
   const sample={category:'ride_offer',origin:'Cardiff',destination:'Bristol',journeyDate:new Date(Date.now()+5*86400000).toISOString().slice(0,10),journeyTime:'12:00',seats:1};
-  assert.equal((await api('/api/posts',driver,'POST',sample)).data.code,'PHONE_VERIFICATION_REQUIRED');
-  const phone=ok(await api('/api/auth/phone/status',driver));assert.equal(phone.required,true);assert.equal(phone.available,false);assert.equal(phone.verified,false);
+  const phone=ok(await api('/api/auth/phone/status',driver));assert.equal(phone.required,false);assert.equal(phone.available,false);assert.equal(phone.verified,false);
   assert.equal((await api('/api/auth/phone/start',driver,'POST',{number:'+12025550123',shareBookings:true})).status,503);
-  for(const u of users)await sql("INSERT INTO phone_verifications(user_id,phone_number,expires_at,provider) SELECT user_id,whatsapp_number,datetime('now','+180 days'),'twilio_verify_sms' FROM member_contacts WHERE user_id=?",[u.id]);
+  ok(await api('/api/contact-details',driver,'POST',{number:'+12025550123',shareBookings:true}));
+  assert.equal(ok(await api('/api/auth/phone/status',driver)).verified,false);
+  await sql('DELETE FROM member_contacts WHERE user_id=?',[driver.id]);
+  assert.equal((await api('/api/posts',driver,'POST',sample)).data.code,'CONTACT_REQUIRED');
+  ok(await api('/api/contact-details',driver,'POST',{number:'+12025550123',shareBookings:true}));
   assert.equal((await api('/api/posts',driver,'POST',sample)).data.code,'PHOTO_REQUIRED');
   for(const u of users)await sql("INSERT INTO profile_photos(user_id,object_key,approved_key,status) VALUES(?,? ,?,'approved')",[u.id,'synthetic-'+u.id,'synthetic-'+u.id]);
   assert.equal((await api('/api/posts',driver,'POST',sample)).data.code,'VEHICLE_REQUIRED');
   await sql("INSERT INTO member_vehicles(user_id,registration,make,colour,mot_status,mot_expiry,tax_status,tax_due,passenger_seats,keeper_confirmed_at) VALUES(?,'TEST001','Synthetic fixture','Red','Valid',date('now','+180 days'),'Taxed',date('now','+180 days'),7,CURRENT_TIMESTAMP)",[driver.id]);
-  console.log('PASS strict phone, photo and vehicle gates; unconfigured SMS fails closed. Synthetic verification records only; no SMS or DVLA call.');
+  console.log('PASS email-and-WhatsApp launch mode, required contact/photo/vehicle gates and disabled SMS. Synthetic photo and vehicle fixtures only.');
   const date=new Date(Date.now()+4*86400000).toISOString().slice(0,10);
   const ride=ok(await api('/api/posts',driver,'POST',{category:'ride_offer',origin:'Preview test Cardiff',destination:'Preview test Bristol',journeyDate:date,journeyTime:'12:00',seats:1,body:'Automated preview test. Not a real journey.'}),201).post;
   const requests=[];for(const u of [rider,third])requests.push(ok(await api('/api/ride-requests/quick',u,'POST',{rideOfferPostId:ride.id}),201));
@@ -56,6 +60,7 @@ try{
   const winner=results.findIndex(r=>r.status===200),traveller=[rider,third][winner],outsider=[rider,third][1-winner],booking=requests[winner].id,room=`booking:${booking}`;
   console.log('PASS concurrent last-seat acceptance');
   const contact=ok(await api(`/api/ride-requests/${booking}/contact`,traveller)).contact;
+  assert.equal(contact.phoneVerified,false);assert.match(contact.verification,/not verified/);
   assert.equal(contact.number,'+12025550123');assert.match(contact.url,/^https:\/\/wa.me\/12025550123\?text=/);
   assert.equal(ok(await api('/api/member-details/'+driver.id,outsider)).whatsapp,null);
   assert.equal(ok(await api('/api/ride-request-options?offerPostId='+ride.id,traveller)).options.find(o=>o.requestId===booking).contactUrl,contact.url);
@@ -84,9 +89,9 @@ try{
   const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(Date.now()+1800000)).map(p=>[p.type,p.value]));
   const trip=ok(await api('/api/posts',driver,'POST',{...sample,journeyDate:`${parts.year}-${parts.month}-${parts.day}`,journeyTime:`${parts.hour}:${parts.minute}`,seats:4}),201).post;
   const seat=ok(await api('/api/ride-requests/quick',traveller,'POST',{rideOfferPostId:trip.id}),201);
-  await sql("UPDATE phone_verifications SET expires_at=datetime('now','-1 second') WHERE user_id=?",[traveller.id]);
-  assert.equal((await api(`/api/ride-requests/${seat.id}`,driver,'PATCH',{status:'accepted'})).status,428);
-  await sql("UPDATE phone_verifications SET expires_at=datetime('now','+180 days') WHERE user_id=?",[traveller.id]);
+  await sql('DELETE FROM member_emails WHERE user_id=?',[traveller.id]);
+  const unmet=await api(`/api/ride-requests/${seat.id}`,driver,'PATCH',{status:'accepted'});assert.equal(unmet.status,428);assert.equal(unmet.data.code,'PARTNER_REQUIREMENTS');
+  await sql('INSERT INTO member_emails(user_id,email) VALUES(?,?)',[traveller.id,`${traveller.id}@example.invalid`]);
   ok(await api(`/api/ride-requests/${seat.id}`,driver,'PATCH',{status:'accepted'}));
   assert.equal((await api(`/api/trips/${trip.id}/start`,traveller,'POST',{})).status,403);
   ok(await api(`/api/trips/${trip.id}/start`,driver,'POST',{}));

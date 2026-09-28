@@ -6,7 +6,7 @@ export async function participationIssue(env,userId){
   const now=new Date().toISOString().slice(0,19).replace('T',' ');
   if(!member||member.status==='banned'||member.status==='suspended'&&(!member.until_at||member.until_at>now))return issue('This member cannot participate right now. Contact Support if needed.','MEMBER_RESTRICTED',403);
   if(!await env.DB.prepare('SELECT user_id FROM member_emails WHERE user_id=?').bind(userId).first())return issue('Verify your email in Account before participating.','EMAIL_REQUIRED',403);
-  if(env.REQUIRE_WHATSAPP==='true'&&!await env.DB.prepare('SELECT user_id FROM member_contacts WHERE user_id=?').bind(userId).first())return issue('Add and verify your WhatsApp contact in Account.','CONTACT_REQUIRED');
+  if(env.REQUIRE_WHATSAPP==='true'&&!await env.DB.prepare('SELECT user_id FROM member_contacts WHERE user_id=?').bind(userId).first())return issue('Add your WhatsApp contact in Account and consent to sharing it with accepted ride partners.','CONTACT_REQUIRED');
   if(env.REQUIRE_PHONE_VERIFICATION==='true'&&!await hasVerifiedPhone(env,userId))return issue('Verify your phone number by SMS in Account before participating.','PHONE_VERIFICATION_REQUIRED');
   if(env.REQUIRE_PROFILE_PHOTO==='true'&&!await env.DB.prepare("SELECT user_id FROM profile_photos WHERE user_id=? AND approved_key<>''").bind(userId).first())return issue('Add a clear profile photo in Account and wait for moderator approval.','PHOTO_REQUIRED');
   return null;

@@ -76,3 +76,17 @@ test('vehicle eligibility rejects stale checks, future MOT/tax expiry and excess
   assert.equal(vehicleIssue({...v,checked_at:'2026-09-26 09:00:00'},'2026-10-01',4,now).code,'VEHICLE_STALE');
   assert.equal(vehicleIssue({...v,mot_status:'Not valid'},'2026-10-01',4,now).code,'VEHICLE_INELIGIBLE');
 });
+
+test('email-and-WhatsApp launch mode preserves photo and vehicle gates without asserting phone verification',async()=>{
+  const f=setup();f.env.REQUIRE_PHONE_VERIFICATION='false';f.env.SMS_DAILY_LIMIT='0';f.env.SMS_MONTHLY_LIMIT='0';
+  const call=async data=>{const r=await contactRoutes(new Request('https://carpool.test/api/contact-details',{method:'POST',headers:{'x-test-user':'u','content-type':'application/json'},body:JSON.stringify(data)}),f.env,f.h);return {status:r.status,data:await r.json()};};
+  assert.equal((await call({number:phone,shareBookings:false})).status,400);
+  assert.equal((await call({number:phone,shareBookings:true})).status,200);
+  assert.equal(await hasVerifiedPhone(f.env,'u'),false);assert.equal((await participationIssue(f.env,'u')).code,'PHOTO_REQUIRED');
+  f.db.prepare("INSERT INTO profile_photos(user_id,object_key,approved_key,status) VALUES('u','synthetic','synthetic','approved')").run();
+  assert.equal(await participationIssue(f.env,'u'),null);
+  assert.equal((await rideEligibility(f.env,'u','ride_offer','2026-10-01',4)).code,'VEHICLE_REQUIRED');
+  f.db.prepare("DELETE FROM member_emails WHERE user_id='u'").run();
+  assert.equal((await call({number:phone,shareBookings:true})).status,403);
+  assert.equal((await participationIssue(f.env,'u')).code,'EMAIL_REQUIRED');assert.equal(f.calls.length,0);f.db.close();
+});

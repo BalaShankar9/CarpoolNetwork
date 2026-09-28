@@ -1,7 +1,7 @@
 {
   "name": "carpool-community",
   "private": true,
-  "version": "8.0.0-preview",
+  "version": "8.0.0",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --local --config wrangler.local.jsonc --ip 127.0.0.1 --port 8788",

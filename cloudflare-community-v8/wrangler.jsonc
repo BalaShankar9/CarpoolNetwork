@@ -52,7 +52,7 @@
     "EMAIL_MONTHLY_LIMIT": "1000",
     "REQUIRE_PROFILE_PHOTO": "true",
     "REQUIRE_VEHICLE": "true",
-    "REQUIRE_PHONE_VERIFICATION": "true",
+    "REQUIRE_PHONE_VERIFICATION": "false",
     "SMS_DAILY_LIMIT": "0",
     "SMS_MONTHLY_LIMIT": "0",
     "SUPPORT_EMAIL": "balashankarbollineni4@gmail.com"

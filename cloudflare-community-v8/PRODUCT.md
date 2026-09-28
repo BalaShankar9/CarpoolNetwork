@@ -18,7 +18,7 @@ Purpose: help an existing UK community arrange shared journeys with less uncerta
 
 Workers serves the API and static application. D1 owns account, booking and message records with database constraints protecting seat allocation and authorization. A Durable Object per conversation distributes changes and short-lived presence; it is not the authoritative message store. Server acceptance precedes a sent state. The browser reloads persisted messages after reconnect. Passkeys use pinned SimpleWebAuthn packages; cryptographic protocol code remains separate from application logic. Error capture stores scrubbed metadata; manual issue descriptions are private to the support/admin workflow.
 
-The public v5.9 deployment and the old v7 preview remain independent of this candidate. Testing uses a new local database and synthetic members. No production member data is copied into the candidate.
+Version 8 is deployed on the original domains using the existing production D1 and preserved LiveHub namespace. The preview, local database and hosted rehearsal remain isolated. Synthetic fixtures are confined to test environments.
 
 ## Release gates
 
@@ -29,9 +29,9 @@ The public v5.9 deployment and the old v7 preview remain independent of this can
 5. Diagnostics work for guests and members; unauthorized users cannot read reports. A named support owner and visible contact route are required for launch.
 6. A rehearsed additive migration and protected backup are required, together with a compatible runtime recovery plan that accounts for Durable Object migration restrictions. A small real-device community pilot comes before a broad invitation.
 
-## Known external dependency at discovery
+## Provider status
 
-The v7 preview had no email binding, sending domain or support address configured, despite requiring verified email for chat and bookings. This is a launch blocker, not a cosmetic issue. Phone/identity verification is not implemented and must never be implied by email verification.
+Email sending is configured on production and preview through Cloudflare. SMS is deliberately disabled at the owner's request, with zero send allowances. A WhatsApp number is still required and labelled as member-provided; no phone-access or identity badge is implied. Photo approval and driver vehicle requirements stay enabled.
 
 ## Engineering references
 
@@ -43,4 +43,4 @@ The v7 preview had no email binding, sending domain or support address configure
 
 ## Expanded requested scope
 
-See `LAUNCH-PLAN.md` for town/location matching, reviewed profile photos, vehicle records, social links, live trip location and recurring shift groups. It records implemented candidate features separately from integrations and journeys still to build. The latest source is not yet deployed.
+See `LAUNCH-PLAN.md` for town/location matching, reviewed profile photos, vehicle records, social links, live trip location and recurring shift groups. It records deployed features separately from real-device/provider checks that have not been performed.

@@ -15,6 +15,7 @@ const state = {
   preview: false,
   supportEmail: '',
   emailAvailable: false,
+  phoneVerificationRequired: false,
   category: '',
   q: '',
   posts: [],
@@ -1050,13 +1051,13 @@ async function openBookingHistory(id) {
 
 function accountSetupHtml() {
   const cards=[
-    ['whatsappContact','whatsapp','Phone & WhatsApp','Verify access to your number. Contact is shared with accepted ride partners.','Verify or manage'],
+    ['whatsappContact','whatsapp','Phone & WhatsApp',state.phoneVerificationRequired?'Verify access to your number. Contact is shared with accepted ride partners.':'Add your WhatsApp number. Contact is shared with accepted ride partners.',state.phoneVerificationRequired?'Verify or manage':'Manage contact'],
     ['profilePhoto','user','Your profile photo',state.profile.photo_approved?'Your approved photo helps ride partners recognise you.':'Add a clear photo of yourself for moderator review.','Manage photo'],
     ['vehicleAndLinks','car','Vehicle & social profiles','Driving? Check your registration and passenger seats. Social links are optional.','Manage details'],
     ['socialSecurity','shield','Sign-in & privacy','Email, passkeys, blocked members and your personal data.','Review security'],
     ['communityReports','alert','Community reports','Track a concern about a member, message or listing.','View reports']
   ];
-  return `<section class="account-setup" aria-labelledby="accountSetupTitle"><div class="section-title-row"><div><span class="eyebrow">BEFORE YOUR FIRST JOURNEY</span><h2 id="accountSetupTitle">Get ready to travel</h2><p>Verify your phone and add your photo. Drivers also add their vehicle.</p></div></div><div class="setup-grid">${cards.map(([id,ico,title,copy,action])=>`<article class="setup-card"><span class="setup-icon">${icon(ico)}</span><h3>${title}</h3><p>${copy}</p><button class="text-action" id="${id}">${action} ${icon('arrow')}</button></article>`).join('')}<article class="setup-card"><span class="setup-icon">${icon('bag')}</span><h3>Local businesses</h3><p>Explore member-provided services around your community.</p><button class="text-action" data-nav="businesses">Explore directory ${icon('arrow')}</button></article></div></section><div class="section-title-row account-preferences"><div><span class="eyebrow">MAKE IT YOURS</span><h2>Preferences & support</h2></div></div>`;
+  return `<section class="account-setup" aria-labelledby="accountSetupTitle"><div class="section-title-row"><div><span class="eyebrow">BEFORE YOUR FIRST JOURNEY</span><h2 id="accountSetupTitle">Get ready to travel</h2><p>${state.phoneVerificationRequired?'Verify your phone':'Add your WhatsApp number'} and add your photo. Drivers also add their vehicle.</p></div></div><div class="setup-grid">${cards.map(([id,ico,title,copy,action])=>`<article class="setup-card"><span class="setup-icon">${icon(ico)}</span><h3>${title}</h3><p>${copy}</p><button class="text-action" id="${id}">${action} ${icon('arrow')}</button></article>`).join('')}<article class="setup-card"><span class="setup-icon">${icon('bag')}</span><h3>Local businesses</h3><p>Explore member-provided services around your community.</p><button class="text-action" data-nav="businesses">Explore directory ${icon('arrow')}</button></article></div></section><div class="section-title-row account-preferences"><div><span class="eyebrow">MAKE IT YOURS</span><h2>Preferences & support</h2></div></div>`;
 }
 
 function accountHtml() {
@@ -1262,7 +1263,7 @@ async function boot() {
   state.connectionUnavailable=false;
   const params = new URLSearchParams(location.search); const post = params.get('post');
   let configLoaded=false;
-  await Promise.all([restoreSession(), fetch('/api/config', { signal: AbortSignal.timeout(10000) }).then(r => {if(!r.ok)throw Error('Configuration unavailable');return r.json();}).then(config => { configLoaded=true;state.preview = Boolean(config.preview); state.supportEmail = config.supportEmail || ''; state.emailAvailable = Boolean(config.emailAvailable); }).catch(() => {})]);
+  await Promise.all([restoreSession(), fetch('/api/config', { signal: AbortSignal.timeout(10000) }).then(r => {if(!r.ok)throw Error('Configuration unavailable');return r.json();}).then(config => { configLoaded=true;state.preview = Boolean(config.preview); state.supportEmail = config.supportEmail || ''; state.emailAvailable = Boolean(config.emailAvailable); state.phoneVerificationRequired = Boolean(config.phoneVerificationRequired); }).catch(() => {})]);
   if(!configLoaded&&!state.profile){renderConnectionUnavailable();return;}
   await renderLocation();
 }

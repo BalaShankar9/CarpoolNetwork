@@ -1,6 +1,8 @@
-# Activate phone verification on the preview
+# Optional future phone verification
 
-Implementation uses Twilio Verify's SMS channel. The preview deliberately has no SMS credentials and zero send allowances. It does not send codes or mark real accounts phone-verified. Browsing, sign-in, Support, cancellation and logout remain available; new participation requires verification.
+For the public launch, the owner explicitly chose email verification plus a required member-provided WhatsApp number. Production and preview set `REQUIRE_PHONE_VERIFICATION=false`, with zero SMS allowances and no SMS credentials. Phone access is not verified, and the interface says so. Photo approval and driver vehicle checks remain required.
+
+The optional future implementation uses Twilio Verify. The following setup is only needed if the owner chooses to enable SMS later.
 
 ## Provider setup
 
@@ -9,7 +11,7 @@ Implementation uses Twilio Verify's SMS channel. The preview deliberately has no
 3. Use a dedicated Twilio API key. Add `TWILIO_API_KEY_SID`, `TWILIO_API_KEY_SECRET`, and `TWILIO_VERIFY_SERVICE_SID` as **Worker secrets** on `carpool-community-design`. Never put credentials into JavaScript, Git, screenshots, issue reports or chat. Use `wrangler secret put NAME --config wrangler.jsonc` or the Cloudflare secret editor. The DVLA secret is separate and is already installed.
 4. Set `SMS_DAILY_LIMIT` and `SMS_MONTHLY_LIMIT` in the preview configuration to positive whole-number send-attempt allowances, each no larger than 10,000, consistent with the approved budget. Current values remain zero. These are conservative application send caps, not a guarantee of the provider's final currency bill. Also configure provider billing alerts and fraud/country limits.
 5. Deploy only the preview. With two consenting phones, verify successful delivery, wrong/expired codes, resend cooldown, changing a number, duplicate-number rejection and account export/deletion. Keep the earlier number private and unchanged until a replacement is successfully verified. Confirm blocked/unconnected members cannot see either contact.
-6. The owner must separately qualify production credentials, limits and delivery before the public launch. Do not copy synthetic test verification rows into real accounts.
+6. Before enabling SMS in production, qualify production credentials, limits and delivery. Do not copy synthetic test verification rows into real accounts.
 
 ## Implemented controls
 

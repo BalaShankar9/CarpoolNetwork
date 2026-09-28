@@ -1,10 +1,12 @@
-# Carpool Network community candidate
+# Carpool Network v8
 
 A focused upgrade for the existing UK ride-sharing community. It preserves the original red, navy and aqua identity and community artwork. Members supply a WhatsApp contact for accepted ride partners; opening WhatsApp and sending a message remains their choice.
 
-Hosted preview: https://carpool-community-design.balashankarbollineni4.workers.dev
+Production: https://carpoolnetwork.co.uk/ (also www).
 
-**This is an isolated preview release candidate, not a production launch.** The original domain now serves the separate v5.9.1 visual refresh, retaining its established booking/WhatsApp flow. This candidate is not approved for public invitations. Read `LAUNCH-PLAN.md` for implementation status and outstanding work.
+Separate preview: https://carpool-community-design.balashankarbollineni4.workers.dev
+
+**v8.0.0 is deployed to both original domains.** The owner chose verified email plus a required WhatsApp contact for launch; SMS is disabled with zero sending allowance. Original records, signing keys and LiveHub identity are preserved. Read `LAUNCH-PLAN.md` for evidence and remaining real-device checks.
 
 ## Local development
 
@@ -32,8 +34,8 @@ node --test test/phone-eligibility.test.js test/trips-commutes.test.js test/loca
 - `src/email-auth.js`: single-use email codes, expiry, attempt and rate limits. Normal sign-in preserves existing authentication methods.
 - `src/reliability.js`, `public/diagnostics.js`: bounded, scrubbed diagnostics and protected manual reporting, including startup failures.
 - `src/places.js`, `public/locations.js`, `public/geo.js`: UK town suggestions, one-shot device geolocation and town-centre radius filters. `public/town-map.js` adds on-demand OpenFreeMap tiles through self-hosted MapLibre assets. These are town-centre selections, not street-address search or route estimates.
-- `src/vehicles.js`, `public/member-details.js`: server-only DVLA adapter and optional Instagram/Facebook profile links. The provided key is stored only as the preview Worker secret `DVLA_API_KEY`. A direct provider call using the documentation example returned HTTP 200. No real member vehicle has been verified. Social links are member-provided, not OAuth connections.
-- `src/contacts.js`, `public/contact-details.js`: validated international WhatsApp format, explicit member consent, accepted/completed-booking authorization, block/cancellation privacy and account export/deletion. SMS verification is required before participation when enabled; only successful provider approval verifies access to a number. Real delivery is awaiting provider setup, not simulated in the app. See SMS-SETUP.md.
+- `src/vehicles.js`, `public/member-details.js`: server-only DVLA adapter and optional Instagram/Facebook profile links. The provided key is stored only as a server-side production and preview Worker secret `DVLA_API_KEY`. A direct provider call using the documentation example returned HTTP 200. No real member vehicle has been verified. Social links are member-provided, not OAuth connections.
+- `src/contacts.js`, `public/contact-details.js`: validated international WhatsApp format, explicit member consent, accepted/completed-booking authorization, block/cancellation privacy and account export/deletion. The public launch uses verified email and a required member-provided WhatsApp number. SMS is disabled at the owner's request. If enabled in future, only successful provider approval verifies access to a number. See SMS-SETUP.md.
 - `src/phone-verification.js`: Twilio Verify integration, account-bound code challenges, resend/attempt/send caps and number replacement. No credentials or real SMS delivery are configured yet.
 - `src/trips.js`, `public/live-trip.js`: confirmed trip membership, start/finish, explicit foreground location sharing, revocable sharing grants and ephemeral 90-second coordinates.
 - `src/commutes.js`, `public/commutes.js`: bounded recurring journeys, invitations, per-date bookings, cancellations and membership removal.
@@ -47,12 +49,12 @@ Presence is recent connection activity, not proof of availability. Email verific
 
 ## Evidence on 28 September 2026
 
-The full local suite passes 49 results, covering email signup/replay/expiry/attempt limits, session revocation, signed synthetic passkey registration/login, booking concurrency, private rooms, real WebSockets/presence, blocking, cancellations, diagnostic redaction, town/radius filtering, social links, DVLA failure handling, R2 photo moderation, WhatsApp onboarding and contact privacy. The syntax check covers all application, test, build and recovery scripts. See the release verification artifact for hosted checks and the deployed version.
+The full local suite passes 50 results, covering email signup/replay/expiry/attempt limits, session revocation, signed synthetic passkey registration/login, booking concurrency, private rooms, real WebSockets/presence, blocking, cancellations, diagnostic redaction, town/radius filtering, social links, DVLA failure handling, R2 photo moderation, WhatsApp onboarding and contact privacy. The syntax check covers all application, test, build and recovery scripts. See the release verification artifact for hosted checks and the deployed version.
 
 Chrome confirmed test-image selection, resize/submission, persisted pending status, moderator replacement request, and the member-visible reason. The fixture is a blank image, not a real member photo or evidence of identity verification. Chrome also confirmed an offline reconnect screen and automatic recovery of the existing account when connectivity returned. Chrome also rendered live town maps at 390px and confirmed that selecting a map town populated the departure field. Earlier desktop and 390px phone checks covered signup, posting and chat composition. Real-device passkeys, GPS permission, push delivery and background/resume remain unqualified.
 
-A protected production-backup rehearsal preserved all 29 existing tables and 53 rows through all three additive migrations, repeat application, trigger removal and schema reapplication. No production migration ran. This does not test runtime rollback; adding the new Durable Object class prevents a simple rollback to the old Worker version.
+The production upgrade used a controlled write pause and protected backup. All 29 original tables and 56 rows were unchanged after the three additive migrations; foreign keys passed. Both production domains return v8.0.0, use the intended auth flags, match ten checked static assets and reject anonymous access to six private endpoints. Existing D1 and LiveHub identities and signing keys remain. Compatible forward-maintenance recovery was rehearsed separately; a simple rollback to v5 is no longer supported after adding ChatRoom.
 
-The strict running-Worker smoke suite additionally enforces all three onboarding flags and verifies location grants through a real Durable Object, recurring group privacy, date requests, city/radius discovery and contact controls. It seeds synthetic verification rows and retires them afterward; no real phone, photo or vehicle is verified by that suite.
+The running-Worker smoke suite enforces verified email, required WhatsApp contact, photo approval and vehicle checks with SMS disabled and verifies location grants through a real Durable Object, recurring group privacy, date requests, city/radius discovery and contact controls. It seeds synthetic approved-photo and vehicle records, but no phone-verification rows, and retires the fixtures afterward. No real photo or vehicle is verified by that suite.
 
 The recorded npm audit found zero known vulnerabilities. It is a dependency snapshot, not a security certification. Hosted release checks are recorded separately after deployment.

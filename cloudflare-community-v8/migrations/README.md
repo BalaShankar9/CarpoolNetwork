@@ -1,27 +1,33 @@
-# Additive upgrade and recovery
+# Production migration and forward recovery
 
-No production migration has been executed. The protected 28 September 2026 backup rehearsal includes `production-v8-additive.sql` plus `../migration-mobility.sql` and `../migration-launch.sql`. All 29 original tables and 53 rows were preserved through first and repeated application, trigger removal and forward schema reapplication. Foreign-key checks passed; no duplicate active booking pairs were found. Run `python3 scripts/rehearse-migration.py /path/to/protected-backup.sql` from the project root against a fresh export before a production window. The script never prints database content.
+On 28 September 2026 production moved from v5.9.1 to v8.0.0. The release used `wrangler.recovery.production.jsonc` to pause writes, then exported a fresh private backup, rehearsed it in memory and applied these additive scripts in order:
 
-This is schema evidence only. A previous draft incorrectly described a simple rollback to the old production Worker. **Cloudflare does not permit rolling back across a deployment that adds a Durable Object class.** Production currently has `LiveHub`; the candidate also needs `ChatRoom`. See [Cloudflare rollback restrictions](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/). Do not use the preview's migration history for production.
+1. `migrations/production-v8-additive.sql`
+2. `migration-mobility.sql`
+3. `migration-launch.sql`
 
-## Preview deployment order
+All 29 original tables and 56 rows compared exactly before and after the production upgrade. Foreign keys passed. No production member records were copied into preview or hosted rehearsal. Never apply `schema.sql` to the existing production database.
 
-1. Confirm `wrangler.jsonc` targets `carpool-community-design` and its separate D1/R2/DO resources. Export a protected preview backup and record the current version.
-2. Apply `migration-v8.sql` if not already present, then `migration-mobility.sql` and `migration-launch.sql`, to that preview database only. New code queries the mobility tables during session/feed loading, so migrate before deploying.
-3. Build browser assets, check all scripts and run local tests. Dry-run the Worker build. Preview requires phone, photo and vehicle eligibility. Without configured SMS, unverified members may browse and contact Support but cannot participate. Do not waive that gate silently.
-4. Deploy and run `scripts/check-preview.mjs`, then the expanded UI and provider checks. Record the exact deployed version and source commit. Retire synthetic public listings and revoke test sessions/roles afterward.
+The production migration history is v1 adding SQLite LiveHub, then v2 adding SQLite ChatRoom. Existing LiveHub identity and signing secrets were preserved. Preview has a different history, with both classes added in v1; do not substitute its configuration for production.
 
-## Production release gates and order
+## Recovery
 
-1. Complete `LAUNCH-PLAN.md`, including configured providers, real owner access and phone pilot. Prepare a separate production configuration using the existing production D1, LiveHub migration history, routing, email and R2 bindings. Keep existing integrity-signing keys and VAPID data; never substitute preview keys.
-2. Prepare and rehearse a **compatible forward-recovery Worker** that retains the new `ChatRoom` export/binding/migration history while reverting failing application behavior. An alternative is a rehearsed staged bridge deployment before switching behavior. `src/recovery.js` now supplies a maintenance recovery mode retaining both class exports. A local Worker test confirms HTTP 503, health/database visibility and blocked API writes. `wrangler.recovery.local.jsonc` is local-only. The matching v1 LiveHub → v2 ChatRoom history was subsequently exercised on the isolated hosted release-check Worker. Maintenance returned 503 for page/API writes and retained database visibility; returning to the candidate succeeded. All 29 original fixture tables/46 rows were unchanged and the LiveHub namespace was retained. Provider activation and real-device pilot gates remain. Configure recovery with the exact already-deployed bindings and DO migration history, assets `run_worker_first: true`, and no active cron. It intentionally pauses service instead of serving stale booking behavior.
-3. During a controlled write pause, export a fresh protected backup and record current Worker version, deployment, bindings, cron, routing and secret names. Verify original rows, foreign keys, active booking uniqueness and schema drift.
-4. Apply only `migrations/production-v8-additive.sql`, followed by `migration-mobility.sql` and `migration-launch.sql`. Never run `schema.sql` against production. The migration must not rewrite bookings to resolve uniqueness conflicts.
-5. Deploy the qualified Worker with a new DO migration tag adding `ChatRoom` while preserving production's existing `LiveHub` class type and history. Confirm owner sign-in, admin unlock, reporting and the two-member smoke journey before reopening writes.
-6. Enable public indexing/invitations only after verification. Keep private records, test credentials and backups out of source control.
+Use the already-qualified compatible forward-maintenance configuration:
 
-If a release fails, pause the affected writes and deploy the rehearsed compatible recovery artifact. `rollback-v8-triggers.sql` only removes new behavioral triggers; it is not a full application rollback. New tables and post-release records must remain intact. Do not overwrite recent bookings/messages with an old SQL export as routine recovery. D1 Time Travel is disaster recovery requiring explicit assessment of intervening data loss.
+```
+npm exec wrangler -- deploy --config wrangler.recovery.production.jsonc
+```
 
-## 28 September polish release
+It retains both Durable Object exports and bindings, returns HTTP 503, exposes database health and pauses page/API writes and cron. Investigate and deploy a corrected v8-compatible Worker with `wrangler.production.jsonc` after checks. Preserve newly created bookings, accounts and messages.
 
-Production v5.9.1 is a visual refresh of the established v5 application. It retains the existing production bindings, LiveHub migration history and signing secrets, with no database migration. Its rollback target remains the v5.9.0 version `66ce2936-7db6-4331-b99c-a764414f1cab`. The v8 candidate must use `wrangler.production.jsonc` and its compatible `wrangler.recovery.production.jsonc` only after remaining provider/pilot gates pass. The production photo bucket named in these prepared configs has not yet been provisioned. Do not deploy them with the zero SMS allowance as a public participation release.
+Do not roll back to v5: Cloudflare does not support rolling back across the deployment that added a Durable Object class. `rollback-v8-triggers.sql` only removes new behavioural triggers; it is not a complete application rollback. Do not restore an old export over recent member activity as routine recovery.
+
+An isolated hosted rehearsal exercised v1 LiveHub -> v2 ChatRoom, maintenance and return, preserving all original 29 fixture tables/46 rows and LiveHub identity. The production release repeated backup and preservation verification under the actual write pause. Runtime forward maintenance and database preservation are separate evidence.
+
+## Future releases
+
+Confirm Wrangler authentication, record current versions/bindings/routes/secret names, run focused tests and dry-run the build. Export private backups with output redirected to protected logs because Wrangler prints a signed download link. Rehearse any additive schema update with `python3 scripts/rehearse-migration.py /path/to/protected-export.sql`. Never print or commit database contents or credentials.
+
+SMS is intentionally disabled by the owner's launch decision; it is not a deployment blocker. Keep verified email, required WhatsApp contact, approved photos and driver vehicle gates enabled. Use `CARPOOL_REHEARSAL_CHECK=1 node scripts/check-preview.mjs` for hosted synthetic acceptance checks; the script cannot target production.
+
+Reference: https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/

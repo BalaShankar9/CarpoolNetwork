@@ -1861,7 +1861,7 @@ async function handleApi(request, env) {
       if (!await verified(env, member?.id || "")) return fail("Verify your email in Account before confirming a booking.", 403);
     }
   }
-  if (path === "/api/config" && request.method === "GET") return json({ ok: true, preview: env.APP_ENV !== "production", supportEmail: env.SUPPORT_EMAIL || "", emailAvailable: Boolean(env.EMAIL && env.EMAIL_FROM), version: RELEASE });
+  if (path === "/api/config" && request.method === "GET") return json({ ok: true, preview: env.APP_ENV !== "production", supportEmail: env.SUPPORT_EMAIL || "", emailAvailable: Boolean(env.EMAIL && env.EMAIL_FROM), phoneVerificationRequired: env.REQUIRE_PHONE_VERIFICATION === "true", whatsappRequired: env.REQUIRE_WHATSAPP === "true", version: RELEASE });
   if (path === "/api/health") {
     await env.DB.prepare("SELECT 1 FROM users LIMIT 1").first();
     return json({ ok: true, service: "Carpool Network", version: RELEASE_VERSION, database: "ok" });
