@@ -1,3 +1,4 @@
+import {contactRoutes,connectedContact,hasContact} from './contacts.js';
 import {photoRoutes,cleanupProfilePhotos} from './photos.js';
 import {vehicleRoutes} from './vehicles.js';
 import { placesRoute, locationMatch, resolvePlace } from './places.js';
@@ -741,6 +742,7 @@ async function socialRoutes(request, env, h) {
   }
   if (path === "/export" && method === "GET") return reply({
     profile: auth.user,
+    contact: await one(env,'SELECT whatsapp_number,confirmed_at FROM member_contacts WHERE user_id=?',uid),
     socialLinks: await one(env,'SELECT instagram,facebook FROM member_social_links WHERE user_id=?',uid),
     vehicle: await one(env,'SELECT registration,make,colour,manufacture_year,fuel,mot_status,mot_expiry,tax_status,tax_due,passenger_seats,checked_at FROM member_vehicles WHERE user_id=?',uid),
     profilePhoto: await one(env,'SELECT status,review_note,updated_at FROM profile_photos WHERE user_id=?',uid),
@@ -758,7 +760,7 @@ async function socialRoutes(request, env, h) {
       env.DB.prepare("UPDATE users SET name='Deleted member',phone=?,bio='',area='',token_hash=? WHERE id=?").bind(`deleted:${uid}`, crypto.randomUUID(), uid),
       env.DB.prepare("UPDATE posts SET status='deleted',body='',title='Deleted listing' WHERE author_id=?").bind(uid),
       env.DB.prepare("UPDATE chat_messages SET body='',deleted=1,pinned=0 WHERE author_id=?").bind(uid),
-      ...["profile_photos", "member_social_links", "member_vehicles", "member_emails", "passkeys", "user_sessions", "account_login_pins", "account_recovery", "push_subscriptions", "admin_sessions", "user_roles", "business_profiles", "user_profile_details"].map((table) => env.DB.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(uid)),
+      ...["member_contacts", "profile_photos", "member_social_links", "member_vehicles", "member_emails", "passkeys", "user_sessions", "account_login_pins", "account_recovery", "push_subscriptions", "admin_sessions", "user_roles", "business_profiles", "user_profile_details"].map((table) => env.DB.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(uid)),
       env.DB.prepare("UPDATE conversation_members SET status='removed' WHERE user_id=?").bind(uid),
       env.DB.prepare("UPDATE user_moderation SET status='banned',reason='Account deleted' WHERE user_id=?").bind(uid)
     ]);
@@ -883,7 +885,7 @@ var SECURITY_HEADERS = {
   "referrer-policy": "strict-origin-when-cross-origin",
   "x-frame-options": "DENY",
   "permissions-policy": "camera=(), microphone=(), geolocation=(self)",
-  "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' wss:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+  "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://tiles.openfreemap.org; connect-src 'self' wss: https://tiles.openfreemap.org; worker-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
 };
 var CATEGORIES = /* @__PURE__ */ new Set(["ride_offer", "ride_wanted", "marketplace", "job", "service", "accommodation", "community"]);
 var RIDE_CATEGORIES = /* @__PURE__ */ new Set(["ride_offer", "ride_wanted"]);
@@ -1404,7 +1406,7 @@ function publicPost(row, viewerId = "", score = null) {
     location: row.location,
     price: row.price,
     whatsappEnabled: Boolean(row.whatsapp_enabled),
-    whatsappUrl: isMember && row.whatsapp_enabled && (!RIDE_CATEGORIES.has(row.category) || own) ? whatsappUrl(row.author_phone, contactText) : "",
+    whatsappUrl: own && row.whatsapp_enabled ? whatsappUrl(row.author_phone, contactText) : "",
     origin: row.origin,
     destination: row.destination,
     journeyDate: row.journey_date,
@@ -1801,6 +1803,12 @@ async function handleApi(request, env) {
   const url = new URL(request.url);
   const path = url.pathname;
   const placeResponse=placesRoute(request);if(placeResponse)return placeResponse;
+  const contactResponse=await contactRoutes(request,env,{requireUser,verified,rateLimitOrFail,fail,json});if(contactResponse)return contactResponse;
+  if(env.REQUIRE_WHATSAPP==='true'&&request.method==='POST'&&(path==='/api/posts'||path==='/api/ride-requests'||path==='/api/ride-requests/quick'||/^\/api\/social\/rooms\/[^/]+\/messages$/.test(path))){
+    const member=await requireUser(request,env);if(member.error)return member.error;
+    if(!await verified(env,member.user.id))return fail('Verify your email before participating.',403);
+    if(!await hasContact(env,member.user.id))return json({ok:false,error:'Add your WhatsApp contact in Account before participating.',code:'CONTACT_REQUIRED'},428);
+  }
   const photoResponse=await photoRoutes(request,env,{requireUser,requireAdmin,fail,json,verified,rateLimitOrFail,stripJpegMetadata,adminAudit});if(photoResponse)return photoResponse;
   const vehicleResponse=await vehicleRoutes(request,env,{requireUser,fail,json,verified,blocked,rateLimitOrFail});if(vehicleResponse)return vehicleResponse;
   if(env.REQUIRE_PROFILE_PHOTO==='true'&&request.method==='POST'&&(path==='/api/posts'||path==='/api/ride-requests'||path==='/api/ride-requests/quick'||/^\/api\/social\/rooms\/[^/]+\/messages$/.test(path))){
@@ -2185,7 +2193,7 @@ async function handleApi(request, env) {
     if (auth.error) return auth.error;
     const offerId = clean(url.searchParams.get("offerPostId"), 80);
     if (!await canSeePost(env, offerId, auth.user.id)) return fail("Ride offer not found.", 404);
-    const offer = await env.DB.prepare("SELECT p.*, (SELECT start_time FROM ride_time_windows w WHERE w.post_id=p.id) window_start, (SELECT end_time FROM ride_time_windows w WHERE w.post_id=p.id) window_end,u.name author_name,u.phone author_phone,u.area author_area FROM posts p JOIN users u ON u.id=p.author_id WHERE p.id=? AND p.category='ride_offer' AND p.status='active'").bind(offerId).first();
+    const offer = await env.DB.prepare("SELECT p.*, (SELECT start_time FROM ride_time_windows w WHERE w.post_id=p.id) window_start, (SELECT end_time FROM ride_time_windows w WHERE w.post_id=p.id) window_end,u.name author_name,u.phone author_phone,u.area author_area FROM posts p JOIN users u ON u.id=p.author_id WHERE p.id=? AND p.category='ride_offer' AND p.status<>'deleted'").bind(offerId).first();
     if (!offer || journeyHasDeparted(offer.journey_date, offer.journey_time, 15)) return fail("Ride offer not found.", 404);
     if (offer.author_id === auth.user.id) return json({ ok: true, options: [] });
     const booked = await env.DB.prepare("SELECT COALESCE(SUM(seats_requested),0) booked FROM ride_requests WHERE ride_offer_post_id=? AND status IN ('accepted','completed')").bind(offer.id).first();
@@ -2196,7 +2204,7 @@ async function handleApi(request, env) {
       WHERE p.author_id=? AND p.category='ride_wanted' AND p.status<>'deleted' AND p.journey_date=?
       ORDER BY p.created_at DESC LIMIT 12
     `).bind(offer.id, auth.user.id, offer.journey_date).all();
-    const options = (rows.results || []).map((w) => ({ post: w, score: rideMatchScore(w, offer), requestId: w.request_id || "", requestStatus: w.request_status || "" })).filter((x) => x.requestStatus || x.post.status === "active" && x.score >= 45 && Number(x.post.seats || 1) <= available).sort((a, b) => b.score - a.score).map((x) => ({ rideWantedPostId: x.post.id, title: x.post.title, origin: x.post.origin, destination: x.post.destination, journeyDate: x.post.journey_date, journeyTime: x.post.journey_time, seats: Number(x.post.seats || 1), score: x.score, requestId: x.requestId, requestStatus: x.requestStatus, contactUrl: ["accepted", "completed"].includes(x.requestStatus) ? whatsappUrl(offer.author_phone, `Hi ${offer.author_name}, our Carpool Network match for ${offer.origin} \u2192 ${offer.destination} was accepted. Shall we finalise the exact pickup, time and any contribution here on WhatsApp?`) : "" }));
+    const options = await Promise.all((rows.results || []).map((w) => ({ post: w, score: rideMatchScore(w, offer), requestId: w.request_id || "", requestStatus: w.request_status || "" })).filter((x) => x.requestStatus || offer.status === "active" && x.post.status === "active" && x.score >= 45 && Number(x.post.seats || 1) <= available).sort((a, b) => b.score - a.score).map(async (x) => ({ rideWantedPostId: x.post.id, title: x.post.title, origin: x.post.origin, destination: x.post.destination, journeyDate: x.post.journey_date, journeyTime: x.post.journey_time, seats: Number(x.post.seats || 1), score: x.score, requestId: x.requestId, requestStatus: x.requestStatus, contactUrl: x.requestId ? (await connectedContact(env,auth.user.id,offer.author_id,x.requestId))?.url||'' : '' })));
     return json({ ok: true, availableSeats: available, options });
   }
   if (path === "/api/ride-requests/quick" && request.method === "POST") {
@@ -2312,14 +2320,12 @@ async function handleApi(request, env) {
       WHERE ${post.category === "ride_offer" ? "rr.ride_offer_post_id=?" : "rr.ride_wanted_post_id=?"}
       ORDER BY CASE rr.status WHEN 'accepted' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,rr.created_at DESC
     `).bind(post.id).all();
-    const safe = (rows.results || []).map((r) => {
-      const contactUrl = ["accepted", "completed"].includes(r.status) ? whatsappUrl(
-        post.category === "ride_offer" ? r.rider_phone : r.driver_phone,
-        `Hi ${post.category === "ride_offer" ? r.rider_name : r.driver_name}, our Carpool Network match for ${r.wanted_origin} \u2192 ${r.wanted_destination} was accepted. Shall we finalise the exact pickup, timing and any contribution here on WhatsApp?`
-      ) : "";
+    const safe = await Promise.all((rows.results || []).map(async (r) => {
+      const other=post.category==='ride_offer'?r.rider_id:r.driver_id;
+      const contact=await connectedContact(env,auth.user.id,other,r.id);
       const { rider_phone, driver_phone, ...rest } = r;
-      return { ...rest, contact_url: contactUrl };
-    });
+      return { ...rest, contact_url: contact?.url||'' };
+    }));
     return json({ ok: true, requests: safe });
   }
   if (path === "/api/ride-requests/mine" && request.method === "GET") {
@@ -2335,10 +2341,10 @@ async function handleApi(request, env) {
       WHERE rr.rider_id=? OR rr.driver_id=?
       ORDER BY CASE rr.status WHEN 'accepted' THEN 0 WHEN 'pending' THEN 1 WHEN 'completed' THEN 2 ELSE 3 END,rr.updated_at DESC LIMIT 80
     `).bind(auth.user.id, auth.user.id, auth.user.id).all();
-    const out = (rows.results || []).map((r) => {
+    const out = await Promise.all((rows.results || []).map(async (r) => {
       const asRider = r.rider_id === auth.user.id;
       const otherName = asRider ? r.driver_name : r.rider_name;
-      const otherPhone = asRider ? r.driver_phone : r.rider_phone;
+      const contact=await connectedContact(env,auth.user.id,asRider?r.driver_id:r.rider_id,r.id);
       const confirmed = ["accepted", "completed"].includes(r.status);
       return {
         id: r.id,
@@ -2358,12 +2364,12 @@ async function handleApi(request, env) {
         my_rating: r.my_rating,
         role: asRider ? "rider" : "driver",
         other_name: otherName,
-        contact_url: confirmed ? whatsappUrl(otherPhone, `Hi ${otherName}, our Carpool Network match for ${r.origin} \u2192 ${r.destination} was accepted. Shall we finalise the exact pickup, timing and any contribution here on WhatsApp?`) : "",
+        contact_url: contact?.url || '',
         can_rate: confirmed && r.journey_date < ukNowParts().date && !r.my_rating,
         departed: journeyHasDeparted(r.journey_date, r.journey_time, 15),
         can_cancel: ["pending", "accepted"].includes(r.status) && !journeyHasDeparted(r.journey_date, r.journey_time, 15) && (asRider || r.status === "accepted")
       };
-    });
+    }));
     return json({ ok: true, requests: out });
   }
   const requestMatch = path.match(/^\/api\/ride-requests\/([^/]+)$/);
@@ -2385,6 +2391,7 @@ async function handleApi(request, env) {
     const next = clean(data.status, 20);
     if (next === "accepted") {
       if (rr.driver_id !== auth.user.id) return fail("Only the driver can accept this request.", 403);
+      if(env.REQUIRE_WHATSAPP==='true'&&(!await hasContact(env,rr.driver_id)||!await hasContact(env,rr.rider_id)))return json({ok:false,error:'Both members need a WhatsApp contact in Account before confirming a booking.',code:!await hasContact(env,auth.user.id)?'CONTACT_REQUIRED':'PARTNER_CONTACT_REQUIRED'},428);
       if (rr.status === "accepted") return json({ ok: true, status: "accepted", idempotent: true });
       if (rr.status !== "pending") return fail("Only a pending request can be accepted.", 409);
       if (rr.offer_status !== "active" || rr.wanted_status !== "active") return fail("This journey is no longer active.", 409);

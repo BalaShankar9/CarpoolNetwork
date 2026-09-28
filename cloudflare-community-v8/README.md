@@ -1,10 +1,10 @@
 # Carpool Network community candidate
 
-A focused upgrade for the existing UK ride-sharing community. It preserves the original red, navy and aqua identity and community artwork. WhatsApp remains optional.
+A focused upgrade for the existing UK ride-sharing community. It preserves the original red, navy and aqua identity and community artwork. Members supply a WhatsApp contact for accepted ride partners; opening WhatsApp and sending a message remains their choice.
 
 Hosted preview: https://carpool-community-design.balashankarbollineni4.workers.dev
 
-**The latest source changes are not deployed to that preview or production.** The public site remains v5.9.0. This candidate is not approved for public invitations. Read `LAUNCH-PLAN.md` for implementation status and outstanding work.
+**This is an isolated preview release candidate, not a production launch.** The public site remains v5.9.0. This candidate is not approved for public invitations. Read `LAUNCH-PLAN.md` for implementation status and outstanding work.
 
 ## Local development
 
@@ -31,8 +31,9 @@ node --test test/locations-vehicles.test.js test/service-worker.test.js
 - `src/index.js`: account, booking, support and community API; database constraints protect seat allocation and transitions. D1 owns message records; one Durable Object per conversation distributes events and short-lived presence.
 - `src/email-auth.js`: single-use email codes, expiry, attempt and rate limits. Normal sign-in preserves existing authentication methods.
 - `src/reliability.js`, `public/diagnostics.js`: bounded, scrubbed diagnostics and protected manual reporting, including startup failures.
-- `src/places.js`, `public/locations.js`, `public/geo.js`: UK town suggestions, one-shot device geolocation and town-centre radius filters. These are not street-address search or live map tiles.
-- `src/vehicles.js`, `public/member-details.js`: server-only DVLA adapter and optional Instagram/Facebook profile links. A key is not configured; live vehicle checks are not verified. Social links are member-provided, not OAuth connections.
+- `src/places.js`, `public/locations.js`, `public/geo.js`: UK town suggestions, one-shot device geolocation and town-centre radius filters. `public/town-map.js` adds on-demand OpenFreeMap tiles through self-hosted MapLibre assets. These are town-centre selections, not street-address search or route estimates.
+- `src/vehicles.js`, `public/member-details.js`: server-only DVLA adapter and optional Instagram/Facebook profile links. The provided key is stored only as the preview Worker secret `DVLA_API_KEY`. A direct provider call using the documentation example returned HTTP 200. No real member vehicle has been verified. Social links are member-provided, not OAuth connections.
+- `src/contacts.js`, `public/contact-details.js`: validated international WhatsApp format, explicit member consent, accepted/completed-booking authorization, block/cancellation privacy and account export/deletion. The number is self-provided, not ownership-verified.
 - `src/photos.js`, `public/profile-photo.js`: private R2 uploads, metadata removal, pending moderator review and approved public thumbnails. Optional on-device face detection is advisory. No facial recognition or identity proof is claimed.
 - `public/app.js`, `social.js`, `email-ui.js`, `focus.css`: member journeys and original-brand refinements. Reconnection reloads persisted messages; failed sends keep the draft.
 - `scripts/build-browser.mjs`: bundles pinned SimpleWebAuthn browser code. The server imports the pinned package directly. See `THIRD-PARTY-NOTICES.md`.
@@ -42,10 +43,10 @@ Presence is recent connection activity, not proof of availability. Email verific
 
 ## Evidence on 28 September 2026
 
-The full local suite passed 30 results before the final small fixes. Those checks covered email signup/replay/expiry/attempt limits, session revocation, signed synthetic passkey registration/login, booking concurrency, private rooms, real WebSockets/presence, blocking, cancellations, diagnostic redaction, town/radius filtering, optional social links, missing-DVLA behavior and R2 photo moderation. The latest focused suite passes 7 checks, including an additional regression against unrelated departure towns. All 24 JavaScript/build/test scripts pass syntax checks. The final full integration rerun is pending because terminal network access is blocked.
+The full local suite passes 33 results, covering email signup/replay/expiry/attempt limits, session revocation, signed synthetic passkey registration/login, booking concurrency, private rooms, real WebSockets/presence, blocking, cancellations, diagnostic redaction, town/radius filtering, social links, DVLA failure handling, R2 photo moderation, WhatsApp onboarding and contact privacy. All 30 JavaScript/build/test scripts pass syntax checks. See the release verification artifact for hosted checks and the deployed version.
 
-Chrome confirmed test-image selection, resize/submission, persisted pending status, moderator replacement request, and the member-visible reason. The fixture is a blank image, not a real member photo or evidence of identity verification. Chrome also confirmed an offline reconnect screen and automatic recovery of the existing account when connectivity returned. Earlier desktop and 390px phone checks covered signup, posting and chat composition. Real-device passkeys, GPS permission, push delivery and background/resume remain unqualified.
+Chrome confirmed test-image selection, resize/submission, persisted pending status, moderator replacement request, and the member-visible reason. The fixture is a blank image, not a real member photo or evidence of identity verification. Chrome also confirmed an offline reconnect screen and automatic recovery of the existing account when connectivity returned. Chrome also rendered live town maps at 390px and confirmed that selecting a map town populated the departure field. Earlier desktop and 390px phone checks covered signup, posting and chat composition. Real-device passkeys, GPS permission, push delivery and background/resume remain unqualified.
 
 A protected production-backup rehearsal preserved all 29 existing tables and 53 rows through both additive migrations, repeat application, trigger removal and schema reapplication. No production migration ran. This does not test runtime rollback; adding the new Durable Object class prevents a simple rollback to the old Worker version.
 
-The recorded npm audit found zero known vulnerabilities. It is a dependency snapshot, not a security certification. The previous hosted core journey passed before these latest source changes; it must be repeated after the next preview deployment.
+The recorded npm audit found zero known vulnerabilities. It is a dependency snapshot, not a security certification. Hosted release checks are recorded separately after deployment.

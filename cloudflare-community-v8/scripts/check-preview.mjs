@@ -24,15 +24,29 @@ try{
     await sql('INSERT INTO user_sessions(token_hash,user_id) VALUES(?,?)',[hash(u.token),u.id]);
     await sql('INSERT INTO member_emails(user_id,email) VALUES(?,?)',[u.id,`${u.id}@example.invalid`]);
     await sql("INSERT INTO user_moderation(user_id,status) VALUES(?,'active')",[u.id]);
+    await sql('INSERT INTO member_contacts(user_id,whatsapp_number) VALUES(?,?)',[u.id,'+12025550123']);
   }
   const [driver,rider,third]=users;
   const date=new Date(Date.now()+4*86400000).toISOString().slice(0,10);
   const ride=ok(await api('/api/posts',driver,'POST',{category:'ride_offer',origin:'Preview test Cardiff',destination:'Preview test Bristol',journeyDate:date,journeyTime:'12:00',seats:1,body:'Automated preview test. Not a real journey.'}),201).post;
   const requests=[];for(const u of [rider,third])requests.push(ok(await api('/api/ride-requests/quick',u,'POST',{rideOfferPostId:ride.id}),201));
+  assert.equal(ok(await api(`/api/ride-requests/${requests[0].id}/contact`,rider)).contact,null);
+  assert.equal((await api(`/api/ride-requests/${requests[0].id}/contact`,third)).status,404);
+  assert.equal((await api('/api/contact-details')).status,401);
+  assert.equal(ok(await api('/api/member-details',driver)).vehicleChecksAvailable,true);
   const results=await Promise.all(requests.map(r=>api(`/api/ride-requests/${r.id}`,driver,'PATCH',{status:'accepted'})));
   assert.equal(results.filter(r=>r.status===200).length,1);
   const winner=results.findIndex(r=>r.status===200),traveller=[rider,third][winner],outsider=[rider,third][1-winner],booking=requests[winner].id,room=`booking:${booking}`;
   console.log('PASS hosted concurrent last-seat acceptance');
+  const contact=ok(await api(`/api/ride-requests/${booking}/contact`,traveller)).contact;
+  assert.equal(contact.number,'+12025550123');assert.match(contact.url,/^https:\/\/wa.me\/12025550123\?text=/);
+  assert.equal(ok(await api('/api/member-details/'+driver.id,outsider)).whatsapp,null);
+  assert.equal(ok(await api('/api/ride-request-options?offerPostId='+ride.id,traveller)).options.find(o=>o.requestId===booking).contactUrl,contact.url);
+  await sql('INSERT INTO member_blocks(blocker_id,blocked_id) VALUES(?,?)',[traveller.id,driver.id]);
+  assert.equal(ok(await api(`/api/ride-requests/${booking}/contact`,traveller)).contact,null);
+  assert.equal(ok(await api('/api/ride-request-options?offerPostId='+ride.id,traveller)).options.find(o=>o.requestId===booking).contactUrl,'');
+  await sql('DELETE FROM member_blocks WHERE blocker_id=? AND blocked_id=?',[traveller.id,driver.id]);
+  console.log('PASS hosted WhatsApp acceptance, unrelated-member and block privacy; DVLA binding configured');
   const a=connect(driver,room),b=connect(traveller,room);await Promise.all([a.ready,b.ready]);
   a.ws.send(JSON.stringify({type:'presence',visible:true}));b.ws.send(JSON.stringify({type:'presence',visible:true}));await waitFor(()=>b.events.some(e=>e.type==='presence'&&e.online===2));
   ok(await api(`/api/social/rooms/${encodeURIComponent(room)}/messages`,driver,'POST',{body:'Preview test: booking conversation persistence.',clientId:randomUUID(),chatOnly:true}),201);
@@ -49,6 +63,7 @@ try{
   assert.equal((await api('/api/admin/issues',traveller)).status,403);
   console.log('PASS hosted reporting, admin unlock and issue resolution');
   ok(await api(`/api/ride-requests/${booking}`,traveller,'PATCH',{status:'cancelled'}));
+  assert.equal(ok(await api(`/api/ride-requests/${booking}/contact`,traveller)).contact,null);
   ok(await api('/api/profile/logout',traveller,'POST'));
   assert.equal((await api('/api/profile',traveller)).status,401);
   await waitFor(()=>b.events.some(e=>e.type==='session_ended'));

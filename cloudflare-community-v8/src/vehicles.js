@@ -1,3 +1,4 @@
+import {connectedContact} from './contacts.js';
 const text=(v,n=100)=>String(v??'').trim().slice(0,n);
 export function registrationNumber(input){return text(input,16).toUpperCase().replace(/\s/g,'');}
 export function socialLink(input,kind){
@@ -38,7 +39,7 @@ export async function vehicleRoutes(request,env,h){
       const confirmed=id===uid||await env.DB.prepare("SELECT r.id FROM ride_requests r JOIN posts p ON p.id=r.ride_offer_post_id WHERE r.status IN ('accepted','completed') AND p.journey_date>=date('now','-1 day') AND ((r.rider_id=? AND r.driver_id=?) OR (r.rider_id=? AND r.driver_id=?)) LIMIT 1").bind(uid,id,id,uid).first();
       vehicle.registration=confirmed?vehicle.registration:vehicle.registration.slice(0,2)+' •••';delete vehicle.user_id;
     }
-    return h.json({ok:true,links:links||{instagram:'',facebook:''},vehicle,vehicleChecksAvailable:!!env.DVLA_API_KEY});
+    return h.json({ok:true,links:links||{instagram:'',facebook:''},vehicle,whatsapp:id===uid?null:await connectedContact(env,uid,id),vehicleChecksAvailable:!!env.DVLA_API_KEY});
   }
   if(path==='/api/member-details/links'&&request.method==='POST'){
     const data=await request.json();let instagram,facebook;

@@ -95,6 +95,12 @@ export function createSocialUI(h) {
         <form id="chatComposer" class="chat-composer"><div id="replyNotice"></div><p id="chatWriteNotice" role="status"></p><textarea id="chatText" maxlength="2000" rows="2" aria-label="Message" placeholder="Message ${esc(selected.title)}"></textarea><div class="composer-tools"><label class="chat-only"><input id="chatOnly" type="checkbox" checked disabled> Only in this conversation</label><span id="photoStatus"></span>${overview.uploads ? '<label class="outline-btn small" title="Attach photo"><input type="file" id="chatPhoto" accept="image/jpeg,image/png,image/webp" hidden>Photo</label>':''}<span id="chatStatus" role="status">Connecting...</span><button class="primary-btn small" id="sendMessage" type="submit">${icon('arrow')} Send</button></div><p id="sendError" class="form-error" role="alert"></p></form></section></section>`,view);
       bindSidebar(view,rooms);
       const id=selected.id;
+      if(selected.kind==='booking'){
+        // Optional external contact must never prevent the in-app chat from loading.
+        const contact=await api('/api/ride-requests/'+encodeURIComponent(id.replace(/^booking:/,''))+'/contact').catch(()=>({contact:null}));
+        if(visit!==generation)return;
+        if(contact.contact){const link=document.createElement('a');link.className='whatsapp-link compact';link.href=contact.contact.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Open WhatsApp';document.querySelector('.chat-heading').append(link);}
+      }
       $('#chatText').value=draftStore.getItem(draftKey(id))||'';
       $('#chatText').oninput=()=>draftStore.setItem(draftKey(id),$('#chatText').value);
       $('#runChatSearch').onclick=safe(()=>loadMessages(id,visit));

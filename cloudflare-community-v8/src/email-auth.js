@@ -1,3 +1,4 @@
+import {whatsappNumber} from './contacts.js';
 // Short, single-use email codes. The opaque challenge ID binds each code to one
 // request; attempts, expiry and consumption are enforced by the database.
 const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -33,6 +34,11 @@ export async function emailAuth(request, data, env, h, login) {
     if (purpose === 'link' && session.error) return session.error;
     if (purpose === 'link' && existing && existing.user_id !== session.user.id) return fail('This email is already linked to another account.',409);
     if (purpose === 'signup' && (data.adult !== true || clean(data.name,60).length < 2 || clean(data.area,100).length < 2)) return fail('For a new account, add your name and town and confirm you are 18 or older.');
+    let contact='';
+    if(purpose==='signup'&&env.REQUIRE_WHATSAPP==='true'){
+      try{contact=whatsappNumber(data.whatsapp);}catch(error){return fail(error.message);}
+      if(data.shareBookings!==true)return fail('Confirm sharing your WhatsApp number with accepted ride partners.');
+    }
     const month = new Date().toISOString().slice(0,7);
     const limit = Math.max(1,Math.min(2000,Number(env.EMAIL_MONTHLY_LIMIT)||2000));
     const quota = await one(env,`INSERT INTO app_settings(key,value) VALUES(?, '1')
@@ -40,7 +46,7 @@ export async function emailAuth(request, data, env, h, login) {
     if (!quota) return fail('Email sign-in is temporarily at capacity. Please contact support or use your existing PIN or passkey.',503);
     const id = crypto.randomUUID(), otp = code();
     const userId = purpose === 'link' ? session.user.id : existing?.user_id || null;
-    await run(env,`INSERT INTO email_challenges(id,code_hash,user_id,purpose,payload,expires_at) VALUES(?,?,?,?,?,datetime('now','+10 minutes'))`,id,await h.sha256(`${id}:${otp}`),userId,purpose,JSON.stringify({email,name:clean(data.name,60),area:clean(data.area,100)}));
+    await run(env,`INSERT INTO email_challenges(id,code_hash,user_id,purpose,payload,expires_at) VALUES(?,?,?,?,?,datetime('now','+10 minutes'))`,id,await h.sha256(`${id}:${otp}`),userId,purpose,JSON.stringify({email,name:clean(data.name,60),area:clean(data.area,100),contact}));
     try {
       await env.EMAIL.send({from:env.EMAIL_FROM,to:email,subject:'Your Carpool Network sign-in code',text:`Your Carpool Network code is ${otp}.\n\nIt expires in 10 minutes and can be used once. Never share this code. If you did not request it, you can ignore this email.`,html:`<div style="font-family:Arial,sans-serif;max-width:460px;margin:auto;padding:32px;color:#1d2c55"><h1 style="font-size:22px">Continue to Carpool Network</h1><p>Your single-use code:</p><p style="font-size:36px;letter-spacing:8px;font-weight:bold">${otp}</p><p>Expires in 10 minutes. Never share this code.</p><p>If you did not request this, you can ignore this email.</p></div>`});
     } catch {
@@ -70,6 +76,7 @@ export async function emailAuth(request, data, env, h, login) {
     try {
       await env.DB.batch([
         env.DB.prepare('INSERT INTO users(id,token_hash,name,phone,area) VALUES(?,?,?,?,?)').bind(userId,await h.sha256(crypto.randomUUID()),payload.name,`email:${userId}`,payload.area),
+        ...(payload.contact?[env.DB.prepare('INSERT INTO member_contacts(user_id,whatsapp_number) VALUES(?,?)').bind(userId,payload.contact)]:[]),
         env.DB.prepare('INSERT INTO member_emails(user_id,email) VALUES(?,?)').bind(userId,payload.email),
         env.DB.prepare('INSERT INTO user_profile_details(user_id) VALUES(?)').bind(userId),
         env.DB.prepare("INSERT INTO user_moderation(user_id,status) VALUES(?,'active')").bind(userId)

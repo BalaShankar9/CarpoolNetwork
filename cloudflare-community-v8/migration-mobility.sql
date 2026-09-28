@@ -1,4 +1,10 @@
 -- Additive preview expansion. Never apply schema.sql to an existing database.
+CREATE TABLE IF NOT EXISTS member_contacts (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  whatsapp_number TEXT NOT NULL,
+  share_bookings INTEGER NOT NULL DEFAULT 1 CHECK(share_bookings=1),
+  confirmed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS profile_photo_objects (
   object_key TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP

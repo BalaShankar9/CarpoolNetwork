@@ -1,3 +1,4 @@
+import {createContactDetails} from './contact-details.js';
 import {createProfilePhotos} from './profile-photo.js';
 import {createMemberDetails} from './member-details.js';
 import {bindLocationInput,bindSearchLocations} from './locations.js';
@@ -169,6 +170,7 @@ async function api(path, options = {}) {
     if(response.status===401 && state.profile && !options.keepSessionOn401 && !(path.startsWith('/api/admin/') || path.startsWith('/api/social/'))){
       clearStoredProfile(); showToast('Your session needs reconnecting. Use Recover account to keep your existing profile.', 'error');
     }
+    if(data.code==='CONTACT_REQUIRED')queueMicrotask(()=>editContact());
     const err = new Error((data.error || 'Something went wrong.') + (data.reference ? ` Reference: ${data.reference}` : '')); err.status=response.status; throw err;
   }
   return data;
@@ -739,7 +741,7 @@ async function renderBookingArea(post) {
       const data = await api(`/api/posts/${post.id}/ride-requests`); const reqs = data.requests || [];
       if (!el.isConnected) return;
       const pending = reqs.filter(r => r.status === 'pending' && !post.departed && post.status === 'active'); const accepted = reqs.filter(r => ['accepted','completed'].includes(r.status));
-      el.innerHTML = `<div class="booking-box owner-bookings"><div class="booking-box-head"><div><span class="eyebrow">BOOKINGS</span><h3>${pending.length} request${pending.length === 1 ? '' : 's'} waiting</h3></div><span class="seat-pill">${post.availableSeats} seats left</span></div>${pending.map(driverRequestRow).join('') || '<p class="muted-center">No pending requests.</p>'}${accepted.length ? `<div class="accepted-list"><strong>Confirmed riders — open My bookings to message</strong>${accepted.map(r => `<div class="accepted-rider-row"><span>${avatarHtml({id:r.rider_id,name:r.rider_name,avatarEmoji:r.rider_avatar_emoji},'tiny-avatar')}<b>${esc(r.rider_name)}</b></span><span>${r.seats_requested} seat${r.seats_requested === 1 ? '' : 's'}</span>${r.contact_url ? `<a class="whatsapp-link compact" href="${esc(r.contact_url)}" target="_blank" rel="noopener">${icon('whatsapp')} Finalise</a>` : ''}</div>`).join('')}</div>` : ''}</div>`;
+      el.innerHTML = `<div class="booking-box owner-bookings"><div class="booking-box-head"><div><span class="eyebrow">BOOKINGS</span><h3>${pending.length} request${pending.length === 1 ? '' : 's'} waiting</h3></div><span class="seat-pill">${post.availableSeats} seats left</span></div>${pending.map(driverRequestRow).join('') || '<p class="muted-center">No pending requests.</p>'}${accepted.length ? `<div class="accepted-list"><strong>Confirmed riders — open My bookings to message</strong>${accepted.map(r => `<div class="accepted-rider-row"><span>${avatarHtml({id:r.rider_id,name:r.rider_name,avatarEmoji:r.rider_avatar_emoji},'tiny-avatar')}<b>${esc(r.rider_name)}</b></span><span>${r.seats_requested} seat${r.seats_requested === 1 ? '' : 's'}</span>${r.contact_url ? `<a class="whatsapp-link compact" href="${esc(r.contact_url)}" target="_blank" rel="noopener">${icon('whatsapp')} Open WhatsApp</a>` : ''}</div>`).join('')}</div>` : ''}</div>`;
       bindDriverRequestActions(post.id);
     } catch (e) { el.innerHTML = `<div class="notice-error">${esc(e.message)}</div>`; }
     return;
@@ -945,7 +947,8 @@ async function renderMe(tab = 'rides') {
   document.querySelector('#installApp')?.addEventListener('click', installApp);
   document.querySelector('#signOut')?.addEventListener('click', signOut);
   if (tab === 'account') {
-    document.querySelector('#meContent').insertAdjacentHTML('afterbegin','<div class="toolbar-actions"><button class="outline-btn" id="profilePhoto">Profile photo</button><button class="outline-btn" id="vehicleAndLinks">Vehicle & social profiles</button><button class="outline-btn" id="socialSecurity">Email, passkeys & privacy</button><button class="outline-btn" id="communityReports">Community reports</button><button class="outline-btn" data-nav="businesses">Local businesses</button></div>');
+    document.querySelector('#meContent').insertAdjacentHTML('afterbegin','<div class="toolbar-actions"><button class="outline-btn" id="whatsappContact">WhatsApp contact</button><button class="outline-btn" id="profilePhoto">Profile photo</button><button class="outline-btn" id="vehicleAndLinks">Vehicle & social profiles</button><button class="outline-btn" id="socialSecurity">Email, passkeys & privacy</button><button class="outline-btn" id="communityReports">Community reports</button><button class="outline-btn" data-nav="businesses">Local businesses</button></div>');
+    document.querySelector('#whatsappContact').onclick=()=>editContact();
     document.querySelector('#profilePhoto').onclick=()=>profilePhotos.edit();
     document.querySelector('#vehicleAndLinks').onclick=()=>memberDetails.edit();
     document.querySelector('#socialSecurity').onclick = () => socialUI.account();
@@ -980,7 +983,7 @@ function tripCard(t) {
     <div class="trip-main"><div class="trip-status-row"><span class="trip-status ${t.status}">${esc(statusLabel)}</span><span>${t.role === 'rider' ? 'You are riding' : 'You are driving'}</span></div><h3>${esc(t.origin)} <span>→</span> ${esc(t.destination)}</h3><p>${esc(t.journey_time)} · ${t.seats_requested} seat${t.seats_requested === 1 ? '' : 's'} · with ${esc(other)}</p></div>
     <div class="trip-actions">
       ${incoming ? `<button class="accept-btn" data-trip-accept="${esc(t.id)}">Accept</button><button class="decline-btn" data-trip-decline="${esc(t.id)}">Decline</button>` : ''}
-      ${t.contact_url ? `<a class="whatsapp-link compact finalise-link" href="${esc(t.contact_url)}" target="_blank" rel="noopener">${icon('whatsapp')} ${t.departed ? 'Contact' : 'Finalise on WhatsApp'}</a>` : ''}
+      ${t.contact_url ? `<a class="whatsapp-link compact finalise-link" href="${esc(t.contact_url)}" target="_blank" rel="noopener">${icon('whatsapp')} Open WhatsApp</a>` : ''}
       ${canCancel ? `<button class="danger-outline small" data-trip-cancel="${esc(t.id)}">${t.status === 'pending' ? 'Withdraw' : 'Cancel'}</button>` : ''}
       ${t.can_rate ? `<button class="outline-btn small" data-rate-trip="${esc(t.id)}" data-rate-name="${esc(other)}">${icon('star')} Rate</button>` : ''}
       ${t.my_rating ? `<span class="rated-pill">★ ${t.my_rating} rated</span>` : ''}
@@ -1217,6 +1220,7 @@ async function boot() {
   if(!configLoaded&&!state.profile){renderConnectionUnavailable();return;}
   await renderLocation();
 }
+const editContact=createContactDetails({api,esc,openSheet,closeSheet,showToast});
 const profilePhotos=createProfilePhotos({api,esc,openSheet,closeSheet,showToast});
 const memberDetails=createMemberDetails({api,esc,openSheet,closeSheet,showToast});
 const socialUI = createSocialUI({api,esc,icon,shell,beginView,state,openSheet,closeSheet,showToast,openPost,openUser,saveProfile,clearStoredProfile,navigate,openPinSignIn,connectLive});

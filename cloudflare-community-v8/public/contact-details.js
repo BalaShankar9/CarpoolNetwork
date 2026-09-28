@@ -1,0 +1,9 @@
+export function createContactDetails({api,esc,openSheet,closeSheet,showToast}){
+  return async function editContact(after){try{
+    const d=await api('/api/contact-details');
+    openSheet(`<h2>Your WhatsApp contact</h2><p>Add a WhatsApp number before joining rides or community conversations. We share it only with your accepted ride partners, in bookings and connected profiles.</p><form id="contactDetails" class="simple-form"><label>WhatsApp number, with country code<input name="number" type="tel" autocomplete="tel" required maxlength="26" placeholder="+44 7700 900123" value="${esc(d.number)}"></label>${d.existingNumber?'<button type="button" id="reuseNumber" class="outline-btn">Use my existing number</button>':''}<label class="location-check"><input type="checkbox" name="consent" required> This is my WhatsApp number. Share it with my accepted ride partners.</label><p>We check the number format, not WhatsApp ownership. Changing this contact does not change your sign-in or recovery number. Blocking a member hides the contact in the app, but cannot remove a number they already saved.</p><p id="contactError" class="form-error" role="alert"></p><button class="primary-btn">Save WhatsApp contact</button></form>`);
+    const form=document.querySelector('#contactDetails');
+    document.querySelector('#reuseNumber')?.addEventListener('click',()=>{form.number.value=d.existingNumber;});
+    form.onsubmit=async e=>{e.preventDefault();const button=form.querySelector('button[type="submit"],.primary-btn');button.disabled=true;try{await api('/api/contact-details',{method:'POST',body:JSON.stringify({number:form.number.value,shareBookings:form.consent.checked})});closeSheet();showToast('WhatsApp contact saved.','success');if(typeof after==='function')await after();}catch(error){document.querySelector('#contactError').textContent=error.message;button.disabled=false;}};
+  }catch(error){showToast(error.message,'error');}};
+}

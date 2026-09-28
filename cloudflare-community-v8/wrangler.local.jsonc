@@ -44,6 +44,7 @@
   "vars": {
     "APP_ENV": "local",
     "REQUIRE_VERIFIED_BOOKING": "true",
+    "REQUIRE_WHATSAPP": "true",
     "AUTO_PUBLISH": "false",
     "AI_DRAFTS": "false",
     "UPLOADS_ENABLED": "false",

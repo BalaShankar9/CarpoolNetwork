@@ -6,12 +6,13 @@ Status: **not ready for public launch**. Preserve the familiar red/navy/aqua ide
 
 | Area | Implemented in candidate | Remaining before the requested launch |
 |---|---|---|
-| Accounts | Email-code sign-in, logout/revoke, optional PIN/recovery and pinned passkey protocol | Confirm owner inbox/admin access; real email delivery and physical-device passkey pilot |
-| Booking | Offers, requests, acceptance, cancellation, seat-race constraints, booking conversations | Real two-person phone pilot, push/background recovery, final candidate rerun |
+| Accounts | Email-code sign-in, logout/revoke, optional PIN/recovery and pinned passkey protocol | Existing verified owner preserved and preview superadmin configured; verify owner admin UI access and physical-device passkey pilot |
+| Booking | Offers, requests, acceptance, cancellation, seat-race constraints, booking conversations | Real two-person phone pilot, push/background recovery |
 | Chat and reporting | Persisted community/private messages, consent/blocks, presence, automatic and manual issue capture | Named moderator/support cover; hostile-input/load and real-device pilot |
-| Locations | 5,868 UK town suggestions, one-shot GPS-to-town on device, departure radius and optional home-town driver filter | Licensed live-map/address provider; canonical stored place IDs and default city feed; driver search for passenger requests |
+| Locations | 5,868 UK town suggestions, one-shot GPS-to-town on device, departure radius and optional home-town driver filter | OpenFreeMap live town map is implemented; street addresses, canonical stored place IDs, default city feed and driver search for passenger requests remain |
 | Photos | Private upload, metadata stripping, moderator queue and public approved thumbnail; optional device face hint | Moderator coverage, clear appeal/replacement handling, cross-device checks; photo requirement flags remain disabled |
-| Vehicles | Server-side DVLA adapter, declared passenger seats 1–7, status/date display, masked registration before accepted rides | Configure key by secret name/file location, actual DVLA lookup, expiry/exemption policy, enforce eligibility across edit/reopen/accept and future dates before enabling mandatory checks |
+| Vehicles | Server-side DVLA adapter, declared passenger seats 1–7, status/date display, masked registration before accepted rides | Key stored as preview Worker secret; documentation-example provider check passed. Real member vehicle check, expiry/exemption policy, enforce eligibility across edit/reopen/accept and future dates before enabling mandatory checks |
+| WhatsApp | Required international contact and consent; accepted/completed partners only; booking/profile/chat links; block and cancellation privacy | Real consenting two-member phone pilot; ownership verification is not claimed |
 | Social profiles | Optional direct Instagram/Facebook links including numeric Facebook profiles | Actual OAuth account connection if required; links are not proof of ownership |
 | Live trip location | Not implemented; privacy page explicitly says unavailable | Consent, authenticated recipients, start/stop/completion, stale updates, retention and phone background behavior |
 | Regular commutes | Existing one-off booking model | Recurring shift series, exceptions, invitations, group privacy and per-occurrence seat allocation |
@@ -31,19 +32,16 @@ Profile photos and vehicle checks have disabled feature flags. Their presence in
 ## Release sequence
 
 1. Finish the source candidate and final regression run. Deploy additive schema and source to the separate preview, then repeat hosted booking, chat, photo and reporting tests. Retire synthetic test access after checking.
-2. Configure the provided DVLA key as a Worker secret; select a maps provider with permission for autocomplete and stored location data. Never paste keys into browser code, screenshots or Git.
+2. DVLA preview secret and successful direct provider check are complete. OpenFreeMap is selected with no Google billing or API key; maps are optional and have no SLA. Verify the deployed adapter with synthetic fixtures and keep precise GPS out of provider requests.
 3. Confirm the real owner's verified email and existing protected administrator role. Verify moderation, account recovery and private support/report triage. Do not assign the first signup as owner.
 4. Complete and test the requested location, eligibility, tracking and recurring flows above. Keep incomplete features visibly unavailable.
 5. Pilot with a driver and multiple riders on real phones, including limited connectivity, lost signal, background/resume, cancel/decline, exhausted seats, permission denial, oversized photos, user blocks and invalid vehicle checks. Use actual configured providers; mocked adapter tests do not qualify integrations.
 6. Rehearse a current protected production export and compatible forward recovery. Record binding/version/routing state and preserve production signing keys. Follow `migrations/README.md`; simple rollback across the new Durable Object class is unavailable.
 7. Change the public domain only after those gates pass. Start with a small community invitation and staffed reporting, then increase access based on observed reliability.
 
-## Inputs still needed
+## Owner inputs and pilot prerequisites
 
-- The owner's intended app email address (an authenticated Cloudflare identity is not sufficient confirmation).
-- The local file path or Cloudflare secret name holding the DVLA key, not the key in chat.
-- The chosen maps provider/account, or permission to select one after presenting costs and retention terms.
-- Runtime network access for the final full test/deployment commands. File-upload permission is now working but does not grant terminal network access.
+The owner email, DVLA key, maps-provider choice and runtime access have been supplied. The owner’s email already has a verified preview account. Remaining real-world prerequisites are a driver’s authorized vehicle registration, suitable profile photo, consenting driver/rider pilot participants and moderator/support availability. Never put keys or private member data into source control.
 
 ## Primary integration references
 
@@ -52,3 +50,6 @@ Profile photos and vehicle checks have disabled feature flags. Their presence in
 - [GeoNames source and attribution](https://download.geonames.org/export/dump/readme.txt)
 - [Public Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/) — unsuitable for client autocomplete.
 - [Cloudflare Worker rollback restrictions](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/)
+
+- [WhatsApp click to chat](https://faq.whatsapp.com/5913398998672934)
+- [OpenFreeMap](https://openfreemap.org/) and [quick start](https://openfreemap.org/quick_start/)
