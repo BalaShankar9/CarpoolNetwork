@@ -1,5 +1,5 @@
-const CACHE = 'carpool-network-v8-14-ride-chat-polish';
-const CORE = ['/', '/styles.css', '/release.css', '/app.js', '/account-status.js', '/icon.svg', '/community-cover.png', '/icon-192.png', '/icon-512.png', '/manifest.webmanifest', '/email-ui.js', '/social.js', '/social.css', '/focus.css', '/polish.css', '/diagnostics.js', '/diagnostics.css', '/passkeys.js', '/locations.js', '/geo.js', '/member-details.js', '/profile-photo.js', '/contact-details.js','/live-trip.js','/commutes.js', '/town-map.js'];
+const CACHE = 'carpool-network-v8-15-hd-community-art';
+const CORE = ['/', '/styles.css', '/release.css', '/app.js', '/account-status.js', '/icon.svg', '/community-cover-hd.webp', '/icon-192.png', '/icon-512.png', '/manifest.webmanifest', '/email-ui.js', '/social.js', '/social.css', '/focus.css', '/polish.css', '/diagnostics.js', '/diagnostics.css', '/passkeys.js', '/locations.js', '/geo.js', '/member-details.js', '/profile-photo.js', '/contact-details.js','/live-trip.js','/commutes.js', '/town-map.js'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)).then(() => self.skipWaiting()));

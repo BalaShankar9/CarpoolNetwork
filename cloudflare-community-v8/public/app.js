@@ -354,7 +354,7 @@ async function renderHome() {
   shell(`
     <div class="home-topline"><p>${state.profile ? `Welcome back, ${esc(state.profile.name.split(' ')[0])}.` : 'SHARED JOURNEYS. LOCAL CONNECTIONS.'}</p><button class="text-action" data-nav="support">${icon('help')} Need a hand?</button></div>
     <section class="hero-intro"><div><span class="eyebrow">A GOOD WAY TO GET THERE</span><h1>Your journey.<br>A little more <em>together.</em></h1><p>Find a seat going your way, share your next trip, and keep the details in one place.</p></div>
-      <div class="hero-art"><img src="/community-cover.png" alt="The Carpool Network community sharing a red car"></div>
+      <div class="hero-art"><picture><source srcset="/community-cover-hd.webp" type="image/webp"><img src="/community-cover.png" width="1419" height="1108" fetchpriority="high" alt="The Carpool Network community sharing a red car"></picture></div>
     </section>
     <section class="journey-search"><div class="search-card-head"><h2>Where are you heading?</h2><button class="outline-btn" id="offerInstead">${icon('car')} Offer a ride</button></div>${rideSearchForm()}<p class="search-hint">${icon('clock')} Journey times are shown in UK local time.</p></section>
     <div class="home-steps"><div class="home-step"><span class="step-number">1</span><div><strong>Find your route</strong><p>Choose your journey, date and the seats you need.</p></div></div><div class="home-step"><span class="step-number">2</span><div><strong>Request a seat</strong><p>Your seat is confirmed when the driver accepts.</p></div></div><div class="home-step"><span class="step-number">3</span><div><strong>Agree the details</strong><p>Use your booking conversation to arrange the pickup.</p></div></div></div>

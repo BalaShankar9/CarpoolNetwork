@@ -42,7 +42,7 @@ button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.6}a{color:var(
 .hero-intro h1{color:var(--navy)}.hero-intro h1 em{font-family:inherit;font-style:normal;font-weight:650;color:var(--red-2)}
 .nav-item.active{color:var(--red-2);background:#fff0f1}.nav-item.active .icon{stroke:var(--red-2)}
 .hero-art{aspect-ratio:1.28;border-radius:22px;background:#fff;max-width:340px;overflow:hidden;border:1px solid var(--line)}
-.hero-art::after{display:none}.hero-art img{display:block;width:112%!important;max-width:none;height:112%!important;min-height:0!important;margin:0!important;object-fit:cover;position:absolute;left:-6%;top:-6%;filter:none}
+.hero-art::after{display:none}.hero-art img{display:block;width:100%!important;max-width:100%;height:100%!important;min-height:0!important;margin:0!important;object-fit:contain;position:absolute;inset:0;filter:none;transform:none}
 .community-cta{border:1px solid #d3edeb}.chat-message.own{background:var(--aqua-2);border-color:#cfe9e7}
 .find-btn{background:var(--red-2)!important}.primary-btn:hover,.side-offer:hover,.find-btn:hover{background:#bd1e2a!important}
 @media(min-width:761px){.hero-intro{min-height:230px;margin-bottom:24px}}
