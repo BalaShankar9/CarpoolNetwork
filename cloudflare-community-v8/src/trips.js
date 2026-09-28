@@ -37,7 +37,7 @@ export async function tripPointOperation(env,points,input){
   prunePositions(points);points.grants ||= new Map();
   const {offerId,userId,sessionHash,action}=input;
   if(action==='clear'){points.clear();points.grants.clear();return {ok:true};}
-  if(action==='stop'){points.delete(userId);points.grants.delete(userId);return {ok:true};}
+  if(action==='stop'){if(input.shareId&&points.grants.get(userId)?.id!==input.shareId)return {ok:true};points.delete(userId);points.grants.delete(userId);return {ok:true};}
   if(!sessionHash)return {ok:false,status:401,error:'Reconnect your account.'};
   const context=await tripContext(env,offerId,userId,sessionHash);
   if(!context)return {ok:false,status:403,error:'This trip is no longer available to you.'};
@@ -69,7 +69,7 @@ export async function tripRoutes(request,env,h){
   const [_,offerId,action]=match,uid=auth.user.id;
   if(!env.CHAT_ROOMS)return h.fail('Live trip tools are temporarily unavailable.',503);
   const stub=env.CHAT_ROOMS.get(env.CHAT_ROOMS.idFromName('trip:'+offerId));
-  if(action==='location'&&request.method==='DELETE'){await stub.tripPoints({action:'stop',userId:uid});return h.json({ok:true});}
+  if(action==='location'&&request.method==='DELETE'){const body=await request.json().catch(()=>({}));await stub.tripPoints({action:'stop',userId:uid,shareId:typeof body.shareId==='string'?body.shareId:undefined});return h.json({ok:true});}
   const context=await tripContext(env,offerId,uid);if(!context)return h.fail('Trip not found.',404);
   const offer=context.offer;
   if(!action&&request.method==='GET')return h.json({ok:true,trip:{offerId,origin:offer.origin,destination:offer.destination,role:context.role,status:context.live?'active':offer.trip_status==='active'?'expired':offer.trip_status||'not_started',startedAt:offer.started_at||null,expiresAt:offer.expires_at||null,participants:context.people,sharingWindowSeconds:90}});

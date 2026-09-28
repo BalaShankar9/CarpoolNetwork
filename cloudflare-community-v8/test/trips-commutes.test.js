@@ -62,6 +62,7 @@ test('only accepted trip participants can share recent consented locations; stop
  f.db.prepare("DELETE FROM user_sessions WHERE user_id='rider'").run();assert.equal((await f.api('rider','trips/trip/location')).status,403);
  await f.api('rider','trips/trip/location',undefined,'DELETE');assert.equal((await f.api('driver','trips/trip/location')).data.positions.length,0);
  f.db.prepare('INSERT INTO user_sessions(user_id,token_hash) VALUES(?,?)').run('rider','session-rider');assert.equal((await f.api('rider','trips/trip/location',{shareId,consent:true,position:point})).status,409);
+ const restarted=(await f.api('rider','trips/trip/location',{begin:true,consent:true})).data.shareId;await f.api('rider','trips/trip/location',{shareId},'DELETE');assert.equal((await f.api('rider','trips/trip/location',{shareId:restarted,consent:true,position:point})).status,200);
  const map=f.points.get('trip:trip');map.set('rider',{...point,expiresAt:Date.now()-1});prunePositions(map);assert.equal(map.size,0);
  assert.throws(()=>f.db.prepare("UPDATE ride_requests SET status='accepted' WHERE rider_id='other'").run(),/JOURNEY_UNAVAILABLE/);
  assert.equal((await f.api('driver','trips/trip/finish',{confirm:true})).status,200);assert.equal((await f.api('driver','trips/trip')).data.trip.status,'completed');assert.equal(f.db.prepare("SELECT status FROM ride_requests WHERE rider_id='rider'").get().status,'completed');assert.equal((await f.api('driver','trips/trip/location')).data.active,false);

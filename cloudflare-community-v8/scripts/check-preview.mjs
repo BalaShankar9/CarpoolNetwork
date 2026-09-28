@@ -98,6 +98,9 @@ try{
   ok(await api(`/api/trips/${trip.id}/location`,traveller,'DELETE'));
   assert.equal(ok(await api(`/api/trips/${trip.id}/location`,driver)).positions.length,0);
   assert.equal((await api(`/api/trips/${trip.id}/location`,traveller,'POST',{shareId:share.shareId,consent:true,position:point})).status,409);
+  const nextShare=ok(await api(`/api/trips/${trip.id}/location`,traveller,'POST',{begin:true,consent:true}));
+  ok(await api(`/api/trips/${trip.id}/location`,traveller,'DELETE',{shareId:share.shareId}));
+  ok(await api(`/api/trips/${trip.id}/location`,traveller,'POST',{shareId:nextShare.shareId,consent:true,position:{...point,capturedAt:Date.now()}}));
   ok(await api(`/api/trips/${trip.id}/finish`,driver,'POST',{confirm:true}));
   assert.equal(ok(await api(`/api/trips/${trip.id}`,driver)).trip.status,'completed');
   console.log('PASS live Worker trip start, strict acceptance, Durable Object sharing grants, outsider rejection, stop/replay and completion using synthetic coordinates.');
