@@ -1,0 +1,16 @@
+{
+  "name": "carpool-community",
+  "private": true,
+  "version": "8.0.0-preview",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --config wrangler.local.jsonc --ip 127.0.0.1 --port 8788",
+    "check": "node --check src/index.js && node --check src/reliability.js && node --check public/app.js && node --check public/social.js && node --check src/email-auth.js && node --check public/email-ui.js",
+    "test": "node --test test/*.test.js",
+    "db:local": "wrangler d1 execute DB --local --config wrangler.local.jsonc --file schema.sql && wrangler d1 execute DB --local --config wrangler.local.jsonc --file migration-v8.sql"
+  },
+  "devDependencies": {
+    "wrangler": "4.131.0",
+    "ws": "8.22.0"
+  }
+}
