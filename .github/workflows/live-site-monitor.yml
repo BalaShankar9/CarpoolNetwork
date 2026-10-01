@@ -1,0 +1,32 @@
+name: Live site availability
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: live-site-monitor
+  cancel-in-progress: false
+jobs:
+  public-site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Check both public domains without member credentials
+        run: node scripts/operations/check-public.mjs
+        env:
+          CARPOOL_MONITOR_OUTPUT: live-site-checks.json
+      - name: Keep the check receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: live-site-checks
+          path: live-site-checks.json
+          retention-days: 30
