@@ -1309,7 +1309,7 @@ async function renderIssues(filter='open', kind='all', offset=0) {
     document.querySelector('#issuesNext').onclick=()=>renderIssues(filter,kind,offset+data.limit);
     document.querySelectorAll('[data-issue]').forEach(form=>form.onsubmit=async e=>{
       e.preventDefault();const button=form.querySelector('button');button.disabled=true;
-      try{await api(`/api/admin/issues/${form.dataset.issue}`,{method:'PATCH',body:JSON.stringify({status:form.elements.status.value,resolution:form.elements.resolution.value})});showToast('Report updated','success');renderIssues(filter,kind,offset);}
+      try{await api(`/api/admin/issues/${form.dataset.issue}`,{method:'PATCH',body:JSON.stringify({status:form.elements.status.value,resolution:form.elements.resolution.value})});showToast('Report updated','success');if (visit === viewRevision) renderIssues(filter,kind,offset);}
       catch(error){button.disabled=false;showToast(error.message,'error');}
     });
   } catch(error) {
