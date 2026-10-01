@@ -1,0 +1,4 @@
+Contact: mailto:balashankarbollineni4@gmail.com
+Expires: 2027-04-01T00:00:00Z
+Preferred-Languages: en
+Canonical: https://carpoolnetwork.co.uk/.well-known/security.txt

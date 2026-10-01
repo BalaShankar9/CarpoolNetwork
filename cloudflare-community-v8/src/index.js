@@ -11,6 +11,7 @@ import { placesRoute, locationMatch, resolvePlace } from './places.js';
 import { emailAuth } from './email-auth.js';
 import { generateAuthenticationOptions, verifyAuthenticationResponse, generateRegistrationOptions, verifyRegistrationResponse } from '@simplewebauthn/server';
 import { RELEASE, captureFailure, diagnosticRoutes } from './reliability.js';
+import { httpsRedirect, pageIndexPolicy, readMaintenance, recordMaintenance } from './operations.js';
 const __name=(target,value)=>Object.defineProperty(target,'name',{value,configurable:true});
 
 // src/social-access.js
@@ -900,13 +901,14 @@ var ChatRoom = class extends DurableObject {
 var __defProp2 = Object.defineProperty;
 var __name2 = /* @__PURE__ */ __name((target, value) => __defProp2(target, "name", { value, configurable: true }), "__name");
 var RELEASE_VERSION = RELEASE;
-var JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "x-carpool-version": RELEASE_VERSION };
+var JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "x-carpool-version": RELEASE_VERSION, "x-robots-tag": "noindex, nofollow" };
 var SESSION_COOKIE = "__Host-cn_session";
 var SESSION_MAX_AGE = 60 * 60 * 24 * 365;
 var SECURITY_HEADERS = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "strict-origin-when-cross-origin",
   "x-frame-options": "DENY",
+  "strict-transport-security": "max-age=31536000",
   "permissions-policy": "camera=(), microphone=(), geolocation=(self)",
   "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://tiles.openfreemap.org; connect-src 'self' wss: https://tiles.openfreemap.org; worker-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
 };
@@ -1864,9 +1866,9 @@ async function handleApi(request, env) {
     }
   }
   if (path === "/api/config" && request.method === "GET") return json({ ok: true, preview: env.APP_ENV !== "production", supportEmail: env.SUPPORT_EMAIL || "", emailAvailable: Boolean(env.EMAIL && env.EMAIL_FROM), phoneVerificationRequired: env.REQUIRE_PHONE_VERIFICATION === "true", whatsappRequired: env.REQUIRE_WHATSAPP === "true", version: RELEASE });
-  if (path === "/api/health") {
+  if (path === "/api/health" && ["GET", "HEAD"].includes(request.method)) {
     await env.DB.prepare("SELECT 1 FROM users LIMIT 1").first();
-    return json({ ok: true, service: "Carpool Network", version: RELEASE_VERSION, database: "ok" });
+    return json({ ok: true, service: "Carpool Network", version: RELEASE_VERSION, database: "ok", maintenance: await readMaintenance(env) });
   }
   if (path.startsWith("/api/auth/pin/")) return handlePin(request, env, path);
   if (path === "/api/stats" && request.method === "GET") {
@@ -2876,6 +2878,8 @@ __name2(cleanupOldContent, "cleanupOldContent");
 var index_default = {
   async fetch(request, env, ctx) {
     const requestId=crypto.randomUUID();
+    const redirect = httpsRedirect(request, env);
+    if (redirect) return redirect;
     try {
       const url = new URL(request.url);
       if (url.pathname.startsWith("/api/")) {
@@ -2936,10 +2940,10 @@ var index_default = {
           }
         }
         if(response2.status===101)return response2;
-        const secured=withSecurityHeaders(response2);secured.headers.set("x-request-id",requestId);return secured;
+        const secured=withSecurityHeaders(response2);secured.headers.set("x-request-id",requestId);secured.headers.set("x-robots-tag","noindex, nofollow");return secured;
       }
       const response = withSecurityHeaders(await env.ASSETS.fetch(request));
-      if (env.APP_ENV === "preview") response.headers.set("x-robots-tag", "noindex, nofollow");
+      pageIndexPolicy(request, env, response);
       if (url.pathname === "/sw.js") response.headers.set("cache-control", "no-cache");
       return response;
     } catch (err) {
@@ -2961,9 +2965,11 @@ var index_default = {
       await socialCleanup(env, socialHelpers());
       await cleanupOldContent(env);
       await cleanupProfilePhotos(env);
+      await recordMaintenance(env, "ok", controller.scheduledTime);
       console.log(JSON.stringify({ event: "content_cleanup", scheduledTime: controller.scheduledTime, status: "ok" }));
     } catch (err) {
-      await captureFailure(env,err,"/scheduled",crypto.randomUUID());
+      await recordMaintenance(env, "failed", controller.scheduledTime).catch(() => {});
+      await captureFailure(env,err,"/scheduled",crypto.randomUUID(), "scheduled");
       throw err;
     }
   },

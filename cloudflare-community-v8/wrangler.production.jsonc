@@ -8,10 +8,8 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "not_found_handling": "single-page-application",
-    "run_worker_first": [
-      "/api/*"
-    ]
+    "not_found_handling": "404-page",
+    "run_worker_first": true
   },
   "d1_databases": [
     {
@@ -60,7 +58,8 @@
     "REQUIRE_PHONE_VERIFICATION": "false",
     "SMS_DAILY_LIMIT": "0",
     "SMS_MONTHLY_LIMIT": "0",
-    "SUPPORT_EMAIL": "balashankarbollineni4@gmail.com"
+    "SUPPORT_EMAIL": "balashankarbollineni4@gmail.com",
+    "OPERATIONS_STARTED_AT": "2026-10-01T05:50:00Z"
   },
   "observability": {
     "enabled": true,

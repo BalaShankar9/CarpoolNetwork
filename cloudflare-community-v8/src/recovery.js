@@ -1,10 +1,12 @@
 // Forward-recovery maintenance entrypoint. Retain both deployed DO classes and
 // bindings; never roll back migration history or restore an old database dump.
 export {LiveHub,ChatRoom} from './index.js';
+import {httpsRedirect} from './operations.js';
 export default {
   async fetch(request,env){
+    const redirect=httpsRedirect(request,env);if(redirect)return redirect;
     const path=new URL(request.url).pathname;
-    const headers={'cache-control':'no-store','retry-after':'600','x-carpool-recovery':'maintenance','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"};
+    const headers={'strict-transport-security':'max-age=31536000','x-robots-tag':'noindex, nofollow','cache-control':'no-store','retry-after':'600','x-carpool-recovery':'maintenance','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"};
     if(path==='/api/health'){
       let database='unavailable';try{await env.DB.prepare('SELECT 1').first();database='ok';}catch{}
       return Response.json({ok:false,service:'Carpool Network',recovery:true,database,writes:'paused'},{status:503,headers});

@@ -1,0 +1,46 @@
+name: Live Worker checks
+on:
+  push:
+    branches: ['codex/**', main]
+    paths: ['cloudflare-community-v8/**', '.github/workflows/worker-ci.yml']
+  pull_request:
+    paths: ['cloudflare-community-v8/**', '.github/workflows/worker-ci.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: worker-ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: cloudflare-community-v8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: cloudflare-community-v8/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - run: npm audit --omit=dev --audit-level=high
+      - name: Prepare isolated local data and keys
+        run: |
+          node scripts/init-local.mjs
+          npm run db:local
+      - name: Test Worker, D1, WebSockets and public routes
+        run: |
+          npm run dev > /tmp/carpool-local-worker.log 2>&1 &
+          WORKER_PID=$!
+          trap 'kill "$WORKER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8788/api/health > /dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:8788/api/health
+          npm test
+          node scripts/check-public.mjs --base=http://127.0.0.1:8788

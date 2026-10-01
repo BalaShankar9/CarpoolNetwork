@@ -5,3 +5,5 @@ audit/
 *.log
 .candidate-secrets.json
 .admin-bootstrap.json
+
+.private/

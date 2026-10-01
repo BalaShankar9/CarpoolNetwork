@@ -47,7 +47,7 @@ async function until(fn){for(let i=0;i<50;i++){if(fn())return;await new Promise(
 await test('Focused community candidate: real Worker, D1 and WebSocket journeys',async t=>{
  t.after(()=>{for(const ws of sockets)ws.terminate();});
  let driver,rider,third,ride,booking,room,dm;
- await t.test('health, security headers and honest capabilities',async()=>{const r=await api('/api/health');ok(r);assert.equal(r.data.version,'8.0.1-feedback');assert.match(r.headers.get('content-security-policy'),/frame-ancestors 'none'/);assert.ok(r.headers.get('x-request-id'));const c=ok(await api('/api/config'));assert.equal(c.preview,true);assert.equal(c.emailAvailable,true);});
+ await t.test('health, security headers and honest capabilities',async()=>{const r=await api('/api/health');ok(r);assert.equal(r.data.version,'8.0.2-launch');assert.match(r.headers.get('content-security-policy'),/frame-ancestors 'none'/);assert.ok(r.headers.get('x-request-id'));const c=ok(await api('/api/config'));assert.equal(c.preview,true);assert.equal(c.emailAvailable,true);});
  await t.test('email sign-up produces a verified session; code cannot be reused',async()=>{driver=await member('Driver');rider=await member('Rider');third=await member('Third');ok(await api('/api/profile',{user:driver}));assert.equal(ok(await api('/api/auth/email/status',{user:driver})).email,driver.email);const c=await start(`replay-${id}@example.invalid`);ok(await api('/api/auth/email/verify',{method:'POST',body:c}));assert.equal((await api('/api/auth/email/verify',{method:'POST',body:c})).status,403);});
  await t.test('expired and repeatedly incorrect codes cannot sign in',async()=>{const c=await start(`expired-${id}@example.invalid`);sql("UPDATE email_challenges SET expires_at=datetime('now','-1 minute') WHERE id=?",[c.challengeId]);assert.equal((await api('/api/auth/email/verify',{method:'POST',body:c})).status,403);const d=await start(`attempts-${id}@example.invalid`);for(let i=0;i<5;i++)assert.equal((await api('/api/auth/email/verify',{method:'POST',body:{...d,code:d.code==='000000'?'999999':'000000'}})).status,403);assert.equal((await api('/api/auth/email/verify',{method:'POST',body:d})).status,403);});
  await t.test('WhatsApp onboarding validates numbers, requires consent and keeps contacts out of public views',async()=>{
@@ -100,7 +100,7 @@ await test('Focused community candidate: real Worker, D1 and WebSocket journeys'
  await t.test('feedback and bug reports persist with categories, safe context, retry IDs and admin triage',async()=>{
   const feedback=randomUUID(),idea=randomUUID(),bug=randomUUID();
   for(const [ref,kind] of [[feedback,'feedback'],[idea,'idea'],[bug,'bug']]) {
-    const body={id:ref,source:'manual',kind,route:'/views/inbox?token=private',release:'8.0.1-feedback',description:'Synthetic feedback test with password=remove-me',context:{code:'API_5XX',route:'/api/social/rooms/private-room/messages?token=private'}};
+    const body={id:ref,source:'manual',kind,route:'/views/inbox?token=private',release:'8.0.2-launch',description:'Synthetic feedback test with password=remove-me',context:{code:'API_5XX',route:'/api/social/rooms/private-room/messages?token=private'}};
     for(let n=0;n<2;n++)assert.equal(ok(await api('/api/diagnostics',{method:'POST',body}),201).reference,ref);
     const row=sql('SELECT * FROM diagnostic_issues WHERE id=?',[ref])[0];
     assert.equal(row.route,'/views/inbox');assert.equal(row.occurrences,1);assert.doesNotMatch(row.detail,/private-room|private|remove-me/);
@@ -109,7 +109,7 @@ await test('Focused community candidate: real Worker, D1 and WebSocket journeys'
   }
   assert.equal((await api('/api/diagnostics',{method:'POST',body:{id:randomUUID(),source:'manual',kind:'invalid',description:'Synthetic invalid category'}})).status,400);
   assert.equal((await api('/api/diagnostics',{method:'POST',body:{id:randomUUID(),source:'manual',kind:'feedback',description:'x'.repeat(1801)}})).status,400);
-  const event={source:'browser',code:'API_5XX',route:'/api/profile',page:'/views/account?token=secret',frames:'app.js:170:5',release:'8.0.1-feedback'};
+  const event={source:'browser',code:'API_5XX',route:'/api/profile',page:'/views/account?token=secret',frames:'app.js:170:5',release:'8.0.2-launch'};
   const automatic=ok(await api('/api/diagnostics',{method:'POST',body:event}),201).reference;
   const previousOccurrences=sql('SELECT occurrences FROM diagnostic_issues WHERE id=?',[automatic])[0].occurrences;
   const code=('local-feedback-'+id).toUpperCase();

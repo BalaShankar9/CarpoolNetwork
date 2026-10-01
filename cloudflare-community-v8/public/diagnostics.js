@@ -1,7 +1,7 @@
 /* Independent of the app bundle so feedback survives app startup failures. */
 (() => {
   'use strict';
-  const release = '8.0.1-feedback', storageKey = 'carpool-diagnostics-v2';
+  const release = '8.0.2-launch', storageKey = 'carpool-diagnostics-v2';
   const queue = [], seen = new Set();
   const views = new Set('home find trips account me inbox chat community businesses post alerts support admin issues'.split(' '));
   const paths = new Set('/ /privacy.html /safety.html /welcome.html /attribution.html /sw.js /app.js /diagnostics.js /styles.css /release.css /social.css /focus.css /polish.css /diagnostics.css /social.js /email-ui.js /icon.svg /community-cover-hd.webp'.split(' '));

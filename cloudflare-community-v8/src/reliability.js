@@ -1,4 +1,5 @@
-export const RELEASE = '8.0.1-feedback';
+import { readMaintenance } from './operations.js';
+export const RELEASE = '8.0.2-launch';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Never store query strings, route identifiers, credentials or submitted fields in automatic reports.
 export function safeRoute(input='') {
@@ -52,7 +53,7 @@ export async function diagnosticRoutes(request,env,{json,fail,rateLimitOrFail,cu
     const context=manual&&kind==='bug'&&codes.has(data.context?.code)?`Detected error: ${data.context.code}\nAffected service: ${safeRoute(data.context.route)}\n\n`:'';
     const frames=String(data.frames||'').split('\n').filter(s=>/^(app|social|email-ui|diagnostics|sw|passkeys|locations|member-details|profile-photo|contact-details|live-trip|commutes|town-map)\.js:\d+:\d+$/.test(s)).slice(0,5).join('\n');
     const detail=manual?context+redactManual(data.description):(data.page?`Page: ${safeRoute(data.page)}\n`:'')+frames;
-    const clientRelease=[RELEASE,'8.0.0'].includes(data.release)?data.release:RELEASE;
+    const clientRelease=[RELEASE,'8.0.1-feedback','8.0.0'].includes(data.release)?data.release:RELEASE;
     const id=await recordIssue(env,{source:manual?'manual':'browser',code:manual?({bug:'USER_REPORT',feedback:'USER_FEEDBACK',idea:'USER_IDEA'}[kind]):data.code,route:data.route,detail,reporter:user?.id||null,id:data.id,release:clientRelease});
     return json({ok:true,reference:id},201);
   }
@@ -65,7 +66,7 @@ export async function diagnosticRoutes(request,env,{json,fail,rateLimitOrFail,cu
     const rows=await env.DB.prepare(`SELECT * FROM diagnostic_issues WHERE ${where} AND (?2='all' OR status=?2) ORDER BY last_seen DESC,id DESC LIMIT ?3 OFFSET ?4`).bind(kind,status,limit,offset).all();
     const counts=await env.DB.prepare(`SELECT status,COUNT(*) count FROM diagnostic_issues WHERE ${where} GROUP BY status`).bind(kind).all();
     const total=(counts.results||[]).filter(c=>status==='all'||c.status===status).reduce((n,c)=>n+Number(c.count),0);
-    return json({ok:true,issues:rows.results||[],counts:counts.results||[],total,offset,limit});
+    return json({ok:true,issues:rows.results||[],counts:counts.results||[],total,offset,limit,maintenance:await readMaintenance(env),release:RELEASE});
   }
   const issue=path.match(/^\/api\/admin\/issues\/([a-f0-9-]+)$/);
   if(issue&&request.method==='PATCH'){
