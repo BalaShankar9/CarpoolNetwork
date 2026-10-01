@@ -1,20 +1,21 @@
-export const RELEASE = '8.0.0';
+export const RELEASE = '8.0.1-feedback';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Never store query strings, route identifiers, credentials or submitted fields in automatic reports.
 export function safeRoute(input='') {
   let path; try {path=new URL(String(input),'https://carpool.invalid').pathname;} catch{return '/unknown';}
-  if(!path.startsWith('/api/')) return ['/','/app.js','/diagnostics.js','/sw.js','/styles.css','/privacy.html','/safety.html','/scheduled'].includes(path)?path:'/page';
-  const known=new Set('api auth email start verify capabilities social rooms communities direct block security passkeys sessions health stats rides search profile logout logout-others recovery-key recover session adopt feed posts cancel-ride matches options comments reactions ride-request-options ride-requests quick mine rating users support tickets messages report admin status unlock lock dashboard moderate remove integrity notifications read push public-key subscribe unsubscribe live diagnostics issues'.split(' '));
+  if(/^\/views\/(home|find|trips|account|me|inbox|chat|community|businesses|post|alerts|support|admin|issues)$/.test(path)) return path;
+  if(!path.startsWith('/api/')) return ['/','/app.js','/diagnostics.js','/sw.js','/styles.css','/privacy.html','/safety.html','/welcome.html','/attribution.html','/release.css','/social.css','/focus.css','/polish.css','/diagnostics.css','/social.js','/email-ui.js','/icon.svg','/community-cover-hd.webp','/scheduled'].includes(path)?path:'/page';
+  const known=new Set('api auth email start verify capabilities social rooms communities direct block security passkeys sessions health stats rides search profile logout logout-others recovery-key recover session adopt feed posts cancel-ride matches options comments reactions ride-request-options ride-requests quick mine rating users support tickets messages report admin status unlock lock dashboard moderate remove integrity notifications read push public-key subscribe unsubscribe live diagnostics issues member-details contact-details photos vehicles trips commutes config'.split(' '));
   return path.split('/').map(s=>!s||known.has(s)?s:':id').join('/').slice(0,160);
 }
 export function safeFrames(error) {return String(error?.stack||'').split('\n').slice(1,7).map(s=>s.match(/(?:index|email-auth|reliability|app|social|email-ui|diagnostics|sw)\.js:\d+:\d+/)?.[0]).filter(Boolean).join('\n');}
-export function redactManual(value) {return String(value||'').trim().slice(0,1800).replace(/CN-[A-Z0-9-]{10,}/gi,'[recovery code removed]').replace(/Bearer\s+\S+/gi,'[credential removed]').replace(/[0-9a-f]{8}-[0-9a-f-]{27}[0-9a-f]{8}-[0-9a-f-]{27}/gi,'[credential removed]').replace(/\b(?:token|password|code|secret)\s*[:=]\s*\S+/gi,'[credential removed]');}
+export function redactManual(value,limit=1800) {return String(value||'').trim().slice(0,limit).replace(/CN-[A-Z0-9-]{10,}/gi,'[recovery code removed]').replace(/Bearer\s+\S+/gi,'[credential removed]').replace(/[0-9a-f]{8}-[0-9a-f-]{27}[0-9a-f]{8}-[0-9a-f-]{27}/gi,'[credential removed]').replace(/\b(?:token|password|code|secret)\s*[:=]\s*\S+/gi,'[credential removed]');}
 async function hash(value){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');}
 export async function recordIssue(env,{source,code,route,detail='',reporter=null,id='',release=RELEASE}) {
   route=safeRoute(route);code=String(code).replace(/[^a-zA-Z0-9_.:-]/g,'').slice(0,80)||'UNKNOWN';
   const manual=source==='manual', fingerprint=manual?`manual:${id}`:await hash([source,code,route,release,detail].join('|')), issueId=manual?id:fingerprint.slice(0,32);
-  if(manual) await env.DB.prepare(`INSERT INTO diagnostic_issues(id,fingerprint,source,code,route,release,detail,reporter_id) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(fingerprint) DO NOTHING`).bind(issueId,fingerprint,source,code,route,release,redactManual(detail),reporter).run();
-  else await env.DB.prepare(`INSERT INTO diagnostic_issues(id,fingerprint,source,code,route,release,detail) VALUES(?,?,?,?,?,?,?) ON CONFLICT(fingerprint) DO UPDATE SET occurrences=occurrences+1,last_seen=CURRENT_TIMESTAMP,status=CASE WHEN diagnostic_issues.status='resolved' THEN 'open' ELSE diagnostic_issues.status END`).bind(issueId,fingerprint,source,code,route,release,String(detail).slice(0,500)).run();
+  if(manual) await env.DB.prepare(`INSERT INTO diagnostic_issues(id,fingerprint,source,code,route,release,detail,reporter_id) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(fingerprint) DO NOTHING`).bind(issueId,fingerprint,source,code,route,release,redactManual(detail,2200),reporter).run();
+  else await env.DB.prepare(`INSERT INTO diagnostic_issues(id,fingerprint,source,code,route,release,detail) VALUES(?,?,?,?,?,?,?) ON CONFLICT(fingerprint) DO UPDATE SET occurrences=occurrences+1,last_seen=CURRENT_TIMESTAMP,resolved_at=CASE WHEN diagnostic_issues.status='resolved' THEN NULL ELSE diagnostic_issues.resolved_at END,status=CASE WHEN diagnostic_issues.status='resolved' THEN 'open' ELSE diagnostic_issues.status END`).bind(issueId,fingerprint,source,code,route,release,String(detail).slice(0,500)).run();
   return issueId;
 }
 export async function captureFailure(env,error,route,requestId,source='server') {
@@ -41,21 +42,30 @@ export async function diagnosticRoutes(request,env,{json,fail,rateLimitOrFail,cu
   if(path==='/api/diagnostics'&&request.method==='POST'){
     const data=await request.json(),manual=data.source==='manual';
     const limited=await rateLimitOrFail(request,env,manual?'bug-report':'browser-diagnostic',manual?6:30,3600);if(limited)return limited;
-    if(manual&&(!UUID.test(data.id||'')||String(data.description||'').trim().length<10))return fail('Describe the problem in at least 10 characters.');
+    if(manual&&(!UUID.test(data.id||'')||typeof data.description!=='string'||data.description.trim().length<10||data.description.length>1800))return fail('Please write between 10 and 1,800 characters.');
+    const kind=data.kind||'bug';
+    if(manual&&!['bug','feedback','idea'].includes(kind))return fail('Choose bug, feedback or improvement.');
     if(data.website)return fail('The report could not be accepted.',400);
     const codes=new Set(['JS_ERROR','UNHANDLED_REJECTION','RESOURCE_ERROR','API_5XX','API_NETWORK','API_TIMEOUT','API_INVALID_RESPONSE','SERVICE_WORKER_ERROR','BOOT_ERROR']);
     if(!manual&&!codes.has(data.code))return fail('Unknown diagnostic type.');
     const user=manual?await currentUser(request,env,false):null;
-    const detail=manual?data.description:String(data.frames||'').split('\n').filter(s=>/^(app|social|email-ui|diagnostics|sw)\.js:\d+:\d+$/.test(s)).slice(0,5).join('\n');
-    const id=await recordIssue(env,{source:manual?'manual':'browser',code:manual?'USER_REPORT':data.code,route:data.route,detail,reporter:user?.id||null,id:data.id});
+    const context=manual&&kind==='bug'&&codes.has(data.context?.code)?`Detected error: ${data.context.code}\nAffected service: ${safeRoute(data.context.route)}\n\n`:'';
+    const frames=String(data.frames||'').split('\n').filter(s=>/^(app|social|email-ui|diagnostics|sw|passkeys|locations|member-details|profile-photo|contact-details|live-trip|commutes|town-map)\.js:\d+:\d+$/.test(s)).slice(0,5).join('\n');
+    const detail=manual?context+redactManual(data.description):(data.page?`Page: ${safeRoute(data.page)}\n`:'')+frames;
+    const clientRelease=[RELEASE,'8.0.0'].includes(data.release)?data.release:RELEASE;
+    const id=await recordIssue(env,{source:manual?'manual':'browser',code:manual?({bug:'USER_REPORT',feedback:'USER_FEEDBACK',idea:'USER_IDEA'}[kind]):data.code,route:data.route,detail,reporter:user?.id||null,id:data.id,release:clientRelease});
     return json({ok:true,reference:id},201);
   }
   if(path==='/api/admin/issues'&&request.method==='GET'){
     const auth=await requireAdmin(request,env);if(auth.error)return auth.error;
     const status=url.searchParams.get('status')||'open';if(!['open','investigating','resolved','ignored','all'].includes(status))return fail('Invalid issue filter.');
-    const rows=await env.DB.prepare(`SELECT * FROM diagnostic_issues WHERE (?='all' OR status=?) ORDER BY last_seen DESC LIMIT 100`).bind(status,status).all();
-    const counts=await env.DB.prepare('SELECT status,COUNT(*) count FROM diagnostic_issues GROUP BY status').all();
-    return json({ok:true,issues:rows.results||[],counts:counts.results||[]});
+    const kind=url.searchParams.get('kind')||'all',offset=Number(url.searchParams.get('offset')||0),limit=50;
+    if(!['all','bug','feedback','idea','automatic'].includes(kind)||!Number.isSafeInteger(offset)||offset<0||offset>100000)return fail('Invalid report filter.');
+    const where=`(?1='all' OR (?1='automatic' AND source!='manual') OR (?1='bug' AND code='USER_REPORT') OR (?1='feedback' AND code='USER_FEEDBACK') OR (?1='idea' AND code='USER_IDEA'))`;
+    const rows=await env.DB.prepare(`SELECT * FROM diagnostic_issues WHERE ${where} AND (?2='all' OR status=?2) ORDER BY last_seen DESC,id DESC LIMIT ?3 OFFSET ?4`).bind(kind,status,limit,offset).all();
+    const counts=await env.DB.prepare(`SELECT status,COUNT(*) count FROM diagnostic_issues WHERE ${where} GROUP BY status`).bind(kind).all();
+    const total=(counts.results||[]).filter(c=>status==='all'||c.status===status).reduce((n,c)=>n+Number(c.count),0);
+    return json({ok:true,issues:rows.results||[],counts:counts.results||[],total,offset,limit});
   }
   const issue=path.match(/^\/api\/admin\/issues\/([a-f0-9-]+)$/);
   if(issue&&request.method==='PATCH'){

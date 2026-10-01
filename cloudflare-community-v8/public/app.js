@@ -149,9 +149,12 @@ function isStandalone() { return window.matchMedia?.('(display-mode: standalone)
 
 function showToast(msg, kind = '') {
   toastEl.textContent = msg;
+  if (kind === 'error') {
+    const report = document.createElement('button'); report.type = 'button'; report.className = 'toast-report'; report.dataset.reportProblem = ''; report.textContent = 'Report a bug'; toastEl.append(' ', report);
+  }
   toastEl.className = `toast show ${kind}`;
   clearTimeout(showToast.t);
-  showToast.t = setTimeout(() => { toastEl.className = 'toast'; }, 2800);
+  showToast.t = setTimeout(() => { toastEl.className = 'toast'; }, kind === 'error' ? 9000 : 2800);
 }
 
 async function api(path, options = {}) {
@@ -217,6 +220,7 @@ function shell(content, active = 'home', opts = {}) {
         <button class="side-offer" id="sideOffer">${icon('car')}<span>Offer a ride</span></button>
         <div class="side-spacer"></div>
         <button class="side-help" data-nav="support">${icon('help')}<span><strong>Help & Support</strong><small>Contact the Carpool Network team</small></span></button>
+        <div class="side-feedback"><button type="button" data-leave-feedback>Leave feedback</button><button type="button" data-report-problem>Report a bug</button></div>
         <div class="side-note"><strong>A better way to share the journey.</strong><span>A seat on the way. A conversation before you go.</span></div>
         ${profileLine}
       </aside>
@@ -239,7 +243,7 @@ function shell(content, active = 'home', opts = {}) {
       </nav>
     </div>`;
 
-  const titles = {home:'Find a ride',find:'Search rides',me:state.routeParams?.tab==='account'?'Your account':'My bookings',post:'Create a post',inbox:'Messages',chat:'Community',community:'Local listings',support:'Help & support',admin:'Control room',alerts:'Activity'};
+  const titles = {home:'Find a ride',find:'Search rides',me:state.routeParams?.tab==='account'?'Your account':'My bookings',post:'Create a post',inbox:'Messages',chat:'Community',community:'Local listings',support:'Help & support',admin:'Control room',issues:'Feedback & bug reports',alerts:'Activity'};
   document.title = `${titles[state.view] || 'Move together'} · Carpool Network`;
   if (focusNextView) {
     focusNextView=false;
@@ -268,13 +272,14 @@ function navigate(view) {
   if (view === 'alerts') return ensureMember(() => renderAlerts());
   if (view === 'support') return ensureMember(() => renderSupport());
   if (view === 'admin') return ensureMember(() => renderAdmin());
+  if (view === 'issues') return ensureMember(() => renderIssues());
   if (view === 'me') return state.profile ? renderMe() : openSignIn(() => renderMe());
 }
 let viewRevision = 0;
 let focusNextView = false;
 function beginView(view, params = {}) { focusNextView=state.view!==view || JSON.stringify(state.routeParams||{})!==JSON.stringify(params); socialUI.stop(); state.view = view; state.routeParams = params; return ++viewRevision; }
 function pageError(title, error, retry) {
-  shell(`<section class="error-card" role="alert"><div><h1>${esc(title)}</h1><p>${esc(error.message)}</p></div><button class="outline-btn" id="retryPage">${icon('refresh')} Retry</button></section>`, state.view);
+  shell(`<section class="error-card" role="alert"><div><h1>${esc(title)}</h1><p>${esc(error.message)}</p></div><button class="outline-btn" id="retryPage">${icon('refresh')} Retry</button><button class="outline-btn" data-report-problem data-report-context>Report this problem</button></section>`, state.view);
   document.querySelector('#retryPage').onclick = retry;
 }
 function ensureMember(fn) { if (state.profile) return fn(); openSignIn(fn); }
@@ -1089,7 +1094,7 @@ async function renderSupport() {
   const visit = beginView('support');
   let tickets=[]; try { tickets=(await api('/api/support/tickets')).tickets||[]; if (visit !== viewRevision) return; } catch(e){ if (visit === viewRevision) pageError('Support is unavailable', e, renderSupport); return; }
   shell(`<section class="support-hero"><div><h1>Help & Support</h1>${state.supportEmail ? `<a href="mailto:${esc(state.supportEmail)}">${esc(state.supportEmail)}</a>` : ''}</div><button class="primary-btn" id="newSupportTicket">${icon('message')} New support request</button></section>
-    <section class="support-inbox"><h2>Your requests</h2><div class="ticket-list">${tickets.length ? tickets.map(ticketCard).join('') : '<div class="empty-card"><h3>No support requests</h3></div>'}</div></section>`, 'me');
+    <section class="feedback-support"><h2>Help us improve Carpool Network</h2><p>Share an idea, tell us what works well, or report something that went wrong. You can send even if you cannot sign in.</p><div><button type="button" class="outline-btn" data-leave-feedback>Leave feedback</button><button type="button" class="outline-btn" data-report-problem>Report a bug</button></div></section><section class="support-inbox"><h2>Your requests</h2><div class="ticket-list">${tickets.length ? tickets.map(ticketCard).join('') : '<div class="empty-card"><h3>No support requests</h3></div>'}</div></section>`, 'me');
   document.querySelector('#newSupportTicket')?.addEventListener('click',openSupportForm);
   document.querySelectorAll('[data-ticket]').forEach(b=>b.onclick=()=>openSupportTicket(b.dataset.ticket));
 }
@@ -1131,7 +1136,7 @@ async function renderAdmin(){
     <section class="admin-panel"><div class="section-head"><div><span class="eyebrow">AUDIT TRAIL</span><h2>Recent admin actions</h2></div></div><div class="audit-list">${(d.audit||[]).length?(d.audit||[]).map(a=>`<div><strong>${esc(a.action)}</strong><span>${esc(a.target_type)} · ${esc(a.target_id).slice(0,10)}…</span><small>${esc(a.admin_name||'Admin')} · ${relative(a.created_at)}${a.reason?` · ${esc(a.reason)}`:''}</small></div>`).join(''):'<p class="muted-center">No admin actions yet.</p>'}</div></section>`, 'me', {title:'Admin Control Room',eyebrow:'SECURE NETWORK OPERATIONS'});
   document.querySelector('#lockAdmin').onclick=async()=>{try{await api('/api/admin/lock',{method:'POST'});}catch{}state.adminToken='';saveAdminToken('');renderAdmin();};
   const search=document.querySelector('#adminMemberSearch');search.oninput=()=>{const q=search.value.toLowerCase();document.querySelectorAll('.admin-member').forEach(x=>x.hidden=!x.dataset.search.includes(q));};
-  const adminTop=document.querySelector('.admin-top');if(adminTop){adminTop.insertAdjacentHTML('afterend','<button class="outline-btn" id="reviewPhotos">Profile photo reviews</button><button class="outline-btn" id="openIssues">Problems & bug reports</button>');document.querySelector('#openIssues').onclick=()=>renderIssues();document.querySelector('#reviewPhotos').onclick=()=>profilePhotos.review();}
+  const adminTop=document.querySelector('.admin-top');if(adminTop){adminTop.insertAdjacentHTML('afterend','<button class="outline-btn" id="reviewPhotos">Profile photo reviews</button><button class="outline-btn" id="openIssues">Feedback & bug reports</button>');document.querySelector('#openIssues').onclick=()=>renderIssues();document.querySelector('#reviewPhotos').onclick=()=>profilePhotos.review();}
   bindAdminActions();
 }
 function adminMemberCard(u){return `<div class="admin-member" data-search="${esc(`${u.name} ${u.phone} ${u.area}`.toLowerCase())}"><div class="admin-member-main"><span class="admin-member-avatar">${esc(fallbackEmoji(u.id))}</span><div><strong>${esc(u.name)} ${u.role?`<em>${esc(u.role)}</em>`:''}</strong><p>${esc(u.area)} · ${esc(String(u.phone||'').startsWith('email:')?'Email account':u.phone||'Phone not shared')}</p><small>${u.rating?`★ ${Number(u.rating).toFixed(1)} · `:''}${Number(u.posts||0)} posts · ${esc(u.moderation_status)}</small></div></div>${u.role==='superadmin'?'<span class="protected-admin">Protected</span>':`<div class="admin-actions">${/^\+?[0-9 ()-]{9,20}$/.test(String(u.phone||''))?`<a class="whatsapp-mini" aria-label="Open WhatsApp contact" target="_blank" rel="noopener" href="https://wa.me/${esc(String(u.phone).replace(/\D/g,''))}">${icon('whatsapp')}</a>`:``}${u.moderation_status==='active'?`<button class="outline-btn tiny" data-admin-suspend="${esc(u.id)}">Suspend</button><button class="danger-outline tiny" data-admin-ban="${esc(u.id)}">Ban</button>`:`<button class="outline-btn tiny" data-admin-unban="${esc(u.id)}">Restore</button>`}</div>`}</div>`;}
@@ -1254,11 +1259,11 @@ async function renderLocation() {
       else await socialUI.render(view, params.get('room') || '');
       return;
     }
-    if (!state.profile && ['post', 'alerts', 'support', 'admin', 'me'].includes(view)) await renderHome();
+    if (!state.profile && ['post', 'alerts', 'support', 'admin', 'issues', 'me'].includes(view)) await renderHome();
     if (view === 'me' && state.profile) await renderMe(['rides','posts','account'].includes(params.get('tab')) ? params.get('tab') : 'rides');
     else if (view === 'community') await renderCommunity(LABELS[params.get('category')] ? params.get('category') : '', params.get('q') || '');
     else if (view === 'post' && state.profile) renderPostPage(LABELS[params.get('type')] ? params.get('type') : '');
-    else await navigate(['home', 'find', 'trips', 'account', 'community', 'post', 'alerts', 'support', 'admin', 'me'].includes(view) ? view : 'home');
+    else await navigate(['home', 'find', 'trips', 'account', 'community', 'post', 'alerts', 'support', 'admin', 'issues', 'me'].includes(view) ? view : 'home');
     if (params.get('post')) await openPost(params.get('post'));
   } finally { restoringHistory = false; }
 }
@@ -1287,18 +1292,29 @@ const editContact=createContactDetails({api,esc,openSheet,closeSheet,showToast,o
 const profilePhotos=createProfilePhotos({api,esc,openSheet,closeSheet,showToast,onSaved:refreshAccount});
 const memberDetails=createMemberDetails({api,esc,openSheet,closeSheet,showToast,onSaved:refreshAccount});
 const socialUI = createSocialUI({api,esc,icon,shell,beginView,state,openSheet,closeSheet,showToast,openPost,openUser,saveProfile,clearStoredProfile,navigate,openPinSignIn,connectLive});
-boot().catch(error => { app.textContent = 'Unable to load Carpool Network. Please reload the page.'; showToast(error.message, 'error'); });
+boot().catch(error => { window.CarpoolDiagnostics?.capture('BOOT_ERROR','',error); app.textContent = 'Unable to load Carpool Network. Please reload the page.'; showToast(error.message, 'error'); });
 
-async function renderIssues(filter='open') {
+async function renderIssues(filter='open', kind='all', offset=0) {
+  const visit = beginView('issues');
+  const labels = {all:'All reports',bug:'Bug reports',feedback:'Feedback',idea:'Ideas',automatic:'Automatic errors'};
   try {
-    const data = await api(`/api/admin/issues?status=${encodeURIComponent(filter)}`);
-    shell(`<section class="section-block"><div class="section-title-row"><div><span class="eyebrow">RELIABILITY</span><h1>Problems & bug reports</h1><p>Automatic errors are grouped. User descriptions are private. A resolved error reopens if it happens again.</p></div><button class="outline-btn" id="issuesBack">Control Room</button></div><label>Show <select id="issueFilter">${['open','investigating','resolved','ignored','all'].map(v=>`<option value="${v}" ${v===filter?'selected':''}>${v}</option>`).join('')}</select></label><p>${data.counts.map(c=>`${Number(c.count)} ${esc(c.status)}`).join(' · ') || 'No reports recorded'}</p><div class="issues-list">${data.issues.map(i=>`<article class="issue-card"><h2>${esc(i.source==='manual'?'User report':i.code)}</h2><small>Reference: ${esc(i.id)} · ${esc(i.status)} · ${Number(i.occurrences)} occurrence(s)<br>${esc(i.route)} · release ${esc(i.release)} · last seen ${esc(i.last_seen)} UTC${i.reporter_id?` · member ${esc(i.reporter_id)}`:''}</small><pre>${esc(i.detail || 'No additional detail')}</pre><form data-issue="${esc(i.id)}"><label>Status <select name="status">${['open','investigating','resolved','ignored'].map(v=>`<option ${v===i.status?'selected':''}>${v}</option>`).join('')}</select></label><label>Resolution note <input name="resolution" maxlength="600" value="${esc(i.resolution)}" placeholder="What changed and how was it checked?"></label><button class="primary-btn small">Save status</button></form></article>`).join('') || '<div class="empty-card"><h2>No reports in this view</h2><p>Check the other filters to see resolved or investigating issues.</p></div>'}</div></section>`,'me');
+    const data = await api(`/api/admin/issues?status=${encodeURIComponent(filter)}&kind=${encodeURIComponent(kind)}&offset=${offset}`);
+    if (visit !== viewRevision) return;
+    shell(`<section class="section-block"><div class="section-title-row"><div><span class="eyebrow">LISTEN & IMPROVE</span><h1>Feedback & bug reports</h1><p>Private feedback, ideas and technical problems in one place. Repeated automatic errors are grouped; a resolved error reopens if it happens again.</p></div><button class="outline-btn" id="issuesBack">Control Room</button></div><div class="issue-filters"><label>Status<select id="issueFilter">${['open','investigating','resolved','ignored','all'].map(v=>`<option value="${v}" ${v===filter?'selected':''}>${v}</option>`).join('')}</select></label><label>Report type<select id="issueKind">${Object.entries(labels).map(([v,label])=>`<option value="${v}" ${v===kind?'selected':''}>${label}</option>`).join('')}</select></label><button class="outline-btn" id="refreshIssues">Refresh reports</button></div><p>${data.counts.map(c=>`${Number(c.count)} ${esc(c.status)}`).join(' · ') || 'No reports recorded'}</p><div class="issues-list">${data.issues.map(i=>`<article class="issue-card"><h2>${esc(({USER_REPORT:'Bug report',USER_FEEDBACK:'Feedback',USER_IDEA:'Improvement idea'})[i.code] || i.code)}</h2><small>Reference: ${esc(i.id)} · ${esc(i.status)} · ${Number(i.occurrences)} occurrence(s)<br>${esc(i.route)} · release ${esc(i.release)} · first seen ${esc(i.first_seen)} UTC · last seen ${esc(i.last_seen)} UTC${i.reporter_id?` · member ${esc(i.reporter_id)}`:''}</small><pre>${esc(i.detail || 'No additional detail')}</pre><form data-issue="${esc(i.id)}"><label>Status <select name="status" aria-label="Status for ${esc(i.id)}">${['open','investigating','resolved','ignored'].map(v=>`<option ${v===i.status?'selected':''}>${v}</option>`).join('')}</select></label><label>Resolution note <input name="resolution" maxlength="600" value="${esc(i.resolution)}" placeholder="What changed and how was it checked?"></label><button class="primary-btn small">Save status</button></form></article>`).join('') || '<div class="empty-card"><h2>No reports in this view</h2><p>Use the filters to see other report types and statuses.</p></div>'}</div><div class="issue-pagination"><button class="outline-btn" id="issuesPrevious" ${offset===0?'disabled':''}>Previous</button><span>${data.total ? `${offset+1}–${offset+data.issues.length} of ${data.total}` : '0 reports'}</span><button class="outline-btn" id="issuesNext" ${offset+data.limit>=data.total?'disabled':''}>Next</button></div></section>`,'me');
     document.querySelector('#issuesBack').onclick=renderAdmin;
-    document.querySelector('#issueFilter').onchange=e=>renderIssues(e.target.value);
+    document.querySelector('#issueFilter').onchange=e=>renderIssues(e.target.value,kind);
+    document.querySelector('#issueKind').onchange=e=>renderIssues(filter,e.target.value);
+    document.querySelector('#refreshIssues').onclick=()=>renderIssues(filter,kind,offset);
+    document.querySelector('#issuesPrevious').onclick=()=>renderIssues(filter,kind,Math.max(0,offset-data.limit));
+    document.querySelector('#issuesNext').onclick=()=>renderIssues(filter,kind,offset+data.limit);
     document.querySelectorAll('[data-issue]').forEach(form=>form.onsubmit=async e=>{
       e.preventDefault();const button=form.querySelector('button');button.disabled=true;
-      try{await api(`/api/admin/issues/${form.dataset.issue}`,{method:'PATCH',body:JSON.stringify({status:form.elements.status.value,resolution:form.elements.resolution.value})});showToast('Issue updated','success');renderIssues(filter);}
+      try{await api(`/api/admin/issues/${form.dataset.issue}`,{method:'PATCH',body:JSON.stringify({status:form.elements.status.value,resolution:form.elements.resolution.value})});showToast('Report updated','success');renderIssues(filter,kind,offset);}
       catch(error){button.disabled=false;showToast(error.message,'error');}
     });
-  } catch(error) {showToast(error.message,'error');}
+  } catch(error) {
+    if (visit !== viewRevision) return;
+    if (error.status === 403) {shell('<section class="empty-card"><h1>Unlock the report inbox</h1><p>Open the Control Room to verify your admin access, then choose Feedback &amp; bug reports.</p><button class="primary-btn" data-nav="admin">Open Control Room</button></section>','me');return;}
+    pageError('Reports are unavailable',error,()=>renderIssues(filter,kind,offset));
+  }
 }

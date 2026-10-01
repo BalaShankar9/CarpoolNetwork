@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync,readdirSync} from 'node:fs';
+import {readFileSync,readdirSync,mkdirSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {resolve,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -9,6 +9,7 @@ import WebSocket from 'ws';
 import {authenticator} from './passkey-fixture.js';
 const root=fileURLToPath(new URL('..',import.meta.url));
 const base='http://127.0.0.1:8788';
+mkdirSync(join(root,'.wrangler/tmp/email'),{recursive:true});
 const walk=p=>readdirSync(p,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(join(p,e.name)):[join(p,e.name)]);
 const db=walk(join(root,'.wrangler/state/v3/d1')).find(p=>p.endsWith('.sqlite')&&!p.endsWith('metadata.sqlite'));
 const sql=(query,args=[])=>JSON.parse(execFileSync('python3',['-c','import sqlite3,json,sys\nc=sqlite3.connect(sys.argv[1],timeout=15);c.row_factory=sqlite3.Row\nr=c.execute(sys.argv[2],json.loads(sys.argv[3]));v=[dict(x) for x in r.fetchall()];c.commit();print(json.dumps(v))',db,query,JSON.stringify(args)],{encoding:'utf8'}));
@@ -46,7 +47,7 @@ async function until(fn){for(let i=0;i<50;i++){if(fn())return;await new Promise(
 await test('Focused community candidate: real Worker, D1 and WebSocket journeys',async t=>{
  t.after(()=>{for(const ws of sockets)ws.terminate();});
  let driver,rider,third,ride,booking,room,dm;
- await t.test('health, security headers and honest capabilities',async()=>{const r=await api('/api/health');ok(r);assert.equal(r.data.version,'8.0.0');assert.match(r.headers.get('content-security-policy'),/frame-ancestors 'none'/);assert.ok(r.headers.get('x-request-id'));const c=ok(await api('/api/config'));assert.equal(c.preview,true);assert.equal(c.emailAvailable,true);});
+ await t.test('health, security headers and honest capabilities',async()=>{const r=await api('/api/health');ok(r);assert.equal(r.data.version,'8.0.1-feedback');assert.match(r.headers.get('content-security-policy'),/frame-ancestors 'none'/);assert.ok(r.headers.get('x-request-id'));const c=ok(await api('/api/config'));assert.equal(c.preview,true);assert.equal(c.emailAvailable,true);});
  await t.test('email sign-up produces a verified session; code cannot be reused',async()=>{driver=await member('Driver');rider=await member('Rider');third=await member('Third');ok(await api('/api/profile',{user:driver}));assert.equal(ok(await api('/api/auth/email/status',{user:driver})).email,driver.email);const c=await start(`replay-${id}@example.invalid`);ok(await api('/api/auth/email/verify',{method:'POST',body:c}));assert.equal((await api('/api/auth/email/verify',{method:'POST',body:c})).status,403);});
  await t.test('expired and repeatedly incorrect codes cannot sign in',async()=>{const c=await start(`expired-${id}@example.invalid`);sql("UPDATE email_challenges SET expires_at=datetime('now','-1 minute') WHERE id=?",[c.challengeId]);assert.equal((await api('/api/auth/email/verify',{method:'POST',body:c})).status,403);const d=await start(`attempts-${id}@example.invalid`);for(let i=0;i<5;i++)assert.equal((await api('/api/auth/email/verify',{method:'POST',body:{...d,code:d.code==='000000'?'999999':'000000'}})).status,403);assert.equal((await api('/api/auth/email/verify',{method:'POST',body:d})).status,403);});
  await t.test('WhatsApp onboarding validates numbers, requires consent and keeps contacts out of public views',async()=>{
@@ -95,6 +96,39 @@ await test('Focused community candidate: real Worker, D1 and WebSocket journeys'
   for(let i=0;i<2;i++)ok(await api('/api/diagnostics',{method:'POST',body}),201);
   const row=sql("SELECT * FROM diagnostic_issues WHERE source='browser' AND code='JS_ERROR' ORDER BY last_seen DESC LIMIT 1")[0];
   assert.equal(row.route,'/api/social/rooms/:id/messages');assert.ok(row.occurrences>=2);assert.equal(row.detail,'app.js:40:2\nsocial.js:20:3');
+ });
+ await t.test('feedback and bug reports persist with categories, safe context, retry IDs and admin triage',async()=>{
+  const feedback=randomUUID(),idea=randomUUID(),bug=randomUUID();
+  for(const [ref,kind] of [[feedback,'feedback'],[idea,'idea'],[bug,'bug']]) {
+    const body={id:ref,source:'manual',kind,route:'/views/inbox?token=private',release:'8.0.1-feedback',description:'Synthetic feedback test with password=remove-me',context:{code:'API_5XX',route:'/api/social/rooms/private-room/messages?token=private'}};
+    for(let n=0;n<2;n++)assert.equal(ok(await api('/api/diagnostics',{method:'POST',body}),201).reference,ref);
+    const row=sql('SELECT * FROM diagnostic_issues WHERE id=?',[ref])[0];
+    assert.equal(row.route,'/views/inbox');assert.equal(row.occurrences,1);assert.doesNotMatch(row.detail,/private-room|private|remove-me/);
+    assert.equal(row.code,{bug:'USER_REPORT',feedback:'USER_FEEDBACK',idea:'USER_IDEA'}[kind]);
+    if(kind==='bug')assert.match(row.detail,/Detected error: API_5XX/);else assert.doesNotMatch(row.detail,/Detected error/);
+  }
+  assert.equal((await api('/api/diagnostics',{method:'POST',body:{id:randomUUID(),source:'manual',kind:'invalid',description:'Synthetic invalid category'}})).status,400);
+  assert.equal((await api('/api/diagnostics',{method:'POST',body:{id:randomUUID(),source:'manual',kind:'feedback',description:'x'.repeat(1801)}})).status,400);
+  const event={source:'browser',code:'API_5XX',route:'/api/profile',page:'/views/account?token=secret',frames:'app.js:170:5',release:'8.0.1-feedback'};
+  const automatic=ok(await api('/api/diagnostics',{method:'POST',body:event}),201).reference;
+  const previousOccurrences=sql('SELECT occurrences FROM diagnostic_issues WHERE id=?',[automatic])[0].occurrences;
+  const code=('local-feedback-'+id).toUpperCase();
+  sql("INSERT INTO user_roles(user_id,role) VALUES(?,'admin')",[rider.id]);sql('INSERT INTO admin_credentials(user_id,code_hash) VALUES(?,?)',[rider.id,hash(code)]);
+  try {
+    const admin=ok(await api('/api/admin/unlock',{user:rider,method:'POST',body:{code}})).adminToken,headers={'x-admin-token':admin};
+    const listing=ok(await api('/api/admin/issues?kind=feedback',{user:rider,headers}));assert.ok(listing.issues.some(i=>i.id===feedback));assert.ok(listing.issues.every(i=>i.code==='USER_FEEDBACK'));
+    const ideas=ok(await api('/api/admin/issues?kind=idea',{user:rider,headers}));assert.ok(ideas.issues.some(i=>i.id===idea));
+    assert.equal((await api('/api/admin/issues?offset=-1',{user:rider,headers})).status,400);
+    for(let n=0;n<51;n++){const ref=randomUUID();sql("INSERT INTO diagnostic_issues(id,fingerprint,source,code,detail) VALUES(?,?,'manual','USER_FEEDBACK','Pagination fixture')",[ref,'manual:'+ref]);}
+    const first=ok(await api('/api/admin/issues?kind=feedback',{user:rider,headers})),next=ok(await api('/api/admin/issues?kind=feedback&offset=50',{user:rider,headers}));
+    assert.equal(first.issues.length,50);assert.ok(next.issues.length>0);assert.ok(!next.issues.some(i=>first.issues.some(a=>a.id===i.id)));
+    assert.equal((await api('/api/admin/issues/'+automatic,{user:rider,headers,method:'PATCH',body:{status:'resolved',resolution:''}})).status,400);
+    ok(await api('/api/admin/issues/'+automatic,{user:rider,headers,method:'PATCH',body:{status:'resolved',resolution:'Synthetic test: verified resolution flow.'}}));
+    ok(await api('/api/diagnostics',{method:'POST',body:event}),201);
+    const reopened=sql('SELECT * FROM diagnostic_issues WHERE id=?',[automatic])[0];assert.equal(reopened.status,'open');assert.equal(reopened.resolved_at,null);assert.equal(reopened.occurrences,previousOccurrences+1);assert.doesNotMatch(reopened.detail,/token|secret/);
+    ok(await api('/api/admin/issues/'+feedback,{user:rider,headers,method:'PATCH',body:{status:'investigating',resolution:'Reviewing synthetic feedback.'}}));
+    assert.ok(ok(await api('/api/admin/issues?status=investigating&kind=feedback',{user:rider,headers})).issues.some(i=>i.id===feedback));
+  } finally {sql('DELETE FROM admin_sessions WHERE user_id=?',[rider.id]);sql('DELETE FROM admin_credentials WHERE user_id=?',[rider.id]);sql('DELETE FROM user_roles WHERE user_id=?',[rider.id]);}
  });
  await t.test('email-only profiles save without a phone; passkey challenges reject forged responses',async()=>{
   ok(await api('/api/profile',{user:driver,method:'PATCH',body:{name:'Driver',area:'Cardiff',bio:'Local account test',travelRole:'driver'}}));

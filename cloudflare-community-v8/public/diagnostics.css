@@ -6,3 +6,20 @@
 .support-hero .site-info-links,.support-hero .site-info-links a,.support-hero .link-btn{color:#fff}.support-hero .diagnostic-notice{color:#e1e7f0}
 
 .license-text{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}
+
+/* Shared feedback controls stay outside the app so startup failures cannot remove them. */
+.feedback-dock{position:fixed;right:18px;bottom:18px;z-index:55;display:flex;gap:4px;padding:5px;border:1px solid #d8dfe7;border-radius:30px;background:#fff;box-shadow:0 4px 20px #18253b1f}
+.feedback-dock button,.side-feedback button{border:0;background:transparent;color:#334155;font:600 13px/1.3 system-ui;cursor:pointer;padding:11px 15px;border-radius:22px}
+.feedback-dock button:first-child{background:#b52230;color:#fff}.feedback-dock button:hover{background:#f0f3f7;color:#263548}.feedback-dock button:first-child:hover{background:#961d29;color:#fff}
+.feedback-dock button:focus-visible,.problem-notice button:focus-visible,.side-feedback button:focus-visible{outline:3px solid #406db1;outline-offset:3px}
+.side-feedback{display:flex;flex-wrap:wrap;padding:0 10px 8px;gap:2px}.side-feedback button{font-size:12px;padding:8px}
+.problem-dialog{box-sizing:border-box;max-height:calc(100dvh - 28px);overflow:auto}.problem-dialog select{width:100%;box-sizing:border-box;border:1px solid #94a3b8;border-radius:9px;padding:10px;font:inherit;background:#fff;color:inherit}.problem-context{font-size:12px;color:#475569;overflow-wrap:anywhere}.problem-status:empty{display:none}
+.problem-notice{position:fixed;right:18px;bottom:88px;z-index:56;width:330px;max-width:calc(100vw - 36px);box-sizing:border-box;padding:18px 36px 18px 18px;background:#fff8ec;border:1px solid #e7c991;border-radius:16px;box-shadow:0 8px 28px #18253b24;font:14px/1.4 system-ui;color:#443820}.problem-notice p{margin:0 0 8px}.problem-notice button{border:0;background:transparent;color:#8c2631;font:600 13px system-ui;text-decoration:underline;cursor:pointer;padding:5px 0}.problem-notice .problem-notice-close{position:absolute;right:12px;top:8px;font-size:24px;text-decoration:none}
+.toast-report{border:1px solid currentColor;border-radius:7px;padding:5px 8px;background:transparent;color:inherit;font:600 12px system-ui;cursor:pointer}
+.feedback-support{background:#fff;border:1px solid #e0e4eb;padding:24px;border-radius:16px;margin:20px 0}.feedback-support h2{margin-top:0}.feedback-support>div,.issue-filters,.issue-pagination{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.issue-filters label{display:grid;gap:6px;font-size:13px;font-weight:600}.issue-filters select{padding:10px;border:1px solid #bcc8d7;border-radius:8px;background:#fff;font:inherit}.issue-filters button{align-self:end}.issue-pagination{justify-content:space-between;margin:24px 0}.issue-pagination button:disabled{opacity:.45;cursor:default}
+body:has(.feedback-dock) .main-content{padding-bottom:100px}body:has(.feedback-dock) .static-page{padding-bottom:100px}
+@media(max-width:800px){.feedback-dock{bottom:calc(76px + env(safe-area-inset-bottom));right:10px;gap:0;padding:4px}.feedback-dock button{padding:10px 12px;font-size:12px}.problem-notice{right:10px;bottom:calc(139px + env(safe-area-inset-bottom))}.problem-dialog{padding:22px}.problem-dialog textarea{font-size:16px}body:has(.mobile-nav) .main-content{padding-bottom:155px}body:has(.static-page) .feedback-dock{bottom:calc(12px + env(safe-area-inset-bottom))}}
+
+body:has(.feedback-dock) .main-content .chat-workspace{height:calc(100dvh - 122px)}
+body:has(.feedback-dock) .main-content:has(.preview-notice) .chat-workspace{height:calc(100dvh - 170px)}
+@media(max-width:800px){body:has(.feedback-dock) .main-content .chat-workspace{height:calc(100dvh - 232px);min-height:340px}body:has(.feedback-dock) .main-content:has(.preview-notice) .chat-workspace{height:calc(100dvh - 268px);min-height:320px}}

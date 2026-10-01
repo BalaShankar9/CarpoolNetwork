@@ -82,3 +82,13 @@ Conversations have a clearer empty state with draft-only starters, a compact com
 ### HD community artwork
 
 The existing community illustration was regenerated with the built-in image tool on 28 September 2026, retaining the red car, four occupants, aqua clouds and carpool lettering. The generated master is `public/community-cover.png` (1419 × 1108); `public/community-cover-hd.webp` serves the homepage at approximately 107 KB. The same frame and placement are retained, with `object-fit: contain` replacing the crop previously used to conceal screenshot borders. The service-worker version was advanced so existing clients receive the replacement. The generation prompt and actual output dimensions are recorded in `COMMUNITY-ARTWORK.md`.
+
+## Feedback and bug-report inbox (1 October 2026)
+
+The shared controls offer **Leave feedback** and **Report a bug** on every app view and the static help pages, without requiring sign-in. The form also accepts improvement ideas. Submissions return a reference and are stored privately in the existing `diagnostic_issues` D1 table; no production schema migration is needed. `USER_REPORT`, `USER_FEEDBACK` and `USER_IDEA` distinguish the manual categories.
+
+Open **Account → Admin Control Room → Feedback & bug reports**, or `/?view=issues` with an unlocked admin session. Filter by report type and status, page through all records, and record an investigation or resolution note. Existing automatic grouping, rate limits, private access and 90-day closed-report retention remain in place. Recurrence reopens resolved automatic issues.
+
+Unexpected JavaScript/rejection/resource errors and instrumented API failures trigger a dismissible report prompt and send sanitised technical diagnostics. Error toasts and unavailable-page screens include report actions. Automatic metadata excludes raw messages, query strings, private IDs and form contents. A bounded, 24-hour session-storage queue retries on reconnect; manual text stays in the open form on failed delivery, and retry uses the same submission ID. The UI only claims success after the server confirms storage.
+
+Checks include the full local Worker/D1/WebSocket suite plus diagnostics queue/privacy tests, and Chrome desktop/390px feedback, automatic error, offline retry, chat-composer and private inbox checks. Real-world failures outside these hooks still need a manual report; reports are stored for later review, not an autonomous repair service.
