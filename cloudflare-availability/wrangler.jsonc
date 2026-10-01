@@ -1,0 +1,10 @@
+{
+  "name": "carpool-availability",
+  "main": "worker.js",
+  "compatibility_date": "2026-08-16",
+  "workers_dev": true,
+  "kv_namespaces": [{"binding": "STATE", "id": "d6ece341fce1407aa764c1289ce44912"}],
+  "triggers": {"crons": ["7,22,37,52 * * * *"]},
+  "limits": {"cpu_ms": 50},
+  "observability": {"enabled": true, "redact_query_string": true}
+}
