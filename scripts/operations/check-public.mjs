@@ -1,10 +1,26 @@
 // Anonymous, read-only checks. Never submit a booking, report, email or account change.
 import {writeFile} from 'node:fs/promises';
+import {connect} from 'node:tls';
 const allowed = new Set(['https://carpoolnetwork.co.uk','https://www.carpoolnetwork.co.uk','http://127.0.0.1:8788','https://carpool-network-release-check.balashankarbollineni4.workers.dev']);
 const requested = process.argv.find(x=>x.startsWith('--base='))?.slice(7);
 if(requested && !allowed.has(requested))throw Error('Use a configured Carpool environment.');
 const bases=requested?[requested]:['https://carpoolnetwork.co.uk','https://www.carpoolnetwork.co.uk'];
 const results=[];
+async function checkCertificate(base){
+  const host=new URL(base).hostname;
+  const result=await new Promise(resolve=>{
+    const socket=connect({host,port:443,servername:host,rejectUnauthorized:true});
+    const finish=result=>{socket.destroy();resolve(result);};
+    socket.setTimeout(12000,()=>finish({ok:false,problem:'TLS check timed out'}));
+    socket.once('error',()=>finish({ok:false,problem:'TLS certificate or connection failed'}));
+    socket.once('secureConnect',()=>{
+      const expires=Date.parse(socket.getPeerCertificate().valid_to);
+      const daysRemaining=Math.floor((expires-Date.now())/86400000);
+      finish({ok:Number.isFinite(daysRemaining)&&daysRemaining>=14,daysRemaining,...(!(daysRemaining>=14)?{problem:'Certificate expires in fewer than 14 days'}:{})});
+    });
+  });
+  results.push({url:base,check:'TLS certificate',...result});
+}
 async function check(base,path,validate,{redirect='follow',method='GET'}={}){
   let result;
   for(let attempt=1;attempt<=2;attempt++){
@@ -23,6 +39,7 @@ async function check(base,path,validate,{redirect='follow',method='GET'}={}){
 const status=expected=>r=>r.status===expected?null:`Expected HTTP ${expected}`;
 for(const base of bases){
   const production=base.includes('carpoolnetwork.co.uk');
+  if(production)await checkCertificate(base);
   await check(base,'/',(r,t)=>status(200)(r)||(!t.includes('property="og:image"')?'Share metadata missing':null)||(!r.headers.get('strict-transport-security')?'HTTPS policy missing':null));
   for(const path of ['/welcome','/help','/privacy','/safety'])await check(base,path,status(200));
   await check(base,'/robots.txt',(r,t)=>status(200)(r)||(!r.headers.get('content-type')?.includes('text/plain')||!t.includes('sitemap.xml')?'Invalid robots file':null));
